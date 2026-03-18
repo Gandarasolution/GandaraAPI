@@ -6,7 +6,7 @@ use Symfony\Component\Dotenv\Dotenv;
 
 require __DIR__.'/vendor/autoload.php';
 
-(new Dotenv())->bootEnv(__DIR__.'/.env');
+(new Dotenv())->bootEnv(__DIR__.'/.env.locale');
 
 $kernel = new Kernel($_SERVER['APP_ENV'], (bool) $_SERVER['APP_DEBUG']);
 $kernel->boot();
@@ -22,12 +22,8 @@ foreach ($tables as $table) {
         continue;
     }
 
-    if (!str_contains($table->getName(), 'Planning')) {
-        continue; // Si "Planning" n'est pas dedans, on saute à la suivante
-    }
-
-    if (!str_contains($table->getName(), 'Planning')) {
-        continue; // Si "Planning" n'est pas dedans, on saute à la suivante
+    if (!str_contains($table->getName(), 'Planning') && $table->getName() !== 'Salarie' && $table->getName() !== 'Equipe' && $table->getName() !== 'Interim' && $table->getName() !== 'Session') {
+        continue; // Si "Planning" ou "Salarie" n'est pas dedans, on saute à la suivante
     }
 
     $tableName = $table->getName();

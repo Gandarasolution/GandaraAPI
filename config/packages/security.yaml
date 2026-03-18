@@ -5,16 +5,32 @@ security:
 
     # https://symfony.com/doc/current/security.html#loading-the-user-the-user-provider
     providers:
-        users_in_memory: { memory: null }
+        # users_in_memory: { memory: null }
+        app_user_provider:
+            entity:
+                class: App\Entity\Session
+                property: mail
 
     firewalls:
         dev:
             # Ensure dev tools and static assets are always allowed
             pattern: ^/(_profiler|_wdt|assets|build)/
             security: false
+
+        login:
+            pattern: ^/api/login
+            stateless: true
+            json_login:
+                check_path: /api/login_check # Route interne gérée par le bundle
+                success_handler: lexik_jwt_authentication.handler.authentication_success
+                failure_handler: lexik_jwt_authentication.handler.authentication_failure
+
+        # Protection de tout le reste de l'API
         main:
-            lazy: true
-            provider: users_in_memory
+            pattern: ^/api
+            stateless: true # IMPORTANT : On ne veut pas de session/cookie
+            jwt: ~ # Active la vérification du token JWT sur chaque requête
+
 
             # Activate different ways to authenticate:
             # https://symfony.com/doc/current/security.html#the-firewall
@@ -24,8 +40,8 @@ security:
 
     # Note: Only the *first* matching rule is applied
     access_control:
-        # - { path: ^/admin, roles: ROLE_ADMIN }
-        # - { path: ^/profile, roles: ROLE_USER }
+        - { path: ^/api/login, roles: PUBLIC_ACCESS }
+        - { path: ^/api,       roles: ROLE_USER }
 
 when@test:
     security:

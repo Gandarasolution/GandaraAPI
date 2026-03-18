@@ -16,6 +16,23 @@ class PlanningEvenementRepository extends ServiceEntityRepository
         parent::__construct($registry, PlanningEvenement::class);
     }
 
+    /**
+     * @return PlanningEvenement[] Returns an array of PlanningEvenement objects
+     */
+    public function findEventsByDate(\DateTimeInterface $dateStart, \DateTimeInterface $dateEnd ): array
+    {
+        $startOfDay = (clone $dateStart)->setTime(0, 0, 0);
+        $endOfDay = (clone $dateEnd)->setTime(23, 59, 59);
+
+        return $this->createQueryBuilder('p')
+            ->andWhere('p.debutplanningevenement <= :endOfDay')
+            ->andWhere('p.finplanningevenement >= :startOfDay')
+            ->setParameter('startOfDay', $startOfDay)
+            ->setParameter('endOfDay', $endOfDay)
+            ->getQuery()
+            ->getResult();
+    }
+
 //    /**
 //     * @return PlanningEvenement[] Returns an array of PlanningEvenement objects
 //     */
