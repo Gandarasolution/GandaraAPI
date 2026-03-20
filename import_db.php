@@ -22,7 +22,13 @@ foreach ($tables as $table) {
         continue;
     }
 
-    if (!str_contains($table->getName(), 'Planning') && $table->getName() !== 'Salarie' && $table->getName() !== 'Equipe' && $table->getName() !== 'Interim' && $table->getName() !== 'Session') {
+    if (!str_contains($table->getName(), 'Planning')
+        && $table->getName() !== 'Salarie'
+        && $table->getName() !== 'Equipe'
+        && $table->getName() !== 'Interim'
+        && $table->getName() !== 'Session'
+        && $table->getName() !== 'PoleActivite'
+    ) {
         continue; // Si "Planning" ou "Salarie" n'est pas dedans, on saute à la suivante
     }
 

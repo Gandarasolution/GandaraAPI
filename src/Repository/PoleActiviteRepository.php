@@ -2,15 +2,16 @@
 
 namespace App\Repository;
 
-use App\Entity\Planningevenement;
+use App\Entity\Poleactivite;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
-class EquipeRepository extends ServiceEntityRepository
+class PoleActiviteRepository extends ServiceEntityRepository
 {
+
     public function __construct(ManagerRegistry $registry)
     {
-        parent::__construct($registry, PlanningEvenement::class);
+        parent::__construct($registry, PoleActivite::class);
     }
 
 }
