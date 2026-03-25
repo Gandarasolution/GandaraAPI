@@ -3,7 +3,7 @@ doctrine:
         url: '%env(resolve:DATABASE_URL)%'
         driver: 'pdo_sqlsrv'
         server_version: '13' # On reste sur la version majeure
-
+        schema_filter: '/^(dbo\.)?(doctrine_migration_versions|Affectation|Equipe|HistoriquePlanningRDV|HistoriquePlanningVue|Image|Interim|PlanningEtiquette|PlanningEvenement|PlanningJourNonTravaille|PlanningNotification|PlanningNotificationType|PlanningRessource|PlanningRubriquePersonnalise|PlanningVue|PlanningVueAttribution|PlanningVueRelation|PoleActivite|Projet|Salarie|Session|SocialRubriquePaie)$/i'
         # IMPORTANT: You MUST configure your server version,
         # either here or in the DATABASE_URL env var (see .env file)
         #server_version: '16'

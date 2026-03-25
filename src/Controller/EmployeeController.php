@@ -3,7 +3,10 @@
 namespace App\Controller;
 
 use App\Repository\EmployeeRepository;
+use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
+use \Symfony\Component\HttpFoundation\Request;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -17,21 +20,42 @@ class EmployeeController extends AbstractController
 
 
     //GET /api/employees- Lister tous les employés
-    #[Route('', name: 'api_employees_index', methods: ['GET'])]
-    public function list(){
-        $result = $this->employeeRepository->findAll();
 
-        return $this->json($result);
+    /**
+     * @throws Exception
+     */
+    #[Route('', name: 'api_employees_list', methods: ['GET'])]
+    public function list(){
+        try {
+            $employees = $this->employeeRepository->getEmployeelist();
+            return $this->json($employees);
+        } catch (\Exception $e) {
+            return $this->json(['error' => 'Erreur lors de la récupération des employés: ' . $e->getMessage()], 500);
+        }
     }
 
     //GET /api/employees/:id- Récupérer un employé
-    #[Route('{id}', name: 'api_employees_index', methods: ['GET'])]
-    public function getEmployee(int $id){
-        $employee = $this->employeeRepository->find($id);
-        if (!$employee) {
-            return $this->json(['error' => 'Employé non trouvé'], 404);
+    #[Route('/{id}', name: 'api_employees_show', methods: ['GET'])]
+    public function getEmployee(int $id, Request $request){
+        $type = $request->query->get('type');
+
+        if (!$type || !in_array($type, ['Salarie', 'Interim'])) {
+            return $this->json(['error' => 'Le paramètre ?type=Salarie ou ?type=Interim est obligatoire'], 400);
         }
-        return $this->json($employee);
+
+        try {
+            // Appel avec paramètres => La PS renvoie une seule ligne (ou vide)
+            $result = $this->employeeRepository->getEmployeelist($id, $type);
+
+            if (empty($result)) {
+                return $this->json(['error' => 'Employé non trouvé'], 404);
+            }
+
+            return $this->json($result[0]);
+
+        } catch (\Exception $e) {
+            return $this->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     //PUT /api/employees/:id- Modifier un employé

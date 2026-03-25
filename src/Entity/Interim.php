@@ -72,14 +72,16 @@ class Interim
     #[ORM\Column(name: 'ActifInterim', type: 'boolean', nullable: true)]
     private ?bool $actifinterim = null;
 
-    #[ORM\Column(name: 'IdPoleActivite', type: 'bigint', nullable: true)]
-    private ?int $idpoleactivite = null;
+    #[ORM\ManyToOne(targetEntity: Poleactivite::class)]
+    #[ORM\JoinColumn(name: 'IdPoleActivite', referencedColumnName: 'IdPoleActivite')]
+    private ?Poleactivite $idpoleactivite = null;
 
     #[ORM\Column(name: 'IdCandidat', type: 'bigint', nullable: true)]
     private ?int $idcandidat = null;
 
-    #[ORM\Column(name: 'IdEquipe', type: 'bigint', nullable: true)]
-    private ?int $idequipe = null;
+    #[ORM\ManyToOne(targetEntity: Equipe::class)]
+    #[ORM\JoinColumn(name: 'IdEquipe', referencedColumnName: 'IdEquipe')]
+    private ?Equipe $idequipe = null;
 
     #[ORM\Column(name: 'SurnomInterim', type: 'string', nullable: true, length: 300)]
     private ?string $surnominterim = null;

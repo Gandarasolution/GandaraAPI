@@ -16,11 +16,12 @@ class Historiqueplanningrdv
     #[ORM\Column(name: 'TypeHistorique', type: 'bigint', nullable: true)]
     private ?int $typehistorique = null;
 
-    #[ORM\Column(name: 'IdPersonnel', type: 'bigint', nullable: true)]
-    private ?int $idpersonnel = null;
+    #[ORM\ManyToOne(targetEntity: Session::class)]
+    #[ORM\JoinColumn(name: 'IdPersonnel', referencedColumnName: 'IdPersonnel', nullable: false)]
+    private Session $idpersonnel;
 
-    #[ORM\Column(name: 'DateHistorique', type: 'datetime', nullable: true)]
-    private ?\DateTimeInterface $datehistorique = null;
+    #[ORM\Column(name: 'DateHistorique', type: 'datetime', nullable: false)]
+    private \DateTimeInterface $datehistorique;
 
     #[ORM\Column(name: 'IdDocument', type: 'bigint', nullable: true)]
     private ?int $iddocument = null;

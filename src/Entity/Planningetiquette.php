@@ -19,8 +19,9 @@ class Planningetiquette
     #[ORM\Column(name: 'LibelleCourtPlanningEtiquette', type: 'string', nullable: true, length: 10)]
     private ?string $libellecourtplanningetiquette = null;
 
-    #[ORM\Column(name: 'IdPlanningRessource', type: 'bigint', nullable: true)]
-    private ?int $idplanningressource = null;
+    #[ORM\ManyToOne(targetEntity: Planningressource::class)]
+    #[ORM\JoinColumn(name: 'IdPlanningRessource',referencedColumnName: 'IdPlanningRessource', nullable: false)]
+    private ?Planningressource $idplanningressource = null;
 
     public function getIdplanningetiquette(): int
     {
@@ -55,12 +56,12 @@ class Planningetiquette
         return $this;
     }
 
-    public function getIdplanningressource(): ?int
+    public function getIdplanningressource(): ?Planningressource
     {
         return $this->idplanningressource;
     }
 
-    public function setIdplanningressource(?int $idplanningressource): static
+    public function setIdplanningressource(?Planningressource $idplanningressource): static
     {
         $this->idplanningressource = $idplanningressource;
         return $this;

@@ -39,7 +39,7 @@ class Salarie
     #[ORM\Column(name: 'AdresseSalarie', type: 'string', nullable: true, length: 300)]
     private ?string $adressesalarie = null;
 
-    #[ORM\Column(name: 'IdGeoCodePostaux', type: 'integer', nullable: true)]
+    #[ORM\Column(name: 'IdGeoCodePostaux', type: 'bigint', nullable: true)]
     private ?int $idgeocodepostaux = null;
 
     #[ORM\Column(name: 'MailSalarie', type: 'string', nullable: true, length: 300)]
@@ -93,8 +93,9 @@ class Salarie
     #[ORM\Column(name: 'IdTypeCategorieSalarie', type: 'bigint', nullable: true)]
     private ?int $idtypecategoriesalarie = null;
 
-    #[ORM\Column(name: 'IdPoleActivite', type: 'bigint', nullable: true)]
-    private ?int $idpoleactivite = null;
+    #[ORM\ManyToOne(targetEntity: Poleactivite::class)]
+    #[ORM\JoinColumn(name: 'IdPoleactivite', referencedColumnName: 'IdPoleActivite', nullable: true)]
+    private ?Poleactivite $idpoleactivite = null;
 
     #[ORM\Column(name: 'IdSalarieIndemniteRepas', type: 'bigint', nullable: true)]
     private ?int $idsalarieindemniterepas = null;
@@ -117,8 +118,9 @@ class Salarie
     #[ORM\Column(name: 'IdAgence', type: 'bigint', nullable: true)]
     private ?int $idagence = null;
 
-    #[ORM\Column(name: 'IdEquipe', type: 'bigint', nullable: true)]
-    private ?int $idequipe = null;
+    #[ORM\ManyToOne(targetEntity: Equipe::class)]
+    #[ORM\JoinColumn(name: 'Idequipe', referencedColumnName: 'IdEquipe', nullable: true)]
+    private ?Equipe $idequipe = null;
 
     #[ORM\Column(name: 'SurnomSalarie', type: 'string', nullable: true, length: 300)]
     private ?string $surnomsalarie = null;
@@ -178,12 +180,12 @@ class Salarie
         return $this;
     }
 
-    public function getIdgroupe(): ?int
+    public function getIdgroupe(): ?Groupe
     {
         return $this->idgroupe;
     }
 
-    public function setIdgroupe(?int $idgroupe): static
+    public function setIdgroupe(?Groupe $idgroupe): static
     {
         $this->idgroupe = $idgroupe;
         return $this;
@@ -266,12 +268,12 @@ class Salarie
         return $this;
     }
 
-    public function getIdgeocodepostaux(): ?int
+    public function getIdgeocodepostaux(): ?Geocodepostaux
     {
         return $this->idgeocodepostaux;
     }
 
-    public function setIdgeocodepostaux(?int $idgeocodepostaux): static
+    public function setIdgeocodepostaux(?Geocodepostaux $idgeocodepostaux): static
     {
         $this->idgeocodepostaux = $idgeocodepostaux;
         return $this;

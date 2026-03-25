@@ -1,12 +1,11 @@
 <?php
 // import_db.php
 use App\Kernel;
-use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Dotenv\Dotenv;
 
 require __DIR__.'/vendor/autoload.php';
 
-(new Dotenv())->bootEnv(__DIR__.'/.env.locale');
+(new Dotenv())->bootEnv(__DIR__ . '/.env.local');
 
 $kernel = new Kernel($_SERVER['APP_ENV'], (bool) $_SERVER['APP_DEBUG']);
 $kernel->boot();
@@ -28,6 +27,14 @@ foreach ($tables as $table) {
         && $table->getName() !== 'Interim'
         && $table->getName() !== 'Session'
         && $table->getName() !== 'PoleActivite'
+        && $table->getName() !== 'Image'
+        && $table->getName() !== 'Projet'
+        && !str_contains($table->getName(), 'SocialRubriquePaie')
+        && $table->getName() !== 'PlanningStatut'
+        && $table->getName() !== 'PlanningUserLog'
+        && $table->getName() !== 'SocialRubriquePaieCategorie'
+        && $table->getName() !== 'TypeSocialRubriquePaieChantier'
+        && $table->getName() !== 'PlanningStatut'
     ) {
         continue; // Si "Planning" ou "Salarie" n'est pas dedans, on saute à la suivante
     }

@@ -8,6 +8,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'PoleActivite')]
 class Poleactivite
 {
+    #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(name: 'IdPoleActivite', type: 'bigint')]
     private int $idpoleactivite;

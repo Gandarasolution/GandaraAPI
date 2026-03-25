@@ -25,8 +25,9 @@ class Planningvue
     #[ORM\Column(name: 'ChampsDeuxiemeGroupePlanningVue', type: 'string', nullable: true, length: 100)]
     private ?string $champsdeuxiemegroupeplanningvue = null;
 
-    #[ORM\Column(name: 'IdPlanningImage', type: 'bigint', nullable: true)]
-    private ?int $idplanningimage = null;
+    #[ORM\ManyToOne(targetEntity: Image::class)]
+    #[ORM\JoinColumn(name: 'IdPlanningImage', referencedColumnName: 'IdImage', nullable: true)]
+    private ?Image $idplanningimage = null;
 
     public function getIdplanningvue(): int
     {
