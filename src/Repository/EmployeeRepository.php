@@ -58,4 +58,24 @@ class EmployeeRepository extends ServiceEntityRepository
     }
 
 
+    public function setEquipeEployee(int $id, Array $data): int
+    {
+        try {
+            $conn = $this->getEntityManager()->getConnection();
+            $sql = 'EXEC ps_EmployeeSetEquipe @Id = :id, @Type = :type, @IdEquipe = :idEquipe, @IdPoleActive = :idPoleActive';
+            $params = [
+                'id' => $id,
+                'type' => $data['Type'],
+                'idEquipe' => $data['IdEquipe'],
+                'idPoleActive' => $data['IdPoleActivite']
+
+            ];
+
+            return $conn->executeStatement($sql, $params);
+
+        } catch (Exception $e) {
+            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
+        }
+    }
+
 }

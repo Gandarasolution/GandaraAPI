@@ -60,15 +60,34 @@ class EmployeeController extends AbstractController
 
     //PUT /api/employees/:id- Modifier un employé
     #[Route('{id}', name: 'api_employees_update', methods: ['PUT'])]
-    public function update(int $id){
-        $employee = $this->employeeRepository->find($id);
-        if (!$employee) {
-            return $this->json(['error' => 'Employé non trouvé'], 404);
+    public function update(int $id, Request $request, EmployeeRepository $employeeRepo){
+
+        try {
+            $data = $request->toArray();
+        } catch (\Exception $e) {
+            return $this->json(['error' => 'Données JSON invalides.'], 400);
         }
 
-        //A compléter une fois le lien avec les événements mis en place
+        $type = $data['Type'] ?? null;
+        if (!$type || !in_array($type, ['Salarie', 'Interim'])) {
+            return $this->json(['error' => 'Le champ "type" (Salarie ou Interim) est obligatoire dans le body.'], 400);
+        }
 
-        return $this->json($employee);
+        try {
+            $lignesModifiees = $employeeRepo->updateEmployeeRaw($id, $type, $data);
+
+            // LOGIQUE MÉTIER (Le "if" qui gère le succès silencieux)
+            if ($lignesModifiees === 0) {
+                // Pas d'erreur technique, mais l'ID n'existait pas
+                return $this->json(['error' => 'Employé introuvable ou aucune modification nécessaire.'], 404);
+            }
+
+            return $this->json(['message' => 'Employé mis à jour avec succès']);
+
+        } catch (\Exception $e) {
+            return $this->json(['error' => $e->getMessage()], 500);
+        }
+
     }
 
 

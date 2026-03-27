@@ -33,11 +33,11 @@ class Planningevenement
     #[ORM\JoinColumn(name: 'IdPlanningEtiquette', referencedColumnName: 'IdPlanningEtiquette', nullable: true)]
     private ?Planningetiquette $idplanningetiquette = null;
 
-    #[ORM\ManyToOne]
+    #[ORM\ManyToOne(targetEntity: Affectation::class)]
     #[ORM\JoinColumn(name: 'IdAffectation', referencedColumnName: 'IdAffectation', nullable: true)]
     private Affectation $IdAffectation;
 
-    #[ORM\ManyToOne]
+    #[ORM\ManyToOne(targetEntity: Planningressource::class)]
     #[ORM\JoinColumn(name: 'IdPlanningRessource', referencedColumnName: 'IdPlanningRessource', nullable: false)]
     private Planningressource $IdPlanningRessource;
 

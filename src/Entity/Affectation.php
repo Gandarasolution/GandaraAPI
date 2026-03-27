@@ -16,7 +16,7 @@ class Affectation
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column]
+    #[ORM\Column(name: 'IdAffectation', type: 'bigint')]
     private ?int $IdAffectation = null;
 
     #[ORM\OneToOne(targetEntity: Salarie::class)]

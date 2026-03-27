@@ -10,7 +10,7 @@ class PlanningNotificationType
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column]
+    #[ORM\Column(name: 'IdPlanningNotificationType', type: 'bigint')]
     private ?int $IdTypeNotification = null;
 
     #[ORM\Column(length: 255)]

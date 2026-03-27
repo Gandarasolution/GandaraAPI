@@ -39,7 +39,7 @@ class PlanningEquipeController extends AbstractController
             // Logique de création d'une équipe à partir des données de la requête
             $data = json_decode($request->getContent(), true);
             $equipe = new Equipe();
-            $equipe->setDesignationequipe($data['name']);
+            $equipe->setDesignationequipe($data['Name']);
 
             $this->entityManager->persist($equipe);
             $this->entityManager->flush();
@@ -62,7 +62,7 @@ class PlanningEquipeController extends AbstractController
             // Logique de mise à jour d'une équipe à partir des données de la requête
             $data = json_decode($request->getContent(), true);
             $equipe = $this->repository->find($id);
-            $equipe->setDesignationequipe($data['name']);
+            $equipe->setDesignationequipe($data['Name']);
 
             $this->entityManager->persist($equipe);
             $this->entityManager->flush();
