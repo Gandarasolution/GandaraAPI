@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Repository\PlanningEvenementRepository;
+use \Symfony\Component\HttpFoundation\Request;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -46,15 +47,91 @@ class PlanningEvenementController extends AbstractController
         }
     }
 
-    //GET /api/event?employee=:id- RDV par employé
+    //GET /api/event?employee=:id&type=Salarie- RDV par employé
     #[Route('/', name: 'api_evenements_by_employee', methods: ['GET'])]
-    public function getEventsByEmployee(int $employeeId): JsonResponse
+    public function getEventsByEmployee(Request $request): JsonResponse
     {
         try {
-            $events = $this->planningEvenementRepository->findEventsByEmployee($employeeId);
+            $employeeId =$request->query->get('employee');
+            $type = $request->query->get('type');
+
+            if (!$type || !in_array($type, ['Salarie', 'Interim'])) {
+                return $this->json(['error' => 'Le paramètre ?type=Salarie ou ?type=Interim est obligatoire'], 400);
+            }
+
+            if (!$employeeId) {
+                return $this->json(['error' => 'Le paramètre ?employee=:id est obligatoire'], 400);
+            }
+
+            $events = $this->planningEvenementRepository->findEventsByEmployee($employeeId, $type);
             return $this->json($events);
         } catch (\Exception $e) {
             return $this->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+
+    //POST /api/event- Créer un RDV
+    #[Route('', name: 'api_evenements_create', methods: ['POST'])]
+    public function create(Request $request): JsonResponse
+    {
+        try {
+            $data = $request->toArray();
+            // Validation des données d'entrée (simplifiée)
+            if (
+                empty($data['DebutPlanningEvenement'])
+                || empty($data['FinPlanningEvenement'])
+                || empty($data['IdPlanningRessource'])
+            ) {
+                return $this->json(['error' => 'Les champs DebutPlanningEvenement, FinPlanningEvenement, IdPlanningRessource  sont obligatoires.'], 400);
+            }
+
+            $newEventId = $this->planningEvenementRepository->createEvent($data);
+
+            return $this->json(['message' => 'Événement créé avec succès', 'IdPlanningEvenement' => $newEventId], 201);
+
+        } catch (\Exception $e) {
+            return $this->json(['error' => 'Erreur lors de la création de l\'événement: ' . $e->getMessage()], 500);
+        }
+    }
+
+    //PUT /api/event/:id- Modifier un RDV (à implémenter)
+    #[Route('/{id}', name: 'api_evenements_update', methods: ['PUT'])]
+    public function update(int $id, Request $request): JsonResponse
+     {
+         try {
+             $data = $request->toArray();
+             if (($data === null) || $data === []) {
+                 return $this->json(['error' => 'Données JSON invalides.'], 400);
+             }
+             $lignesModifiees = $this->planningEvenementRepository->updateEvent($id, $data);
+
+             if ($lignesModifiees === 0) {
+                 // Pas d'erreur technique, mais l'ID n'existait pas
+                 return $this->json(['error' => 'Événement introuvable.'], 404);
+             }
+
+             return $this->json(['message' => 'Événement mis à jour avec succès'], 201);
+
+         } catch (\Exception $e) {
+             return $this->json(['error' => 'Erreur lors de la mise à jour de l\'événement: ' . $e->getMessage()], 500);
+         }
+     }
+
+
+    //DELETE /api/event/:id- Supprimer un RDV
+    #[Route('/{id}', name: 'api_evenements_delete', methods: ['DELETE'])]
+    public function delete(int $id): JsonResponse
+    {
+        try {
+            $lignesSupprimees = $this->planningEvenementRepository->deleteEvent($id);
+            if ($lignesSupprimees === 0) {
+                return $this->json(['error' => 'Événement introuvable.'], 404);
+            }
+            return $this->json(['message' => 'Événement supprimé avec succès']);
+
+        } catch (\Exception $e) {
+            return $this->json(['error' => 'Erreur lors de la suppression de l\'événement: ' . $e->getMessage()], 500);
         }
     }
 }

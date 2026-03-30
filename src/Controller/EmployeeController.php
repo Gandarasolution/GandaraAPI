@@ -79,10 +79,10 @@ class EmployeeController extends AbstractController
             // LOGIQUE MÉTIER (Le "if" qui gère le succès silencieux)
             if ($lignesModifiees === 0) {
                 // Pas d'erreur technique, mais l'ID n'existait pas
-                return $this->json(['error' => 'Employé introuvable ou aucune modification nécessaire.'], 404);
+                return $this->json(['error' => 'Employé introuvable.'], 404);
             }
 
-            return $this->json(['message' => 'Employé mis à jour avec succès']);
+            return $this->json(['message' => 'Employé mis à jour avec succès'], 204);
 
         } catch (\Exception $e) {
             return $this->json(['error' => $e->getMessage()], 500);
