@@ -6,31 +6,32 @@ use App\Repository\PlanningNotificationRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: PlanningNotificationRepository::class)]
+#[ORM\Table(name: 'PlanningNotification')]
 class PlanningNotification
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column]
+    #[ORM\Column(name: 'IdNotification', type: 'integer')]
     private ?int $IdNotification = null;
 
     #[ORM\ManyToOne(targetEntity: Session::class)]
     #[ORM\JoinColumn(name: "IdSession", referencedColumnName: "IdPersonnel", nullable: true)]
     private Session $IdPersonnel;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(name: 'LibelleNotifications', length: 255, nullable: false)]
     private ?string $LibelleNotifications = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(name: 'TitreNotifications', length: 255, nullable: false)]
     private ?string $TitreNotifications = null;
 
-    #[ORM\Column]
+    #[ORM\Column(name: 'DateNotifications', type: 'datetime', length: 255, nullable: false)]
     private ?\DateTime $DateNotifications = null;
 
-    #[ORM\Column]
+    #[ORM\Column(name: 'LueNotifications', length: 255, nullable: false)]
     private ?bool $LueNotifications = null;
 
     #[ORM\ManyToOne]
-    #[ORM\JoinColumn(name: "IdTypeNotification", referencedColumnName: "IdTypeNotification", nullable: true)]
+    #[ORM\JoinColumn(name: "IdTypeNotification", referencedColumnName: "IdPlanningNotificationType", nullable: true)]
     private ?PlanningNotificationType $IdTypeNotifications = null;
 
     public function getId(): ?int
