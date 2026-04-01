@@ -66,7 +66,11 @@ class Image
 
     public function setInk(string $ink): static
     {
-        $this->ink = $ink;
+        if (is_resource($ink)) {
+            $this->ink = stream_get_contents($ink);
+        } else {
+            $this->ink = $ink;
+        }
         return $this;
     }
 

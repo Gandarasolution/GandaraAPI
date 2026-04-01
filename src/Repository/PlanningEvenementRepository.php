@@ -25,16 +25,16 @@ class PlanningEvenementRepository extends ServiceEntityRepository
                 'DebutPlanningEvenement' => $row['DebutPlanningEvenement'],
                 'FinPlanningEvenement' => $row['FinPlanningEvenement'],
                 'AnnotationPlanningEvenement' => $row['AnnotationPlanningEvenement'],
-                'IdPlanningRessource' => $row['IdPlanningRessource'],
                 'Etiquette' => [
                     'IdPlanningEtiquette' => $row['IdPlanningEtiquette'],
                     'LibelleLongPlanningEtiquette' => $row['LibelleLongPlanningEtiquette'],
                     'LibelleCourtPlanningEtiquette' => $row['LibelleCourtPlanningEtiquette']
                 ],
+                'Type' => $row['Type'],
                 'Ressource' => [
-                    'Libelle' => $row['Libelle'],
-                    'Type' => $row['Type'],
-                    'Code' => $row['Code'],
+                    'IdPlanningRessource' => $row['IdPlanningRessource'],
+                    'LibellePlanningRessource' => $row['Libelle'],
+                    'CodePlanningRessource' => $row['Code'],
                     'ChargeAffaire' => $row['ChargeAffaire'],
                 ],
                 'Employe' => [

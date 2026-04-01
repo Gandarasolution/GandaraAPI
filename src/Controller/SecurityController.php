@@ -14,9 +14,7 @@ class SecurityController extends AbstractController
     #[Route('/api/login', name: 'api_login', methods: ['POST'])]
     public function login(#[CurrentUser] ?Session $user): JsonResponse
     {
-        return $this->json([
-            'message' => 'Tout est géré par Symfony, vous ne devriez pas voir ce message.',
-        ]);
+        return $this->json(['error'=>0, $user]);
     }
 
     #[Route('/api/logout', name: 'api_logout', methods: ['GET'])]
