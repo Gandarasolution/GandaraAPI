@@ -58,8 +58,8 @@ class JwtEventSubscriber implements EventSubscriberInterface
 
             // 5. Si on a trouvé les infos, on les ajoute !
             if ($employeInfos) {
-                $data['user']['nom'] = $employeInfos['NomEmploye'];
-                $data['user']['prenom'] = $employeInfos['PrenomEmployee'];
+                $data['user']['Nom'] = $employeInfos['NomEmploye'];
+                $data['user']['Prenom'] = $employeInfos['PrenomEmployee'];
             }
 
             $data['error'] = 0;

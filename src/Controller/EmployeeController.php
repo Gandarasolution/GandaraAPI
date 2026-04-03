@@ -28,9 +28,9 @@ class EmployeeController extends AbstractController
     public function list(){
         try {
             $employees = $this->employeeRepository->getEmployeelist();
-            return $this->json($employees);
+            return $this->json(['error' => 0, 'data' => $employees]);
         } catch (\Exception $e) {
-            return $this->json(['error' => 'Erreur lors de la récupération des employés: ' . $e->getMessage()], 500);
+            return $this->json(['error' => 1, 'message' => 'Erreur lors de la récupération des employés: ' . $e->getMessage()], 500);
         }
     }
 
@@ -40,7 +40,7 @@ class EmployeeController extends AbstractController
         $type = $request->query->get('type');
 
         if (!$type || !in_array($type, ['Salarie', 'Interim'])) {
-            return $this->json(['error' => 'Le paramètre ?type=Salarie ou ?type=Interim est obligatoire'], 400);
+            return $this->json(['error' => 1, 'message' => 'Le paramètre ?type=Salarie ou ?type=Interim est obligatoire'], 400);
         }
 
         try {
@@ -48,13 +48,13 @@ class EmployeeController extends AbstractController
             $result = $this->employeeRepository->getEmployeelist($id, $type);
 
             if (empty($result)) {
-                return $this->json(['error' => 'Employé non trouvé'], 404);
+                return $this->json(['error' => 1, 'message' => 'Employé non trouvé'], 404);
             }
 
-            return $this->json($result[0]);
+            return $this->json(['error' => 0, 'data' => $result[0]]);
 
         } catch (\Exception $e) {
-            return $this->json(['error' => $e->getMessage()], 500);
+            return $this->json(['error' => 1 , 'message' => $e->getMessage()], 500);
         }
     }
 

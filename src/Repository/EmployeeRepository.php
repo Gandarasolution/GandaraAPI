@@ -35,7 +35,7 @@ class EmployeeRepository extends ServiceEntityRepository
 
             foreach ($resultSet as $row) {
                 $structuredData[] = [
-                    'Id' => $row['Id'], // Adapte selon le nom de ton ID
+                    'IdPersonnel' => $row['Id'], // Adapte selon le nom de ton ID
                     'Nom' => $row['Nom'],
                     'Prenom' => $row['Prenom'],
                     'Email' => $row['Email'],

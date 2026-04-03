@@ -28,13 +28,13 @@ class PlanningVueController extends AbstractController
         try {
             $IdPlanning = $request->query->get('idPlanning');
             $configs = $this->planningVueRepository->getConfigUser($userId, $IdPlanning);
-            return $this->json($configs);
+            return $this->json(['error' => 0, 'data' => $configs]);
         } catch (\Exception $e) {
             $this->logger->error('Erreur lors de la récupération des configs pour l\'utilisateur {userId}: {message}', [
                 'userId' => $userId,
                 'message' => $e->getMessage(),
             ]);
-            return $this->json(['error' => 'Une erreur est survenue lors de la récupération des configurations.'], 500);
+            return $this->json(['error' => 1, 'message' => 'Une erreur est survenue lors de la récupération des configurations.'], 500);
         }
     }
 }

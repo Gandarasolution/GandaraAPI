@@ -83,15 +83,15 @@ class PlanningEvenementController extends AbstractController
                 || empty($data['FinPlanningEvenement'])
                 || empty($data['IdPlanningRessource'])
             ) {
-                return $this->json(['error' => 'Les champs DebutPlanningEvenement, FinPlanningEvenement, IdPlanningRessource  sont obligatoires.'], 400);
+                return $this->json(['error' => 1, 'message' => 'Les champs DebutPlanningEvenement, FinPlanningEvenement, IdPlanningRessource  sont obligatoires.'], 400);
             }
 
             $newEventId = $this->planningEvenementRepository->createEvent($data);
 
-            return $this->json(['message' => 'Événement créé avec succès', 'IdPlanningEvenement' => $newEventId], 201);
+            return $this->json(['error' => 0, 'data' => $newEventId], 201);
 
         } catch (\Exception $e) {
-            return $this->json(['error' => 'Erreur lors de la création de l\'événement: ' . $e->getMessage()], 500);
+            return $this->json(['error' => 1,'message' => 'Erreur lors de la création de l\'événement: ' . $e->getMessage()], 500);
         }
     }
 
