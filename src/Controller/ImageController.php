@@ -18,13 +18,13 @@ class ImageController extends AbstractController
     public function getImage(int $id)
     {
         try {
-            $image = $this->entityManager->getRepository('App\Entity\Image')->find($id);
+            $image = $this->imageRepository->getImageById($id);
 
             if (!$image) {
                 return $this->json(['error' => 'Image not found'], 404);
             }
 
-            return $this->json(['error' => 0, 'image' => $image]);
+            return $this->json(['error' => 0, 'data' => $image]);
         }catch (\Exception $e) {
             return $this->json(['error'=> 1, 'message' => 'An error occurred while retrieving the image: ' . $e->getMessage()], 500);
         }

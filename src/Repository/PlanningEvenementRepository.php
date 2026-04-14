@@ -6,6 +6,7 @@ use App\Entity\Planningevenement;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\Exception;
 use Doctrine\Persistence\ManagerRegistry;
+use Psr\Log\LoggerInterface;
 
 /**
  * @extends ServiceEntityRepository<Planningevenement>
@@ -22,8 +23,8 @@ class PlanningEvenementRepository extends ServiceEntityRepository
         foreach($data as $row){
             $structuredData[]= [
                 'IdPlanningEvenement' => $row['IdPlanningEvenement'],
-                'DebutPlanningEvenement' => $row['DebutPlanningEvenement'],
-                'FinPlanningEvenement' => $row['FinPlanningEvenement'],
+                'DebutPlanningEvenement' => (int)$row['DebutPlanningEvenement'],
+                'FinPlanningEvenement' => (int)$row['FinPlanningEvenement'],
                 'AnnotationPlanningEvenement' => $row['AnnotationPlanningEvenement'],
                 'Etiquette' => [
                     'IdPlanningEtiquette' => $row['IdPlanningEtiquette'],
@@ -37,10 +38,12 @@ class PlanningEvenementRepository extends ServiceEntityRepository
                     'CodePlanningRessource' => $row['Code'],
                     'ChargeAffaire' => $row['ChargeAffaire'],
                 ],
-                'Employe' => [
-                    'IdEmploye' => $row['IdEmployee'],
-                    'NomPrenom' => $row['Employee'],
-                    'Type' => $row['TypeEmployee']
+                'Employee' => [
+                    'IdPersonnel' => $row['IdEmployee'],
+                    'Nom' => $row['EmployeeNom'],
+                    'Prenom' => $row['EmployeePrenom'],
+                    'Type' => $row['TypeEmployee'],
+                    'Actif' => $row['Actif'] === 0,
                 ]
             ];
         }
@@ -113,27 +116,31 @@ class PlanningEvenementRepository extends ServiceEntityRepository
         }
     }
 
-    public function createEvent(array $data)
+    public function createEvent(array $data, LoggerInterface $logger)
     {
         try {
+            $debutObj = new \DateTime()->setTimestamp((int)($data['DebutPlanningEvenement'] / 1000));
+            $finObj   = new \DateTime()->setTimestamp((int)($data['FinPlanningEvenement'] / 1000));
+
             $conn = $this->getEntityManager()->getConnection();
             $sql = 'EXEC ps_PlanningEvenementInsert @IdEmploye = :IdEmploye, @Type = :Type, @DebutPlanningEvenement = :DebutPlanningEvenement, @FinPlanningEvenement = :FinPlanningEvenement, @AnnotationPlanningEvenement = :AnnotationPlanningEvenement, @IdPlanningRessource = :IdPlanningRessource, @IdPlanningEtiquette = :IdPlanningEtiquette';
             $params = [
                 'IdEmploye' => $data['IdEmploye'],
                 'Type' => $data['Type'],
-                'DebutPlanningEvenement' => $data['DebutPlanningEvenement'],
-                'FinPlanningEvenement' => $data['FinPlanningEvenement'],
+                'DebutPlanningEvenement' => $debutObj->format('Y-m-d\TH:i:s'),
+                'FinPlanningEvenement' => $finObj->format('Y-m-d\TH:i:s'),
                 'AnnotationPlanningEvenement' => $data['AnnotationPlanningEvenement'] ?? null,
                 'IdPlanningRessource' => $data['IdPlanningRessource'],
                 'IdPlanningEtiquette' => $data['IdPlanningEtiquette'] ?? null
             ];
 
+            $logger->debug('Executing SQL: ' . $sql . ' with params: ' . json_encode($params));
             $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
-            if (!$result || !isset($result[0]['IdEvenement'])) {
+            if (!$result) {
                 throw new \Exception("Erreur : l'événement n'a pas pu être créé.");
             }
-            return $result[0]['IdEvenement'];
+            return $this->structuredData($result);
         } catch (Exception $e) {
             throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
         }
@@ -142,17 +149,23 @@ class PlanningEvenementRepository extends ServiceEntityRepository
     public function updateEvent(int $id, array $data)
     {
         try{
+
+            $debutObj = new \DateTime()->setTimestamp((int)($data['DebutPlanningEvenement'] / 1000));
+            $finObj   = new \DateTime()->setTimestamp((int)($data['FinPlanningEvenement'] / 1000));
+
+
             $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningEvenementUpdate @IdEvenement = :IdEvenement,@IdEmploye = :IdEmploye, @Type = :Type, @DebutPlanningEvenement = :DebutPlanningEvenement, @FinPlanningEvenement = :FinPlanningEvenement, @AnnotationPlanningEvenement = :AnnotationPlanningEvenement, @IdPlanningRessource = :IdPlanningRessource, @IdPlanningEtiquette = :IdPlanningEtiquette';
+            $sql = 'EXEC ps_PlanningEvenementUpdate @IdEvenement = :IdEvenement,@IdEmploye = :IdEmploye, @Type = :Type, @DebutPlanningEvenement = :DebutPlanningEvenement, @FinPlanningEvenement = :FinPlanningEvenement, @AnnotationPlanningEvenement = :AnnotationPlanningEvenement, @IdPlanningRessource = :IdPlanningRessource, @IdPlanningEtiquette = :IdPlanningEtiquette, @Priorite = :Priorite';
             $params = [
                 'IdEvenement' => $id,
                 'IdEmploye' => $data['IdEmploye'] ?? null,
                 'Type' => $data['Type'] ?? null,
-                'DebutPlanningEvenement' => $data['DebutPlanningEvenement'] ?? null,
-                'FinPlanningEvenement' => $data['FinPlanningEvenement'] ?? null,
+                'DebutPlanningEvenement' => $debutObj->format('Y-m-d\TH:i:s'),
+                'FinPlanningEvenement' => $finObj->format('Y-m-d\TH:i:s'),
                 'AnnotationPlanningEvenement' => $data['AnnotationPlanningEvenement'] ?? null,
                 'IdPlanningRessource' => $data['IdPlanningRessource'] ?? null,
                 'IdPlanningEtiquette' => $data['IdPlanningEtiquette'] ?? null,
+                'Priorite' => $data['PlanningEvenementPriorite']
             ];
             $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 

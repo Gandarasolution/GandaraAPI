@@ -36,4 +36,15 @@ class PlanningRessourceController extends abstractController
             ], 500);
         }
     }
+
+    #[Route('/{id}', name: 'app_planning_ressource', methods: ['GET'])]
+    public function getPlanningRessource(int $id){
+        try {
+             $result = $this->planningRessourceRepository->getRessource($id);
+             return $this->json(['error' => 0, 'data' => $result]);
+
+        }catch (\Exception $e) {
+            return $this->json(['error' => 1, 'message' => $e->getMessage()], 500);
+        }
+    }
 }

@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Repository\PlanningEvenementRepository;
+use Psr\Log\LoggerInterface;
 use \Symfony\Component\HttpFoundation\Request;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -73,7 +74,7 @@ class PlanningEvenementController extends AbstractController
 
     //POST /api/event- Créer un RDV
     #[Route('', name: 'api_evenements_create', methods: ['POST'])]
-    public function create(Request $request): JsonResponse
+    public function create(Request $request, LoggerInterface $logger): JsonResponse
     {
         try {
             $data = $request->toArray();
@@ -86,9 +87,9 @@ class PlanningEvenementController extends AbstractController
                 return $this->json(['error' => 1, 'message' => 'Les champs DebutPlanningEvenement, FinPlanningEvenement, IdPlanningRessource  sont obligatoires.'], 400);
             }
 
-            $newEventId = $this->planningEvenementRepository->createEvent($data);
+            $newEvent = $this->planningEvenementRepository->createEvent($data, $logger);
 
-            return $this->json(['error' => 0, 'data' => $newEventId], 201);
+            return $this->json(['error' => 0, 'data' => $newEvent], 201);
 
         } catch (\Exception $e) {
             return $this->json(['error' => 1,'message' => 'Erreur lors de la création de l\'événement: ' . $e->getMessage()], 500);
@@ -104,17 +105,21 @@ class PlanningEvenementController extends AbstractController
              if (($data === null) || $data === []) {
                  return $this->json(['error' => 'Données JSON invalides.'], 400);
              }
+             if($data['PlanningEvenementPriorite'] === null){
+                 $data['PlanningEvenementPriorite']=0;
+             }
+
              $lignesModifiees = $this->planningEvenementRepository->updateEvent($id, $data);
 
              if ($lignesModifiees === 0) {
                  // Pas d'erreur technique, mais l'ID n'existait pas
-                 return $this->json(['error' => 'Événement introuvable.'], 404);
+                 return $this->json(['error' => 1, 'message' => 'Événement introuvable.'], 404);
              }
 
-             return $this->json(['message' => 'Événement mis à jour avec succès'], 201);
+             return $this->json(['error' => 0, 'message' => 'Événement mis à jour avec succès'], 201);
 
          } catch (\Exception $e) {
-             return $this->json(['error' => 'Erreur lors de la mise à jour de l\'événement: ' . $e->getMessage()], 500);
+             return $this->json(['error' => 1, 'message' => 'Erreur lors de la mise à jour de l\'événement: ' . $e->getMessage()], 500);
          }
      }
 

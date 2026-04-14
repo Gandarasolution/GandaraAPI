@@ -35,4 +35,23 @@ class PlanningRessourceRepository extends ServiceEntityRepository
     }
 
 
+    public function getRessourceById(int $id)
+    {
+        try {
+            $sql = '
+                SELECT *
+                FROM PlanningRessource PR
+                LEFT JOIN Projet P ON P.IdProjet = PR.IdProjet
+                LEFT JOIN PlanningRubriquePersonnalise PRP ON PRP.IdPlanningRubriquePersonnalise = PR.IdRubriquePersonnalise
+                LEFT JOIN TypeSocialRubriquePaie T ON T.IdTypeSocialRubriquePaie = PR.IdRubrique
+                WHERE IdPlanningRessource = :id
+            ';
+
+            $conn = $this->getEntityManager()->getConnection();
+            $image = $conn->executeQuery($sql, ['id' => $id])->fetchAssociative();
+        }catch (Exception $e) {
+
+        }
+    }
+
 }

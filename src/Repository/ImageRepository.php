@@ -41,4 +41,27 @@ class ImageRepository extends ServiceEntityRepository
             throw new \Exception('An error occurred while retrieving images: ' . $e->getMessage());
         }
     }
+
+    public function getImageById(int $id)
+    {
+        try {
+            $sql = '
+                SELECT IdImage,Ink
+                FROM Image
+                WHERE IdImage = :id
+            ';
+
+            $conn = $this->getEntityManager()->getConnection();
+            $image = $conn->executeQuery($sql, ['id' => $id])->fetchAssociative();
+
+            if (!$image) {
+                return null;
+            }
+
+            $imageBinaire = is_resource($image['Ink']) ? stream_get_contents($image['Ink']) : $image['Ink'];
+             return base64_encode($imageBinaire);
+        }catch (Exception $e) {
+            throw new \Exception('An error occurred while retrieving the image: ' . $e->getMessage());
+        }
+    }
 }
