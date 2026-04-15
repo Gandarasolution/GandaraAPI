@@ -37,14 +37,29 @@ class PlanningRessourceController extends abstractController
         }
     }
 
-    #[Route('/{id}', name: 'app_planning_ressource', methods: ['GET'])]
-    public function getPlanningRessource(int $id){
+    #[Route('/{id}', name: 'app_planning_ressource_update', methods: ['PUT'])]
+    public function upndatePlaningRessource(int $id, Request $request){
         try {
-             $result = $this->planningRessourceRepository->getRessource($id);
-             return $this->json(['error' => 0, 'data' => $result]);
+            $data = json_decode($request->getContent(), true);
+            // Validation des données
+            if (!isset($data['Libelle']) || !isset($data['Code'])) {
+                return $this->json(['error' => 'Les champs Libelle et Code sont requis'], 400);
+            }
 
-        }catch (\Exception $e) {
-            return $this->json(['error' => 1, 'message' => $e->getMessage()], 500);
+            // Appel à la méthode de mise à jour dans le repository
+            $result = $this->planningRessourceRepository->updateRessource($id, $data);
+
+            if ($result) {
+                return $this->json(['error' => 0, 'message' => 'Ressource mise à jour avec succès']);
+            } else {
+                return $this->json(['error' => 1, 'message' => 'Erreur lors de la mise à jour de la ressource'], 500);
+            }
+        } catch (\Exception $e) {
+            return $this->json([
+                'error' => 1,
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
+
 }

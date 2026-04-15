@@ -35,22 +35,22 @@ class PlanningRessourceRepository extends ServiceEntityRepository
     }
 
 
-    public function getRessourceById(int $id)
+    public function updateRessource(int $id, mixed $data)
     {
         try {
-            $sql = '
-                SELECT *
-                FROM PlanningRessource PR
-                LEFT JOIN Projet P ON P.IdProjet = PR.IdProjet
-                LEFT JOIN PlanningRubriquePersonnalise PRP ON PRP.IdPlanningRubriquePersonnalise = PR.IdRubriquePersonnalise
-                LEFT JOIN TypeSocialRubriquePaie T ON T.IdTypeSocialRubriquePaie = PR.IdRubrique
-                WHERE IdPlanningRessource = :id
-            ';
-
             $conn = $this->getEntityManager()->getConnection();
-            $image = $conn->executeQuery($sql, ['id' => $id])->fetchAssociative();
-        }catch (Exception $e) {
+            $sql = 'EXEC ps_PlanningRessourceUpdate @IdRessource = :Id, @CouleurFondPlanningRessource = :CouleurFondPlanningRessource, @CouleurBordurePlanningRessource = :CouleurBordurePlanningRessource, @CouleurTextePlanningRessource = :CouleurTextePlanningRessource, @IdImage = :IdImage';
+            $params = [
+                'Id' => $id,
+                'CouleurFondPlanningRessource' => $data['CouleurFondPlanningRessource'] ?? null,
+                'CouleurBordurePlanningRessource' => $data['CouleurBordurePlanningRessource'] ?? null,
+                'CouleurTextePlanningRessource' => $data['CouleurTextePlanningRessource'] ?? null,
+                'IdImage' => $data['IdImage'] ?? null
+            ];
 
+            return $conn->executeQuery($sql, $params)->rowCount() > 0;
+        }catch (Exception $e) {
+            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
         }
     }
 

@@ -39,7 +39,7 @@ class EmployeeRepository extends ServiceEntityRepository
                     'Nom' => $row['Nom'],
                     'Prenom' => $row['Prenom'],
                     'Email' => $row['Email'],
-                    'Actif' => $row['Actif'],
+                    'Actif' => $row['Actif'] === 1,
                     'Type' => $row['Type'],
                     'PoleActivite' => [
                         'Id' => $row['IdPoleActivite'],

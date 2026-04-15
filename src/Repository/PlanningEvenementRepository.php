@@ -37,13 +37,17 @@ class PlanningEvenementRepository extends ServiceEntityRepository
                     'LibellePlanningRessource' => $row['Libelle'],
                     'CodePlanningRessource' => $row['Code'],
                     'ChargeAffaire' => $row['ChargeAffaire'],
+                    'IdImage' => $row['IdImage'],
+                    'CouleurBordurePlanningRessource' => $row['CouleurBordurePlanningRessource'],
+                    'CouleurFondPlanningRessource' => $row['CouleurFondPlanningRessource'],
+                    'CouleurTextePlanningRessource' => $row['CouleurTextePlanningRessource'],
                 ],
                 'Employee' => [
                     'IdPersonnel' => $row['IdEmployee'],
                     'Nom' => $row['EmployeeNom'],
                     'Prenom' => $row['EmployeePrenom'],
                     'Type' => $row['TypeEmployee'],
-                    'Actif' => $row['Actif'] === 0,
+                    'Actif' => $row['Actif'] === 1,
                 ]
             ];
         }
