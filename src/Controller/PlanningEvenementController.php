@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Repository\PlanningEvenementRepository;
+use App\Repository\PlanningRessourceRepository;
 use Psr\Log\LoggerInterface;
 use \Symfony\Component\HttpFoundation\Request;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -15,6 +16,7 @@ class PlanningEvenementController extends AbstractController
 
     public function __construct(
         private PlanningEvenementRepository $planningEvenementRepository,
+        private PlanningRessourceRepository $planningRessourceRepository,
         //private EntityManagerInterface $entityManager,
     ){}
 
@@ -139,4 +141,61 @@ class PlanningEvenementController extends AbstractController
             return $this->json(['error' => 'Erreur lors de la suppression de l\'événement: ' . $e->getMessage()], 500);
         }
     }
+
+    // PUT /api/event/updateRessourceAndEvent/:id -> met à jour un événement et la ressource associée via les procédure stockée
+    #[Route('/updateRessourceAndEvent/{id}', name: 'api_evenement_et_ressource_update', methods: ['PUT'])]
+    public function updateWithProcedure(int $id, Request $request, LoggerInterface $logger): JsonResponse
+    {
+        try {
+            $data = $request->toArray();
+
+            if (($data === null) || $data === []) {
+                return $this->json(['error' => 'Données JSON invalides.'], 400);
+            }
+
+            // Normalisation des timestamps envoyés en millisecondes -> int
+            if (isset($data['DebutPlanningEvenement']) && is_numeric($data['DebutPlanningEvenement'])) {
+                $data['DebutPlanningEvenement'] = (int) $data['DebutPlanningEvenement'];
+            }
+            if (isset($data['FinPlanningEvenement']) && is_numeric($data['FinPlanningEvenement'])) {
+                $data['FinPlanningEvenement'] = (int) $data['FinPlanningEvenement'];
+            }
+
+            if ($data['PlanningEvenementPriorite'] === null) {
+                $data['PlanningEvenementPriorite'] = 0;
+            }
+
+
+
+            $logger->info('Appel PS update pour événement ' . $id, ['payload' => $data]);
+
+            $lignesModifiees = $this->planningEvenementRepository->updateEvent($id, $data);
+
+            if ($lignesModifiees === 0) {
+                return $this->json(['error' => 1, 'message' => 'Événement introuvable ou aucune modification effectuée.'], 404);
+            }
+
+            // Si le payload contient des données de ressource, tenter de mettre à jour la ressource associée
+            $ressourceUpdated = null;
+            $ressourceId = $data['IdPlanningRessource'] ?? ($data['Ressource']['IdPlanningRessource'] ?? null);
+            if ($ressourceId !== null && isset($data['Ressource']) && is_array($data['Ressource'])) {
+                $lignesModifiees = $this->planningRessourceRepository->updateRessource((int)$ressourceId, $data['Ressource']);
+
+                if ($lignesModifiees === 0){
+                    return $this->json(['error' => 1, 'message' => 'Ressource introuvable ou aucune modification effectuée.'], 404);
+                }
+            }
+
+            return $this->json([
+                'error' => 0,
+                'message' => 'Événement mis à jour avec succès',
+                'LignesModifiees' => $lignesModifiees,
+                'RessourceUpdated' => $ressourceUpdated,
+            ]);
+
+        } catch (\Exception $e) {
+            return $this->json(['error' => 1, 'message' => 'Erreur lors de la mise à jour via PS: ' . $e->getMessage()], 500);
+        }
+    }
+
 }

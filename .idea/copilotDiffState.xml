@@ -21,6 +21,14 @@
             </PendingDiffInfo>
           </value>
         </entry>
+        <entry key="$PROJECT_DIR$/src/Controller/PlanningEvenementPsController.php">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/src/Controller/PlanningEvenementPsController.php" />
+              <option name="updatedContent" value="&lt;?php&#10;&#10;namespace App\Controller;&#10;&#10;use App\Repository\PlanningEvenementRepository;&#10;use Psr\Log\LoggerInterface;&#10;use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;&#10;use Symfony\Component\HttpFoundation\Request;&#10;use Symfony\Component\HttpFoundation\JsonResponse;&#10;use Symfony\Component\Routing\Attribute\Route;&#10;&#10;// Controller dédié aux appels via procédure stockée&#10;#[Route('/api/event-ps')]&#10;class PlanningEvenementPsController extends AbstractController&#10;{&#10;    public function __construct(private PlanningEvenementRepository $planningEvenementRepository)&#10;    {&#10;    }&#10;&#10;    // PUT /api/event-ps/{id}/ps-update -&gt; met à jour un événement via la procédure stockée&#10;    #[Route('/{id}/ps-update', name: 'api_evenements_ps_update', methods: ['PUT'])]&#10;    public function updateWithProcedure(int $id, Request $request, LoggerInterface $logger): JsonResponse&#10;    {&#10;        try {&#10;            $data = $request-&gt;toArray();&#10;&#10;            if (($data === null) || $data === []) {&#10;                return $this-&gt;json(['error' =&gt; 'Données JSON invalides.'], 400);&#10;            }&#10;&#10;            // Exemple de normalisation : s'assurer que les timestamps sont présents&#10;            if (isset($data['DebutPlanningEvenement']) &amp;&amp; is_numeric($data['DebutPlanningEvenement'])) {&#10;                // On garde le timestamp côté repository qui convertit en datetime&#10;            }&#10;&#10;            $logger-&gt;info('Appel PS update pour événement ' . $id, ['payload' =&gt; $data]);&#10;&#10;            $lignesModifiees = $this-&gt;planningEvenementRepository-&gt;updateEvent($id, $data);&#10;&#10;            if ($lignesModifiees === 0) {&#10;                return $this-&gt;json(['error' =&gt; 1, 'message' =&gt; 'Événement introuvable ou aucune modification effectuée.'], 404);&#10;            }&#10;&#10;            return $this-&gt;json(['error' =&gt; 0, 'message' =&gt; 'Événement mis à jour avec succès', 'LignesModifiees' =&gt; $lignesModifiees]);&#10;&#10;        } catch (\Exception $e) {&#10;            return $this-&gt;json(['error' =&gt; 1, 'message' =&gt; 'Erreur lors de la mise à jour via PS: ' . $e-&gt;getMessage()], 500);&#10;        }&#10;    }&#10;}&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
       </map>
     </option>
   </component>

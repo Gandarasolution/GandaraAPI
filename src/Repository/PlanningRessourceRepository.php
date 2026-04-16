@@ -48,7 +48,7 @@ class PlanningRessourceRepository extends ServiceEntityRepository
                 'IdImage' => $data['IdImage'] ?? null
             ];
 
-            return $conn->executeQuery($sql, $params)->rowCount() > 0;
+            return $conn->executeQuery($sql, $params)->fetchAllAssociative()[0]['LignesModifiees'];
         }catch (Exception $e) {
             throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
         }

@@ -41,6 +41,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
                     'CouleurBordurePlanningRessource' => $row['CouleurBordurePlanningRessource'],
                     'CouleurFondPlanningRessource' => $row['CouleurFondPlanningRessource'],
                     'CouleurTextePlanningRessource' => $row['CouleurTextePlanningRessource'],
+                    'Actif' => $row['Actif'] === 1,
                 ],
                 'Employee' => [
                     'IdPersonnel' => $row['IdEmployee'],
@@ -167,7 +168,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
                 'DebutPlanningEvenement' => $debutObj->format('Y-m-d\TH:i:s'),
                 'FinPlanningEvenement' => $finObj->format('Y-m-d\TH:i:s'),
                 'AnnotationPlanningEvenement' => $data['AnnotationPlanningEvenement'] ?? null,
-                'IdPlanningRessource' => $data['IdPlanningRessource'] ?? null,
+                'IdPlanningRessource' => $data['IdPlanningRessource'] ?? ($data['Ressource']['IdPlanningRessource'] ?? null) ?? null,
                 'IdPlanningEtiquette' => $data['IdPlanningEtiquette'] ?? null,
                 'Priorite' => $data['PlanningEvenementPriorite']
             ];
