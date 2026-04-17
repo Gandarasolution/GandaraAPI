@@ -27,7 +27,20 @@ class PlanningRessourceRepository extends ServiceEntityRepository
                 'types' => $types
             ];
 
-            return $conn->executeQuery($sql, $params)->fetchAllAssociative();
+            $data = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+            $structuredData = [];
+            foreach($data as $row) {
+                $structuredData[] = [
+                    'IdPlanningRessource' => $row['IdPlanningRessource'],
+                    'LibellePlanningRessource' => $row['LibellePlanningRessource'],
+                    'Type' => $row['Type'],
+                    'IdImage' => $row['IdImage'],
+                    'Actif' => (int)$row['Actif'] === 1
+                ];
+            }
+
+            return $structuredData;
 
         }catch (Exception $e) {
             throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());

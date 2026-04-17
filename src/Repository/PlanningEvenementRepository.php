@@ -19,9 +19,10 @@ class PlanningEvenementRepository extends ServiceEntityRepository
     }
 
     private function structuredData(array $data){
-        $structuredData = [];
+        $appointments = [];
+        $ressources = [];
         foreach($data as $row){
-            $structuredData[]= [
+            $appointments[]= [
                 'IdPlanningEvenement' => $row['IdPlanningEvenement'],
                 'DebutPlanningEvenement' => (int)$row['DebutPlanningEvenement'],
                 'FinPlanningEvenement' => (int)$row['FinPlanningEvenement'],
@@ -32,26 +33,34 @@ class PlanningEvenementRepository extends ServiceEntityRepository
                     'LibelleCourtPlanningEtiquette' => $row['LibelleCourtPlanningEtiquette']
                 ],
                 'Type' => $row['Type'],
-                'Ressource' => [
-                    'IdPlanningRessource' => $row['IdPlanningRessource'],
-                    'LibellePlanningRessource' => $row['Libelle'],
-                    'CodePlanningRessource' => $row['Code'],
-                    'ChargeAffaire' => $row['ChargeAffaire'],
-                    'IdImage' => $row['IdImage'],
-                    'CouleurBordurePlanningRessource' => $row['CouleurBordurePlanningRessource'],
-                    'CouleurFondPlanningRessource' => $row['CouleurFondPlanningRessource'],
-                    'CouleurTextePlanningRessource' => $row['CouleurTextePlanningRessource'],
-                    'Actif' => $row['Actif'] === 1,
-                ],
-                'Employee' => [
-                    'IdPersonnel' => $row['IdEmployee'],
-                    'Nom' => $row['EmployeeNom'],
-                    'Prenom' => $row['EmployeePrenom'],
-                    'Type' => $row['TypeEmployee'],
-                    'Actif' => $row['Actif'] === 1,
-                ]
+                'IdPlanningRessource' => $row['IdPlanningRessource'],
+                'IdEmploye' => $row['IdEmployee'],
             ];
+
+            $idRessource = $row['IdPlanningRessource'];
+
+            if (!isset($ressources[$idRessource])) {
+                $ressources[$idRessource] = [
+                    'IdPlanningRessource'             => $idRessource,
+                    'LibellePlanningRessource'        => $row['Libelle'],
+                    'CodePlanningRessource'           => $row['Code'],
+                    'ChargeAffaire'                   => $row['ChargeAffaire'],
+                    'IdImage'                         => $row['IdImage'],
+                    'CouleurBordurePlanningRessource' => $row['CouleurBordurePlanningRessource'],
+                    'CouleurFondPlanningRessource'    => $row['CouleurFondPlanningRessource'],
+                    'CouleurTextePlanningRessource'   => $row['CouleurTextePlanningRessource'],
+                    'Actif'                           => (int)$row['Actif'] === 1,
+                ];
+            }
         }
+
+        $structuredData = [
+            'appointments' => $appointments,
+
+            // array_values() enlève les clés (les IDs) du tableau associatif
+            // pour générer un vrai tableau JSON avec des crochets [ {..}, {..} ]
+            'ressources'   => array_values($ressources)
+        ];
 
         return $structuredData;
     }

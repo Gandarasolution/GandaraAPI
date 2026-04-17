@@ -26,11 +26,11 @@ class PlanningEvenementController extends AbstractController
     {
 
         try{
-            $event = $this->planningEvenementRepository->findEventsByDate($dateStart, $dateEnd);
-            return $this->json($event);
+            $result = $this->planningEvenementRepository->findEventsByDate($dateStart, $dateEnd);
+            return $this->json(['error' => 0, 'data' => $result]);
 
         }catch(\Exception $e){
-            return $this->json(['error' => $e->getMessage()], 500);
+            return $this->json(['error' => 1, 'message' => $e->getMessage()], 500);
         }
     }
 
@@ -39,14 +39,14 @@ class PlanningEvenementController extends AbstractController
     public function show(int $id): JsonResponse
     {
         try{
-            $event = $this->planningEvenementRepository->findEventById($id);
-            if (!$event) {
-                return $this->json(['error' => 'Événement non trouvé'], 404);
+            $result = $this->planningEvenementRepository->findEventById($id);
+            if (!$result) {
+                return $this->json(['error' => 1, 'message' => 'Événement non trouvé'], 404);
             }
-            return $this->json($event);
+            return $this->json(['error' => 0, 'data' => $result]);
 
         }catch(\Exception $e){
-            return $this->json(['error' => $e->getMessage()], 500);
+            return $this->json(['error' => 1, 'message' => $e->getMessage()], 500);
         }
     }
 
@@ -59,17 +59,17 @@ class PlanningEvenementController extends AbstractController
             $type = $request->query->get('type');
 
             if (!$type || !in_array($type, ['Salarie', 'Interim'])) {
-                return $this->json(['error' => 'Le paramètre ?type=Salarie ou ?type=Interim est obligatoire'], 400);
+                return $this->json(['error' => 1, 'message' => 'Le paramètre ?type=Salarie ou ?type=Interim est obligatoire'], 400);
             }
 
             if (!$employeeId) {
-                return $this->json(['error' => 'Le paramètre ?employee=:id est obligatoire'], 400);
+                return $this->json(['error' => 1, 'message' => 'Le paramètre ?employee=:id est obligatoire'], 400);
             }
 
-            $events = $this->planningEvenementRepository->findEventsByEmployee($employeeId, $type);
-            return $this->json($events);
+            $result = $this->planningEvenementRepository->findEventsByEmployee($employeeId, $type);
+            return $this->json(['error' => 0, 'data' => $result]);
         } catch (\Exception $e) {
-            return $this->json(['error' => $e->getMessage()], 500);
+            return $this->json(['error' => 1, 'message' => $e->getMessage()], 500);
         }
     }
 
@@ -89,9 +89,9 @@ class PlanningEvenementController extends AbstractController
                 return $this->json(['error' => 1, 'message' => 'Les champs DebutPlanningEvenement, FinPlanningEvenement, IdPlanningRessource  sont obligatoires.'], 400);
             }
 
-            $newEvent = $this->planningEvenementRepository->createEvent($data, $logger);
+            $result = $this->planningEvenementRepository->createEvent($data, $logger);
 
-            return $this->json(['error' => 0, 'data' => $newEvent], 201);
+            return $this->json(['error' => 0, 'data' => $result], 201);
 
         } catch (\Exception $e) {
             return $this->json(['error' => 1,'message' => 'Erreur lors de la création de l\'événement: ' . $e->getMessage()], 500);
@@ -133,12 +133,12 @@ class PlanningEvenementController extends AbstractController
         try {
             $lignesSupprimees = $this->planningEvenementRepository->deleteEvent($id);
             if ($lignesSupprimees === 0) {
-                return $this->json(['error' => 'Événement introuvable.'], 404);
+                return $this->json(['error' => 1 , 'message' => 'Événement introuvable.'], 404);
             }
-            return $this->json(['message' => 'Événement supprimé avec succès']);
+            return $this->json(['error' => 0, 'message' => 'Événement supprimé avec succès']);
 
         } catch (\Exception $e) {
-            return $this->json(['error' => 'Erreur lors de la suppression de l\'événement: ' . $e->getMessage()], 500);
+            return $this->json(['error' => 1, 'message' => 'Erreur lors de la suppression de l\'événement: ' . $e->getMessage()], 500);
         }
     }
 
@@ -150,7 +150,7 @@ class PlanningEvenementController extends AbstractController
             $data = $request->toArray();
 
             if (($data === null) || $data === []) {
-                return $this->json(['error' => 'Données JSON invalides.'], 400);
+                return $this->json(['error' => 1, 'message' => 'Données JSON invalides.'], 400);
             }
 
             // Normalisation des timestamps envoyés en millisecondes -> int
@@ -176,7 +176,6 @@ class PlanningEvenementController extends AbstractController
             }
 
             // Si le payload contient des données de ressource, tenter de mettre à jour la ressource associée
-            $ressourceUpdated = null;
             $ressourceId = $data['IdPlanningRessource'] ?? ($data['Ressource']['IdPlanningRessource'] ?? null);
             if ($ressourceId !== null && isset($data['Ressource']) && is_array($data['Ressource'])) {
                 $lignesModifiees = $this->planningRessourceRepository->updateRessource((int)$ressourceId, $data['Ressource']);
@@ -189,8 +188,6 @@ class PlanningEvenementController extends AbstractController
             return $this->json([
                 'error' => 0,
                 'message' => 'Événement mis à jour avec succès',
-                'LignesModifiees' => $lignesModifiees,
-                'RessourceUpdated' => $ressourceUpdated,
             ]);
 
         } catch (\Exception $e) {

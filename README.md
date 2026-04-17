@@ -12,6 +12,24 @@ Avant de commencer, assurez-vous d'avoir les outils suivants installés sur votr
 *   **SQL Server** (ou un accès à une instance SQL Server)
 *   **OpenSSL** (pour la génération des clés JWT si nécessaire)
 
+Important : OpenSSL doit être disponible avec le support TLS activé sur votre PHP (extension `openssl`). Sur Windows, assurez-vous que l'extension `php_openssl.dll` est activée dans votre `php.ini` (ex. `extension=openssl`). Le support TLS est essentiel pour les échanges sécurisés et pour certaines opérations du bundle JWT.
+
+Sous Windows : activer les extensions SQL Server (sqlsrv / pdo_sqlsrv)
+
+1. Copiez manuellement les fichiers nécessaires depuis `fichier_config_php` vers le dossier `ext` de votre installation PHP (ex. `C:\php\ext` ou `C:\xampp\php\ext`).
+
+2. Ouvrez le `php.ini` utilisé par votre serveur (vérifiez que c'est bien le `php.ini` de l'installation que vous avez modifiée) et ajoutez les lignes suivantes en adaptant les noms exacts des DLL :
+
+```
+extension=php_sqlsrv_84_nts_x64.dll
+extension=php_pdo_sqlsrv_84_nts_x64.dll
+```
+
+(Remplacez `php_sqlsrv_84_nts_x64.dll` et `php_pdo_sqlsrv_84_nts_x64.dll` par les noms exacts que vous avez copiés.)
+
+3. Redémarrez votre serveur web / service PHP (Apache, IIS, PHP-FPM, ou le serveur Symfony) pour que les extensions soient prises en compte.
+
+
 ## Installation
 
 1.  **Cloner le dépôt**
@@ -52,24 +70,6 @@ php bin/console lexik:jwt:generate-keypair
 ```
 Cela va créer les fichiers `config/jwt/private.pem` et `config/jwt/public.pem` et mettre à jour votre `.env.local` avec la passphrase (si vous en avez défini une différente).
 
-## Base de données
-
-1.  **Créer la base de données** (si elle n'existe pas déjà)
-    ```bash
-    php bin/console doctrine:database:create
-    ```
-
-2.  **Exécuter les migrations**
-    Pour créer les tables nécessaires (y compris la mise à jour de la table `Session` pour l'authentification) :
-    ```bash
-    php bin/console doctrine:migrations:migrate
-    ```
-
-    *Si vous n'avez pas encore de migration pour les changements récents (ajout de rôles user), créez-en une d'abord :*
-    ```bash
-    php bin/console make:migration
-    php bin/console doctrine:migrations:migrate
-    ```
 
 ## Lancement du serveur
 
@@ -104,4 +104,3 @@ Une route de connexion personnalisée a été mise en place.
 
 *   Déconnexion : `/api/logout` (Si utilisé avec une session)
 *   Vérifier les routes disponibles : `php bin/console debug:router`
-
