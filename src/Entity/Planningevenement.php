@@ -28,11 +28,18 @@ class Planningevenement
     #[ORM\Column(name: 'AnnotationPlanningEvenement', type: 'string', nullable: true, length: 255)]
     private ?string $annotationplanningevenement = null;
 
-    #[ORM\Column(name: 'IdPlanningRessource', type: 'bigint', nullable: true)]
-    private ?int $idplanningressource = null;
 
-    #[ORM\Column(name: 'IdPlanningEtiquette', type: 'bigint', nullable: true)]
-    private ?int $idplanningetiquette = null;
+    #[ORM\ManyToOne(targetEntity: Planningetiquette::class)]
+    #[ORM\JoinColumn(name: 'IdPlanningEtiquette', referencedColumnName: 'IdPlanningEtiquette', nullable: true)]
+    private ?Planningetiquette $idplanningetiquette = null;
+
+    #[ORM\ManyToOne(targetEntity: Affectation::class)]
+    #[ORM\JoinColumn(name: 'IdAffectation', referencedColumnName: 'IdAffectation', nullable: true)]
+    private Affectation $IdAffectation;
+
+    #[ORM\ManyToOne(targetEntity: Planningressource::class)]
+    #[ORM\JoinColumn(name: 'IdPlanningRessource', referencedColumnName: 'IdPlanningRessource', nullable: false)]
+    private Planningressource $IdPlanningRessource;
 
     public function getIdplanningevenement(): int
     {
@@ -100,18 +107,18 @@ class Planningevenement
         return $this;
     }
 
-    public function getIdplanningressource(): ?int
+    public function getIdplanningressource(): Planningressource
     {
-        return $this->idplanningressource;
+        return $this->IdPlanningRessource;
     }
 
-    public function setIdplanningressource(?int $idplanningressource): static
+    public function setIdplanningressource(?Planningressource $idplanningressource): static
     {
-        $this->idplanningressource = $idplanningressource;
+        $this->IdPlanningRessource = $idplanningressource;
         return $this;
     }
 
-    public function getIdplanningetiquette(): ?int
+    public function getIdplanningetiquette(): ?Planningetiquette
     {
         return $this->idplanningetiquette;
     }
@@ -119,6 +126,18 @@ class Planningevenement
     public function setIdplanningetiquette(?int $idplanningetiquette): static
     {
         $this->idplanningetiquette = $idplanningetiquette;
+        return $this;
+    }
+
+    public function getIdAffectation(): ?Affectation
+    {
+        return $this->IdAffectation;
+    }
+
+    public function setIdAffectation(?Affectation $IdAffectation): static
+    {
+        $this->IdAffectation = $IdAffectation;
+
         return $this;
     }
 }

@@ -13,11 +13,13 @@ class Planningvueattribution
     #[ORM\Column(name: 'IdPlanningVueAttribution', type: 'bigint')]
     private int $idplanningvueattribution;
 
-    #[ORM\Column(name: 'IdPlanningVue', type: 'bigint', nullable: true)]
-    private ?int $idplanningvue = null;
+    #[ORM\ManyToOne(targetEntity: Planningvue::class)]
+    #[ORM\JoinColumn(name: 'IdPlanningVue', referencedColumnName: 'IdPlanningVue')]
+    private Planningvue $idplanningvue;
 
-    #[ORM\Column(name: 'IdPlanningUser', type: 'bigint', nullable: true)]
-    private ?int $idplanninguser = null;
+    #[ORM\ManyToOne(targetEntity: Session::class)]
+    #[ORM\JoinColumn(name: 'IdSession', referencedColumnName: 'IdPersonnel')]
+    private Session $idplanninguser;
 
     public function getIdplanningvueattribution(): int
     {

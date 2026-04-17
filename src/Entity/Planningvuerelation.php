@@ -9,11 +9,13 @@ use Doctrine\ORM\Mapping as ORM;
 class Planningvuerelation
 {
     #[ORM\Id]
-    #[ORM\Column(name: 'IdPlanning', type: 'bigint')]
+    #[ORM\ManyToOne(targetEntity: Planning::class)]
+    #[ORM\JoinColumn(name: 'IdPlanning', referencedColumnName: 'IdPlanning')]
     private int $idplanning;
 
     #[ORM\Id]
-    #[ORM\Column(name: 'IdPlanningVue', type: 'bigint')]
+    #[ORM\ManyToOne(targetEntity: Planningvue::class)]
+    #[ORM\JoinColumn(name: 'IdPlanningVue', referencedColumnName: 'IdPlanningVue')]
     private int $idplanningvue;
 
     public function getIdplanning(): int

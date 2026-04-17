@@ -13,11 +13,12 @@ class Planningjournontravaille
     #[ORM\Column(name: 'IdPlanningJourNontravaille', type: 'bigint')]
     private int $idplanningjournontravaille;
 
-    #[ORM\Column(name: 'DatePlanningJourNontravaille', type: 'date', nullable: true)]
-    private ?\DateTimeInterface $dateplanningjournontravaille = null;
+    #[ORM\Column(name: 'DatePlanningJourNontravaille', type: 'date', nullable: false)]
+    private \DateTimeInterface $dateplanningjournontravaille;
 
-    #[ORM\Column(name: 'IdPlanning', type: 'bigint', nullable: true)]
-    private ?int $idplanning = null;
+    #[ORM\OneToOne(targetEntity: Planning::class)]
+    #[ORM\JoinColumn(name: 'IdPlanning', referencedColumnName: 'IdPlanning')]
+    private Planning $idplanning;
 
     public function getIdplanningjournontravaille(): int
     {
@@ -41,12 +42,12 @@ class Planningjournontravaille
         return $this;
     }
 
-    public function getIdplanning(): ?int
+    public function getIdplanning(): Planning
     {
         return $this->idplanning;
     }
 
-    public function setIdplanning(?int $idplanning): static
+    public function setIdplanning(?Planning $idplanning): static
     {
         $this->idplanning = $idplanning;
         return $this;
