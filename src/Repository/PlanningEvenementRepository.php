@@ -18,26 +18,27 @@ class PlanningEvenementRepository extends ServiceEntityRepository
         parent::__construct($registry, Planningevenement::class);
     }
 
-    private function structuredData(array $data){
+    private function structuredData(array $data): array
+    {
         $appointments = [];
         $ressources = [];
         foreach($data as $row){
             $appointments[]= [
-                'IdPlanningEvenement' => $row['IdPlanningEvenement'],
+                'IdPlanningEvenement' => (int)$row['IdPlanningEvenement'],
                 'DebutPlanningEvenement' => (int)$row['DebutPlanningEvenement'],
                 'FinPlanningEvenement' => (int)$row['FinPlanningEvenement'],
                 'AnnotationPlanningEvenement' => $row['AnnotationPlanningEvenement'],
                 'Etiquette' => [
-                    'IdPlanningEtiquette' => $row['IdPlanningEtiquette'],
+                    'IdPlanningEtiquette' => $row['IdPlanningEtiquette'] ?? null,
                     'LibelleLongPlanningEtiquette' => $row['LibelleLongPlanningEtiquette'],
                     'LibelleCourtPlanningEtiquette' => $row['LibelleCourtPlanningEtiquette']
                 ],
-                'Type' => $row['Type'],
-                'IdPlanningRessource' => $row['IdPlanningRessource'],
-                'IdEmploye' => $row['IdEmployee'],
+                'IdPlanningRessource' => (int)$row['IdPlanningRessource'],
+                'IdEmploye' => (int)$row['IdEmployee'],
+                'PlanningEvenementPriorite' => (int)$row['PlanningEvenementPriorite']
             ];
 
-            $idRessource = $row['IdPlanningRessource'];
+            $idRessource = (int)$row['IdPlanningRessource'];
 
             if (!isset($ressources[$idRessource])) {
                 $ressources[$idRessource] = [
@@ -45,11 +46,12 @@ class PlanningEvenementRepository extends ServiceEntityRepository
                     'LibellePlanningRessource'        => $row['Libelle'],
                     'CodePlanningRessource'           => $row['Code'],
                     'ChargeAffaire'                   => $row['ChargeAffaire'],
-                    'IdImage'                         => $row['IdImage'],
+                    'IdImage'                         => (int)$row['IdImage'],
                     'CouleurBordurePlanningRessource' => $row['CouleurBordurePlanningRessource'],
                     'CouleurFondPlanningRessource'    => $row['CouleurFondPlanningRessource'],
                     'CouleurTextePlanningRessource'   => $row['CouleurTextePlanningRessource'],
                     'Actif'                           => (int)$row['Actif'] === 1,
+                    'Type'                            => $row['Type'],
                 ];
             }
         }
@@ -112,7 +114,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
 
     }
 
-    public function findEventsByEmployee(int $employeeId, string $type)
+    public function findEventsByEmployee(int $employeeId, string $type): array
     {
         try {
             $conn = $this->getEntityManager()->getConnection();
@@ -130,7 +132,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
         }
     }
 
-    public function createEvent(array $data, LoggerInterface $logger)
+    public function createEvent(array $data, LoggerInterface $logger): array
     {
         try {
             $debutObj = new \DateTime()->setTimestamp((int)($data['DebutPlanningEvenement'] / 1000));
@@ -202,6 +204,52 @@ class PlanningEvenementRepository extends ServiceEntityRepository
 
             return $result[0]['LignesSupprimees'];
         } catch (Exception $e) {
+            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
+        }
+    }
+
+    public function divideEvent(int $id, array $data): array
+    {
+        try {
+            $debutObj = new \DateTime()->setTimestamp((int)($data['DateCoupure'] / 1000));
+
+            $conn = $this->getEntityManager()->getConnection();
+            $sql = 'EXEC ps_PlanningEvenementDivide @IdEvenement = :IdEvenement, @DateCoupure = :DateCoupure';
+            $params = [
+                'IdEvenement' => $id,
+                'DateCoupure' => $debutObj->format('Y-m-d\TH:i:s'),
+            ];
+            $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+            return $result[0];
+        } catch (Exception $e) {
+            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
+        }
+    }
+
+    public function repeatEvent(array $data): array
+    {
+        try {
+            $conn = $this->getEntityManager()->getConnection();
+
+            $createdIds = [];
+            foreach ($data as $event) {
+
+                $debut = new \DateTime()->setTimestamp((int)($event['DebutPlanningEvenement'] / 1000))->format('Y-m-d\TH:i:s');
+                $fin = new \DateTime()->setTimestamp((int)($event['FinPlanningEvenement'] / 1000))->format('Y-m-d\TH:i:s');
+
+                $sql = 'EXEC ps_PlanningEvenementInsert @IdEmploye = ?, @Debut = ?, @Fin = ?, @IdPlanningRessource = ? ...';
+                $id = $conn->executeQuery($sql, [
+                    $event['IdEmploye'],
+                    $debut,
+                    $fin,
+                    $event['IdPlanningRessource']
+                ])->fetchAllAssociative()[0]['IdPlanningEvenement'];
+                $createdIds[] = $id;
+            }
+
+            return $createdIds;
+        }catch (Exception $e) {
             throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
         }
     }

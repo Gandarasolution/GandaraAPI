@@ -195,4 +195,48 @@ class PlanningEvenementController extends AbstractController
         }
     }
 
+    #[Route('/divide/{id}', name: 'api_evenement_diviser', methods: ['PUT'])]
+    public function divideEvent(int $id, Request $request): JsonResponse
+    {
+        try {
+            $data = $request->toArray();
+
+            if (($data === null) || $data === []) {
+                return $this->json(['error' => 1, 'message' => 'Données JSON invalides.'], 400);
+            }
+
+            // Normalisation des timestamps envoyés en millisecondes -> int
+            if (isset($data['DateCoupure']) && is_numeric($data['DateCoupure'])) {
+                $data['DateCoupure'] = (int) $data['DateCoupure'];
+            }
+
+
+            $result = $this->planningEvenementRepository->divideEvent($id, $data);
+
+            return $this->json(['error' => 0, 'data' => $result], 200);
+
+        } catch (\Exception $e) {
+            return $this->json(['error' => 1, 'message' => 'Erreur lors de la division de l\'événement: ' . $e->getMessage()], 500);
+        }
+     }
+
+    #[Route('/repeat', name: 'api_evenement_repeat', methods: ['POST'])]
+    public function repeatEvent(Request $request): JsonResponse
+    {
+        try {
+            $data = $request->toArray();
+
+            if (($data === null) || $data === []) {
+                return $this->json(['error' => 1, 'message' => 'Données JSON invalides.'], 400);
+            }
+
+
+            $result = $this->planningEvenementRepository->repeatEvent($data);
+
+            return $this->json(['error' => 0, 'data' => $result], 201);
+
+        } catch (\Exception $e) {
+            return $this->json(['error' => 1, 'message' => 'Erreur lors de la répétition de l\'événement: ' . $e->getMessage()], 500);
+        }
+    }
 }
