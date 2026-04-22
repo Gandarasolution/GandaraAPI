@@ -8,8 +8,11 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+use Nelmio\ApiDocBundle\Annotation\Model;
+use OpenApi\Attributes as OA;
 
 #[Route('/api/poles')]
+#[OA\Tag(name: 'Pôles d\'activité')]
 class PoleActiviteController extends AbstractController
 {
 
@@ -20,13 +23,25 @@ class PoleActiviteController extends AbstractController
     {}
 
     //GET /api/poles- Lister les pôles
-    #[Route('', name: 'pole_activite', methods: ['GET'])]
+    #[Route('', name: 'pole_activite_list', methods: ['GET'])]
+    #[OA\Response(response: 200, description: 'Liste de tous les pôles d\'activité')]
     public function list(){
         return $this->poleActiviteRepository->findAll();
     }
 
     // POST /api/ poles- Créer un pôle
-    #[Route('', name: 'pole_activite', methods: ['POST'])]
+    #[Route('', name: 'pole_activite_create', methods: ['POST'])]
+    #[OA\RequestBody(
+        description: 'Les informations pour créer un pôle',
+        required: true,
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'name', type: 'string', description: 'Nom du pôle')
+            ],
+            type: 'object'
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Pôle créé avec succès')]
     public function create(Request $request){
         try {
             $data = json_decode($request->getContent(), true);
@@ -43,7 +58,20 @@ class PoleActiviteController extends AbstractController
     }
 
     //PUT /api/poles/:id- Modifier un pôle
-    #[Route('{id}', name: 'pole_activite', methods: ['PUT'])]
+    #[Route('/{id}', name: 'pole_activite_update', methods: ['PUT'])]
+    #[OA\Parameter(name: 'id', in: 'path', description: 'ID du pôle', schema: new OA\Schema(type: 'integer'))]
+    #[OA\RequestBody(
+        description: 'Les nouvelles informations du pôle',
+        required: true,
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'name', type: 'string', description: 'Nouveau nom du pôle')
+            ],
+            type: 'object'
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Pôle modifié avec succès')]
+    #[OA\Response(response: 404, description: 'Pôle non trouvé')]
     public function update(Request $request, int $id){
         try {
             $poleActivite = $this->poleActiviteRepository->find($id);

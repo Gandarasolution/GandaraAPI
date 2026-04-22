@@ -10,8 +10,11 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+use Nelmio\ApiDocBundle\Annotation\Model;
+use OpenApi\Attributes as OA;
 
 #[Route('/api/notifications', name: 'api_notifications_')]
+#[OA\Tag(name: 'Notifications')]
 class NotificationController extends AbstractController
 {
     public function __construct(
@@ -20,6 +23,8 @@ class NotificationController extends AbstractController
     ){}
 
     #[Route('/{id}', name: 'list', methods: ['GET'])]
+    #[OA\Parameter(name: 'id', in: 'path', description: 'ID de l\'employé pour lequel lister les notifications', schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'Liste des notifications de l\'employé')]
     public function index(int $id): JsonResponse
     {
         try {
@@ -33,6 +38,19 @@ class NotificationController extends AbstractController
     }
 
     #[Route('', name: 'create', methods: ['POST'])]
+    #[OA\RequestBody(
+        description: 'Les informations pour créer une notification',
+        required: true,
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'IdEmploye', type: 'integer'),
+                new OA\Property(property: 'Message', type: 'string'),
+                new OA\Property(property: 'Type', type: 'string')
+            ],
+            type: 'object'
+        )
+    )]
+    #[OA\Response(response: 201, description: 'Notification créée avec succès')]
     public function create(Request $request): JsonResponse
     {
         try {
@@ -48,6 +66,14 @@ class NotificationController extends AbstractController
     }
 
     #[Route('/{id}', name: 'update', methods: ['PUT'])]
+    #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la notification à modifier', schema: new OA\Schema(type: 'integer'))]
+    #[OA\RequestBody(
+        description: 'Les nouvelles informations de la notification',
+        required: true,
+        content: new OA\JsonContent(type: 'object')
+    )]
+    #[OA\Response(response: 201, description: 'Notification mise à jour avec succès')]
+    #[OA\Response(response: 404, description: 'Notification non trouvée')]
     public function update(int $id, Request $request, LoggerInterface $logger): JsonResponse
     {
         try {
@@ -68,6 +94,8 @@ class NotificationController extends AbstractController
     }
 
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
+    #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la notification à supprimer', schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 204, description: 'Notification supprimée avec succès')]
     public function delete(PlanningNotification $notification): JsonResponse
     {
         $this->entityManager->remove($notification);

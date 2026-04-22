@@ -6,8 +6,11 @@ use App\Repository\ImageRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Routing\Attribute\Route;
+use Nelmio\ApiDocBundle\Annotation\Model;
+use OpenApi\Attributes as OA;
 
 #[Route('/api/images')]
+#[OA\Tag(name: 'Images')]
 class ImageController extends AbstractController
 {
     public function __construct(
@@ -15,6 +18,9 @@ class ImageController extends AbstractController
     ){}
 
     #[Route('/{id}', name: 'image', methods: ['GET'])]
+    #[OA\Parameter(name: 'id', in: 'path', description: 'ID de l\'image', schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'L\'image demandée')]
+    #[OA\Response(response: 404, description: 'Image non trouvée')]
     public function getImage(int $id)
     {
         try {
@@ -30,7 +36,8 @@ class ImageController extends AbstractController
         }
     }
 
-    #[Route('', name: 'list', methods: ['GET'])]
+    #[Route('', name: 'image_list', methods: ['GET'])]
+    #[OA\Response(response: 200, description: 'Toutes les images listées')]
     public function list()
     {
         try {

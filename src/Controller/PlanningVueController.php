@@ -9,8 +9,11 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+use Nelmio\ApiDocBundle\Annotation\Model;
+use OpenApi\Attributes as OA;
 
 #[Route('/api/configs')]
+#[OA\Tag(name: 'Configurations/Vues')]
 class PlanningVueController extends AbstractController
 {
 
@@ -23,6 +26,9 @@ class PlanningVueController extends AbstractController
 
     //GET /api/configs/user/:userId?idPlanning=:id- Configs d'un utilisateur
     #[Route('/user/{userId}', name: 'api_configs_user', methods: ['GET'])]
+    #[OA\Parameter(name: 'userId', in: 'path', description: 'ID de l\'utilisateur', schema: new OA\Schema(type: 'integer'))]
+    #[OA\Parameter(name: 'idPlanning', in: 'query', description: 'ID de planning (optionnel)', schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'Liste des configurations de l\'utilisateur')]
     public function getUserConfigs(int $userId, Request $request): JsonResponse
     {
         try {

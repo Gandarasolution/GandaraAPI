@@ -13,9 +13,11 @@ use Psr\Log\LoggerInterface;
  */
 class PlanningEvenementRepository extends ServiceEntityRepository
 {
+
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, Planningevenement::class);
+
     }
 
     private function structuredData(array $data): array
@@ -227,29 +229,43 @@ class PlanningEvenementRepository extends ServiceEntityRepository
         }
     }
 
+    /**
+     * @throws Exception
+     */
     public function repeatEvent(array $data): array
     {
+        $conn = $this->getEntityManager()->getConnection();
+
         try {
-            $conn = $this->getEntityManager()->getConnection();
-
             $createdIds = [];
-            foreach ($data as $event) {
+            $idEmploye = $data['IdEmploye'];
+            $idRessource = $data['IdPlanningRessource'];
+            $annotation = $data['AnnotationPlanningEvenement'] ?? null;
+            $type = $data['Type'];
 
-                $debut = new \DateTime()->setTimestamp((int)($event['DebutPlanningEvenement'] / 1000))->format('Y-m-d\TH:i:s');
-                $fin = new \DateTime()->setTimestamp((int)($event['FinPlanningEvenement'] / 1000))->format('Y-m-d\TH:i:s');
+            $conn->beginTransaction();
+            foreach ($data['Date'] as $periode) {
 
-                $sql = 'EXEC ps_PlanningEvenementInsert @IdEmploye = ?, @Debut = ?, @Fin = ?, @IdPlanningRessource = ? ...';
-                $id = $conn->executeQuery($sql, [
-                    $event['IdEmploye'],
-                    $debut,
-                    $fin,
-                    $event['IdPlanningRessource']
-                ])->fetchAllAssociative()[0]['IdPlanningEvenement'];
+                $debut = (new \DateTime())->setTimestamp((int)($periode['DebutPlanningEvenement'] / 1000))->format('Y-m-d\TH:i:s');
+                $fin = (new \DateTime())->setTimestamp((int)($periode['FinPlanningEvenement'] / 1000))->format('Y-m-d\TH:i:s');
+
+
+                $sql = 'EXEC ps_PlanningEvenementInsert @IdEmploye = :IdEmployee, @Type = :Type, @DebutPlanningEvenement = :DebutPlanningEvenement, @FinPlanningEvenement = :FinPlanningEvenement, @AnnotationPlanningEvenement = :AnnotationPlanningEvenement, @IdPlanningRessource = :IdPlanningRessource';
+                $params = [
+                    'IdEmployee' => $idEmploye,
+                    'Type' => $type,
+                    'DebutPlanningEvenement' => $debut,
+                    'FinPlanningEvenement' => $fin,
+                    'AnnotationPlanningEvenement' => $annotation,
+                    'IdPlanningRessource' => $idRessource
+                ];
+                $id = $conn->executeQuery($sql, $params)->fetchAllAssociative()[0]['IdPlanningEvenement'];
                 $createdIds[] = $id;
             }
-
+            $conn->commit();
             return $createdIds;
-        }catch (Exception $e) {
+        }catch (\Exception $e) {
+            $conn->rollBack();
             throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
         }
     }

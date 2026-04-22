@@ -9,8 +9,11 @@ use \Symfony\Component\HttpFoundation\Request;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Routing\Attribute\Route;
+use Nelmio\ApiDocBundle\Annotation\Model;
+use OpenApi\Attributes as OA;
 
 #[Route('/api/employees')]
+#[OA\Tag(name: 'Employés')]
 class EmployeeController extends AbstractController
 {
     public function __construct(
@@ -25,6 +28,7 @@ class EmployeeController extends AbstractController
      * @throws Exception
      */
     #[Route('', name: 'api_employees_list', methods: ['GET'])]
+    #[OA\Response(response: 200, description: 'Liste de tous les employés (Salariés et Intérimaires)')]
     public function list(){
         try {
             $employees = $this->employeeRepository->getEmployeelist();
@@ -36,6 +40,10 @@ class EmployeeController extends AbstractController
 
     //GET /api/employees/:id- Récupérer un employé
     #[Route('/{id}', name: 'api_employees_show', methods: ['GET'])]
+    #[OA\Parameter(name: 'id', in: 'path', description: 'ID de l\'employé', schema: new OA\Schema(type: 'integer'))]
+    #[OA\Parameter(name: 'type', in: 'query', description: 'Salarie ou Interim', schema: new OA\Schema(type: 'string', enum: ['Salarie', 'Interim']))]
+    #[OA\Response(response: 200, description: 'Détails d\'un employé spécifique')]
+    #[OA\Response(response: 404, description: 'Employé introuvable')]
     public function getEmployee(int $id, Request $request){
         $type = $request->query->get('type');
 

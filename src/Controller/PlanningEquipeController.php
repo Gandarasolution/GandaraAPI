@@ -9,8 +9,11 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+use Nelmio\ApiDocBundle\Annotation\Model;
+use OpenApi\Attributes as OA;
 
 #[Route('/api/equipes')]
+#[OA\Tag(name: 'Équipes/Ressources')]
 class PlanningEquipeController extends AbstractController
 {
 
@@ -24,6 +27,7 @@ class PlanningEquipeController extends AbstractController
 
     //GET /api/equipes- Lister toutes les équipes
     #[Route('', name: 'equipe_planning_list', methods: ['GET'])]
+    #[OA\Response(response: 200, description: 'Liste de toutes les équipes')]
     public function list(EquipeRepository $equipeRepository): JsonResponse
     {
         $equipes = $equipeRepository->findAll();
@@ -33,6 +37,17 @@ class PlanningEquipeController extends AbstractController
 
     //POST /api/ equipes- Créer une équipe
     #[Route('', name: 'equipe_planning_create', methods: ['POST'])]
+    #[OA\RequestBody(
+        description: 'Les informations pour créer une équipe',
+        required: true,
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'Name', type: 'string', description: 'Le nom de l\'équipe')
+            ],
+            type: 'object'
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Équipe créée avec succès')]
     public function create(Request $request): JsonResponse
     {
         try {
@@ -53,6 +68,19 @@ class PlanningEquipeController extends AbstractController
 
     //PUT /api/equipes/:id- Modifier une équipe
     #[Route('/{id}', name: 'equipe_planning_update', methods: ['PUT'])]
+    #[OA\Parameter(name: 'id', in: 'path', description: 'ID de l\'équipe', schema: new OA\Schema(type: 'integer'))]
+    #[OA\RequestBody(
+        description: 'Les nouvelles informations de l\'équipe',
+        required: true,
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'Name', type: 'string', description: 'Le nouveau nom de l\'équipe')
+            ],
+            type: 'object'
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Équipe modifiée avec succès')]
+    #[OA\Response(response: 404, description: 'Équipe non trouvée')]
     public function update(Request $request, int $id): JsonResponse
     {
         if (!$this->repository->find($id)) {
