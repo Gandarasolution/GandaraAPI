@@ -3,6 +3,8 @@
 namespace App\Controller;
 
 use App\Repository\PlanningRessourceRepository;
+use Monolog\Logger;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
@@ -83,4 +85,28 @@ class PlanningRessourceController extends abstractController
         }
     }
 
+
+    #[Route('/projets', name: 'app_planning_ressource_projets', methods: ['GET'])]
+    #[OA\Parameter(name: 'limit', in: 'query', description: 'Limite de résultats', schema: new OA\Schema(type: 'integer', default: 20))]
+    #[OA\Parameter(name: 'pageNum', in: 'query', description: 'Numéro de page pour la pagination', schema: new OA\Schema(type: 'integer', default: 1))]
+    #[OA\Parameter(name: 'q', in: 'query', description: '', schema: new OA\Schema(type: 'string', default: ''))]
+    #[OA\Response(response: 200, description: 'Liste des projets')]
+    public function getProjet(Request $request, LoggerInterface $logger)
+    {
+        try {
+            $limit = $request->query->get('limit', 20);
+            $pageNumber = $request->query->get('pageNum', 1);
+            $q = $request->query->get('q', '');
+
+            $result = $this->planningRessourceRepository->getProjet($limit, $pageNumber, $q, $logger);
+
+            return $this->json(['error' => 0, 'data' => $result['data'], 'TotalLignes' => $result['TotalLignes']]);
+
+        } catch (\Exception $e) {
+            return $this->json([
+                'error' => 1,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

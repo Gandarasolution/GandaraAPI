@@ -7,6 +7,7 @@ use App\Entity\Planningressource;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\DBAL\Exception;
+use Psr\Log\LoggerInterface;
 
 
 class PlanningRessourceRepository extends ServiceEntityRepository
@@ -64,6 +65,58 @@ class PlanningRessourceRepository extends ServiceEntityRepository
             return $conn->executeQuery($sql, $params)->fetchAllAssociative()[0]['LignesModifiees'];
         }catch (Exception $e) {
             throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
+        }
+    }
+
+
+    public function getProjet(mixed $limit, mixed $pageNumber, mixed $query, LoggerInterface $logger){
+        try {
+            $conn = $this->getEntityManager()->getConnection();
+            $sql = 'EXEC ps_PlanningRessourceSelectProjet @Limit= :Limit, @PageNumber= :PageNumber, @Query= :Query';
+            $params = [
+                'Limit' => $limit ?? 20,
+                'PageNumber' => $pageNumber ?? 1,
+                'Query' => $query,
+            ];
+            $result = $conn->executeQuery($sql,$params)->fetchAllAssociative();
+
+            $structuredData = [];
+            foreach($result as $row) {
+                $structuredData[] = [
+                    'IdPlanningRessource' => $row['IdPlanningRessource'],
+                    'LibellePlanningRessource' => $row['LibellePlanningRessource'],
+                    'IdImage' => $row['IdImage'],
+                    'Actif' => (int)$row['Actif'] === 1,
+                    'CodePlanningRessource' => $row['Code'],
+                    'PoleActivite' => $row['DesignationPoleActivite'],
+                    'ChargeAffaire' => $row['ChargeAffaire'],
+                    'ChefChantier' => $row['ChefChantier'],
+                    'Etat' => $row['Etat'],
+                    'Identifiant' => $row['Identifiant'],
+                    'DateOS' => $row['DateOS'] ? (new \DateTime($row['DateOS']))->format('d/m/Y') : null,
+                    'DateFin' => $row['DateFin'] ? (new \DateTime($row['DateFin']))->format('d/m/Y') : null,
+                    'TM' => $row['TM'],
+                    'HR' => $row['HR'],
+                    'SH' => $row['SH'],
+                    'DPF' => $row['DPF'],
+                    'RPF' => $row['RPF'],
+                    'AP' => $row['AP'],
+                    'SP' => $row['SP'],
+                ];
+            }
+
+            $ligneTotal = $result[0]['TotalLignes'] ?? 0;
+
+            return
+            [
+                'data' => $structuredData,
+                'TotalLignes' => $ligneTotal
+            ];
+
+        }catch (Exception $e) {
+            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
+        } catch (\DateMalformedStringException $e) {
+            throw new \Exception('Erreur lors du formatage de la date: ' . $e->getMessage());
         }
     }
 
