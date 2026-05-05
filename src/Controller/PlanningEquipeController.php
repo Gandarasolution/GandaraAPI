@@ -9,7 +9,6 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
-use Nelmio\ApiDocBundle\Annotation\Model;
 use OpenApi\Attributes as OA;
 
 #[Route('/api/equipes')]
@@ -35,7 +34,7 @@ class PlanningEquipeController extends AbstractController
 
     }
 
-    //POST /api/ equipes- Créer une équipe
+    //POST /api/equipes - Créer une équipe
     #[Route('', name: 'equipe_planning_create', methods: ['POST'])]
     #[OA\RequestBody(
         description: 'Les informations pour créer une équipe',

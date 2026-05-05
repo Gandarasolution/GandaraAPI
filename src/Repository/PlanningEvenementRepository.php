@@ -48,7 +48,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
                     'LibellePlanningRessource'        => $row['Libelle'],
                     'CodePlanningRessource'           => $row['Code'],
                     'ChargeAffaire'                   => $row['ChargeAffaire'],
-                    'IdImage'                         => (int)$row['IdImage'],
+                    'IdImage'                         => $row['IdImage'] ? (int)$row['IdImage'] : null,
                     'CouleurBordurePlanningRessource' => $row['CouleurBordurePlanningRessource'],
                     'CouleurFondPlanningRessource'    => $row['CouleurFondPlanningRessource'],
                     'CouleurTextePlanningRessource'   => $row['CouleurTextePlanningRessource'],
@@ -141,10 +141,9 @@ class PlanningEvenementRepository extends ServiceEntityRepository
             $finObj   = new \DateTime()->setTimestamp((int)($data['FinPlanningEvenement'] / 1000));
 
             $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningEvenementInsert @IdEmploye = :IdEmploye, @Type = :Type, @DebutPlanningEvenement = :DebutPlanningEvenement, @FinPlanningEvenement = :FinPlanningEvenement, @AnnotationPlanningEvenement = :AnnotationPlanningEvenement, @IdPlanningRessource = :IdPlanningRessource, @IdPlanningEtiquette = :IdPlanningEtiquette';
+            $sql = 'EXEC ps_PlanningEvenementInsert @IdEmploye = :IdEmploye, @DebutPlanningEvenement = :DebutPlanningEvenement, @FinPlanningEvenement = :FinPlanningEvenement, @AnnotationPlanningEvenement = :AnnotationPlanningEvenement, @IdPlanningRessource = :IdPlanningRessource, @IdPlanningEtiquette = :IdPlanningEtiquette';
             $params = [
                 'IdEmploye' => $data['IdEmploye'],
-                'Type' => $data['Type'],
                 'DebutPlanningEvenement' => $debutObj->format('Y-m-d\TH:i:s'),
                 'FinPlanningEvenement' => $finObj->format('Y-m-d\TH:i:s'),
                 'AnnotationPlanningEvenement' => $data['AnnotationPlanningEvenement'] ?? null,
@@ -173,11 +172,10 @@ class PlanningEvenementRepository extends ServiceEntityRepository
 
 
             $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningEvenementUpdate @IdEvenement = :IdEvenement,@IdEmploye = :IdEmploye, @Type = :Type, @DebutPlanningEvenement = :DebutPlanningEvenement, @FinPlanningEvenement = :FinPlanningEvenement, @AnnotationPlanningEvenement = :AnnotationPlanningEvenement, @IdPlanningRessource = :IdPlanningRessource, @IdPlanningEtiquette = :IdPlanningEtiquette, @Priorite = :Priorite';
+            $sql = 'EXEC ps_PlanningEvenementUpdate @IdEvenement = :IdEvenement, @IdEmploye = :IdEmploye, @DebutPlanningEvenement = :DebutPlanningEvenement, @FinPlanningEvenement = :FinPlanningEvenement, @AnnotationPlanningEvenement = :AnnotationPlanningEvenement, @IdPlanningRessource = :IdPlanningRessource, @IdPlanningEtiquette = :IdPlanningEtiquette, @Priorite = :Priorite';
             $params = [
                 'IdEvenement' => $id,
                 'IdEmploye' => $data['IdEmploye'] ?? null,
-                'Type' => $data['Type'] ?? null,
                 'DebutPlanningEvenement' => $debutObj->format('Y-m-d\TH:i:s'),
                 'FinPlanningEvenement' => $finObj->format('Y-m-d\TH:i:s'),
                 'AnnotationPlanningEvenement' => $data['AnnotationPlanningEvenement'] ?? null,
@@ -241,7 +239,6 @@ class PlanningEvenementRepository extends ServiceEntityRepository
             $idEmploye = $data['IdEmploye'];
             $idRessource = $data['IdPlanningRessource'];
             $annotation = $data['AnnotationPlanningEvenement'] ?? null;
-            $type = $data['Type'];
 
             $conn->beginTransaction();
             foreach ($data['Date'] as $periode) {
@@ -250,10 +247,9 @@ class PlanningEvenementRepository extends ServiceEntityRepository
                 $fin = (new \DateTime())->setTimestamp((int)($periode['FinPlanningEvenement'] / 1000))->format('Y-m-d\TH:i:s');
 
 
-                $sql = 'EXEC ps_PlanningEvenementInsert @IdEmploye = :IdEmployee, @Type = :Type, @DebutPlanningEvenement = :DebutPlanningEvenement, @FinPlanningEvenement = :FinPlanningEvenement, @AnnotationPlanningEvenement = :AnnotationPlanningEvenement, @IdPlanningRessource = :IdPlanningRessource';
+                $sql = 'EXEC ps_PlanningEvenementInsert @IdEmploye = :IdEmployee, @DebutPlanningEvenement = :DebutPlanningEvenement, @FinPlanningEvenement = :FinPlanningEvenement, @AnnotationPlanningEvenement = :AnnotationPlanningEvenement, @IdPlanningRessource = :IdPlanningRessource';
                 $params = [
                     'IdEmployee' => $idEmploye,
-                    'Type' => $type,
                     'DebutPlanningEvenement' => $debut,
                     'FinPlanningEvenement' => $fin,
                     'AnnotationPlanningEvenement' => $annotation,
