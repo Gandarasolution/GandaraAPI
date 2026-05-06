@@ -34,15 +34,21 @@ class EtiquetteRepository extends ServiceEntityRepository
     {
         try{
             $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningEtiquetteCreate @IdRessource = :IdRessource, @LibelleLongPlanningEtiquette = :LibelleLongPlanningEtiquette, @LibelleCourtPlanningEtiquette = :LibelleCourtPlanningEtiquette';
+            $sql = 'EXEC ps_PlanningEtiquetteInsert @IdRessource = :IdRessource, @LibelleLongPlanningEtiquette = :LibelleLongPlanningEtiquette, @LibelleCourtPlanningEtiquette = :LibelleCourtPlanningEtiquette';
             $params = [
                 'IdRessource' => $data['IdPlanningRessource'],
                 'LibelleLongPlanningEtiquette' => $data['LibelleLongPlanningEtiquette'] ?? null,
-                'LibelleCourtPlanningEtiquette' => $data['LibelleCourtPlanningEtiquette' ?? null]
+                'LibelleCourtPlanningEtiquette' => $data['LibelleCourtPlanningEtiquette'] ?? null
             ];
 
-            return $conn->executeQuery($sql, $params)->fetchAllAssociative()[0]['NouvelId'];
+            $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
+            if (!empty($result)) {
+                return $result[0]['NouvelId'];
+            }
+
+            // Si la procédure stockée ne renvoie rien, on peut renvoyer null ou déclencher une erreur
+            throw new \Exception("La procédure stockée n'a renvoyé aucun ID.");
         }catch (Exception $e) {
             throw new \Exception('Erreur lors de l\'exécution de la procédure stockée : ' . $e->getMessage());
         }

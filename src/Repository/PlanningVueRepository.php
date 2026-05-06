@@ -6,6 +6,7 @@ use App\Entity\Planningvue;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\DBAL\Exception;
+use Psr\Log\LoggerInterface;
 
 
 class PlanningVueRepository extends ServiceEntityRepository
@@ -43,9 +44,65 @@ class PlanningVueRepository extends ServiceEntityRepository
                     'IdPlanningImage' => $row['IdPlanningImage'],
                 ];
             }
-            return $structuredData;
+
+            $sql = 'EXEC ps_PlanningJourNonTravailleSelect @IdPlanning = :IdPlanning';
+            $params = [
+                'IdPlanning' => $idPlanning,
+            ];
+            $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+            return ['Configs' => $structuredData, 'JoursNonTravailles' => $result];
         } catch (Exception $e) {
             throw new \Exception('Erreur lors de la récupération des configurations pour l\'utilisateur ' . $idSession . ': ' . $e->getMessage());
+        }
+    }
+
+    public function createNonWorkingDates(array $data, mixed $IdPlanning, LoggerInterface $logger)
+    {
+        try {
+
+            $date = new \DateTime()->setTimestamp((int)($data['nonWorkingDate'] / 1000));
+
+            $conn = $this->getEntityManager()->getConnection();
+            $sql = 'EXEC ps_PlanningJourNonTravailleInsert @IdPlanning = :IdPlanning, @DatePlanningJourNontravaille = :DatePlanningJourNontravaille';
+            $params = [
+                'IdPlanning' => $IdPlanning,
+                'DatePlanningJourNontravaille' => $date,
+            ];
+
+            $result = $conn->executeQuery($sql, $params)->fetchAllAssociative()[0];
+
+            if ((int)$result['LignesInserees'] === 0){
+                throw new \Exception('Aucun jour non travaillé n\'a été ajouté. Veuillez vérifier les données fournies.');
+            }
+
+            $logger->debug(json_encode($result));
+
+            return $result['NouvelId'];
+        } catch (Exception $e) {
+            throw new \Exception('Une erreur est survenue lors de la création du jour non travaillé: ' . $e->getMessage());
+        }
+    }
+
+    public function deleteNonWorkingDates(int $idDate)
+    {
+        try {
+
+            $conn = $this->getEntityManager()->getConnection();
+            $sql = 'EXEC ps_PlanningJourNonTravailleDelete @IdDate = :IdDate';
+            $params = [
+                'IdDate' => $idDate,
+            ];
+
+            $result = $conn->executeQuery($sql, $params)->fetchAllAssociative()[0]['LignesSupprimee'];
+
+            if ($result === 0){
+                throw new \Exception('Aucun jour non travaillé n\'a été supprimé. Veuillez vérifier les données fournies.');
+            }
+
+            return ['message' => 'Jour non travaillé ajouté avec succès.', 'LignesSupprimee' => $result];
+        } catch (Exception $e) {
+            throw new \Exception('Erreur lors de la suppression d\'un jour non travaillé:: ' . $e->getMessage());
         }
     }
 }
