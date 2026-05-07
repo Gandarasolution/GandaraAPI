@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Repository\ImageRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Nelmio\ApiDocBundle\Annotation\Model;
 use OpenApi\Attributes as OA;
@@ -37,13 +38,18 @@ class ImageController extends AbstractController
     }
 
     #[Route('', name: 'image_list', methods: ['GET'])]
+    #[OA\Parameter(name: 'limit', in: 'query', description: 'Limite de résultats', schema: new OA\Schema(type: 'integer', default: 20))]
+    #[OA\Parameter(name: 'pageNum', in: 'query', description: 'Numéro de page pour la pagination', schema: new OA\Schema(type: 'integer', default: 1))]
     #[OA\Response(response: 200, description: 'Toutes les images listées')]
-    public function list()
+    public function list(Request $request)
     {
         try {
-            $images = $this->imageRepository->getImages();
+            $limit = $request->query->get('limit', 20);
+            $pageNumber = $request->query->get('pageNum', 1);
 
-            return $this->json(['error' => 0, 'images' => $images]);
+            $result = $this->imageRepository->getImages($limit, $pageNumber);
+
+            return $this->json(['error' => 0, 'images' => $result]);
         } catch (\Exception $e) {
             return $this->json(['error' => 1, 'message' => 'An error occurred while retrieving images: ' . $e->getMessage()], 500);
         }
