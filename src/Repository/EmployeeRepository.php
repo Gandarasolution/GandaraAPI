@@ -23,10 +23,46 @@ class EmployeeRepository extends ServiceEntityRepository
     {
         try {
             $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_EmployeeSelect @Id = :id, @Type = :type';
+            $sql = 'EXEC ps_PlanningEmployeeSelect @Id = :id, @Type = :type';
             $params = [
                 'id' => $id,
                 'type' => $type
+            ];
+
+            $resultSet = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+            $structuredData = [];
+
+            foreach ($resultSet as $row) {
+                $structuredData[] = [
+                    'IdPersonnel' => $row['Id'], // Adapte selon le nom de ton ID
+                    'Nom' => $row['Nom'],
+                    'Prenom' => $row['Prenom'],
+                    'Email' => $row['Email'],
+                    'Actif' => $row['Actif'] === 1,
+                    'Type' => $row['Type'],
+                    'PoleActivite' => [
+                        'Id' => $row['IdPoleActivite'],
+                        'Nom' => $row['DesignationPoleActivite']
+                    ],
+                    'Equipe' => [
+                        'Id' => $row['IdEquipe'],
+                        'Nom' => $row['DesignationEquipe']
+                    ]
+                ];
+            }
+            return $structuredData;
+        } catch (Exception $e) {
+            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
+        }
+    }
+
+    public function getEmployeePagination(mixed $limit, mixed $pageNumber, mixed $query){
+        try {
+            $conn = $this->getEntityManager()->getConnection();
+            $sql = 'EXEC ps_EmployeeSelect @Id = :id, @Type = :type';
+            $params = [
+
             ];
 
             $resultSet = $conn->executeQuery($sql, $params)->fetchAllAssociative();

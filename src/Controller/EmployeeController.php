@@ -28,10 +28,27 @@ class EmployeeController extends AbstractController
      * @throws Exception
      */
     #[Route('', name: 'api_employees_list', methods: ['GET'])]
+    #[OA\Parameter(name: 'limit', in: 'query', description: 'Limite de résultats', schema: new OA\Schema(type: 'integer', default: 20))]
+    #[OA\Parameter(name: 'pageNum', in: 'query', description: 'Numéro de page pour la pagination', schema: new OA\Schema(type: 'integer', default: 1))]
+    #[OA\Parameter(name: 'q', in: 'query', description: '', schema: new OA\Schema(type: 'string', default: ''))]
     #[OA\Response(response: 200, description: 'Liste de tous les employés (Salariés et Intérimaires)')]
-    public function list(){
+    public function list(Request $request){
         try {
-            $employees = $this->employeeRepository->getEmployeelist();
+            $limit = $request->query->get('limit', 20);
+            $pageNumber = $request->query->get('pageNum', 1);
+            $q = $request->query->get('q', '');
+
+            $employees = [];
+
+            if ($limit === null && $pageNumber === null) {
+                $employees = $this->employeeRepository->getEmployeelist();
+            }
+
+            else{
+                $employees = $this->employeeRepository->getEmployeePagination($limit, $pageNumber, $q);
+            }
+
+
             return $this->json(['error' => 0, 'data' => $employees]);
         } catch (\Exception $e) {
             return $this->json(['error' => 1, 'message' => 'Erreur lors de la récupération des employés: ' . $e->getMessage()], 500);
