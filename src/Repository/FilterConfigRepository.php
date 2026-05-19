@@ -20,15 +20,15 @@ class FilterConfigRepository extends ServiceEntityRepository
     {
         try {
             $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_GetDynamicFilterOptions @Keys = :keys, @ViewType = :types';
+            $sql = 'EXEC ps_GetDynamicFilterOptions @Keys = :Keys, @ViewType = :Types';
             $params = [
-                'keys' => trim($keys, '"'),
-                'types' => $types
+                'Keys' => trim($keys, '"'),
+                'Types' => $types
             ];
 
             $resultSet = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
-            $logger->debug("Résultat brut de la procédure stockée", ['resultSet' => $resultSet]);
+            //$logger->debug("Résultat brut de la procédure stockée", ['resultSet' => $resultSet]);
 
             $structuredData = [];
 

@@ -98,7 +98,32 @@ class PlanningRessourceController extends abstractController
             $pageNumber = $request->query->get('pageNum', 1);
             $q = $request->query->get('q', '');
 
-            $result = $this->planningRessourceRepository->getProjet($limit, $pageNumber, $q, $logger);
+            $chargeeAffaires = $request->query->get('chargeAffaire', "");
+            $chefChantiers = $request->query->get('chefChantier', "");
+            $codes = $request->query->get('code',"");
+            $etats = $request->query->get('etat', "");
+
+            $logger->debug('Récupération des projets avec les paramètres',
+                [
+                '@Limit' => $limit,
+                '@PageNumber' => $pageNumber,
+                '@Query' => $q,
+                '@ChargeeAffaires' => $chargeeAffaires,
+                '@ChefChantiers' => $chefChantiers,
+                '@Codes' => $codes,
+                '@Etats' => $etats
+            ]);
+
+            $result = $this->planningRessourceRepository->getProjet(
+                $limit,
+                $pageNumber,
+                $q,
+                $chargeeAffaires,
+                $chefChantiers,
+                $codes,
+                $etats,
+                $logger
+            );
 
             return $this->json(['error' => 0, 'data' => $result['data'], 'TotalLignes' => $result['TotalLignes']]);
 

@@ -69,14 +69,27 @@ class PlanningRessourceRepository extends ServiceEntityRepository
     }
 
 
-    public function getProjet(mixed $limit, mixed $pageNumber, mixed $query, LoggerInterface $logger){
+    public function getProjet(
+        mixed $limit,
+        mixed $pageNumber,
+        mixed $query,
+        string $chargeeAffaires,
+        string $chefChantiers,
+        string $codes,
+        string $etats,
+        LoggerInterface $logger
+    ){
         try {
             $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningRessourceSelectProjet @Limit= :Limit, @PageNumber= :PageNumber, @Query= :Query';
+            $sql = 'EXEC ps_PlanningRessourceSelectProjet @Limit= :Limit, @PageNumber= :PageNumber, @Query= :Query, @ChargeeAffaires= :ChargeeAffaires, @ChefChantiers= :ChefChantiers, @Codes= :Codes, @Etats= :Etats';
             $params = [
                 'Limit' => $limit ?? 20,
                 'PageNumber' => $pageNumber ?? 1,
                 'Query' => $query,
+                'ChargeeAffaires' => $chargeeAffaires,
+                'ChefChantiers' => $chefChantiers,
+                'Codes' => $codes,
+                'Etats' => $etats
             ];
             $result = $conn->executeQuery($sql,$params)->fetchAllAssociative();
 

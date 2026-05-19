@@ -32,20 +32,24 @@ class EmployeeController extends AbstractController
     #[OA\Parameter(name: 'pageNum', in: 'query', description: 'Numéro de page pour la pagination', schema: new OA\Schema(type: 'integer', default: 1))]
     #[OA\Parameter(name: 'q', in: 'query', description: '', schema: new OA\Schema(type: 'string', default: ''))]
     #[OA\Response(response: 200, description: 'Liste de tous les employés (Salariés et Intérimaires)')]
-    public function list(Request $request){
+    public function list(Request $request, LoggerInterface $logger){
         try {
-            $limit = $request->query->get('limit', 20);
-            $pageNumber = $request->query->get('pageNum', 1);
-            $q = $request->query->get('q', '');
 
             $employees = [];
 
-            if ($limit === null && $pageNumber === null) {
+            if (empty($request->query->all())) {
+                $logger->debug("Récupération de TOUS les employés (sans filtres/pagination)");
                 $employees = $this->employeeRepository->getEmployeelist();
             }
-
             else{
-                $employees = $this->employeeRepository->getEmployeePagination($limit, $pageNumber, $q);
+                $limit = $request->query->get('limit', 20);
+                $pageNumber = $request->query->get('pageNum', 1);
+                $q = $request->query->get('q', '');
+                $codes = $request->query->get('codes', '');
+
+                $logger->debug("Récupération de la liste des employés", ['limit' => $limit, 'pageNum' => $pageNumber, 'q' => $q]);
+
+                $employees = $this->employeeRepository->getEmployeePagination($limit, $pageNumber, $q, $codes, $logger);
             }
 
 

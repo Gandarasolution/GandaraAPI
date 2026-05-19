@@ -6,6 +6,7 @@ use App\Entity\Planningevenement;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\Exception;
 use Doctrine\Persistence\ManagerRegistry;
+use Psr\Log\LoggerInterface;
 
 class EmployeeRepository extends ServiceEntityRepository
 {
@@ -23,10 +24,10 @@ class EmployeeRepository extends ServiceEntityRepository
     {
         try {
             $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningEmployeeSelect @Id = :id, @Type = :type';
+            $sql = 'EXEC ps_PlanningEmployeeSelect @Id = :Id, @Type = :Type';
             $params = [
-                'id' => $id,
-                'type' => $type
+                'Id' => $id,
+                'Type' => $type
             ];
 
             $resultSet = $conn->executeQuery($sql, $params)->fetchAllAssociative();
@@ -57,21 +58,27 @@ class EmployeeRepository extends ServiceEntityRepository
         }
     }
 
-    public function getEmployeePagination(mixed $limit, mixed $pageNumber, mixed $query){
+    public function getEmployeePagination(mixed $limit, mixed $pageNumber, mixed $query, string $codes, LoggerInterface $logger){
         try {
             $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_EmployeeSelect @Id = :id, @Type = :type';
+            $sql = 'EXEC ps_PlanningEmployeeSelectSearch @Limit = :Limit, @PageNumber = :PageNumber, @Query= :Query, @Codes= :Codes';
             $params = [
-
+                'Limit' => $limit,
+                'PageNumber' => $pageNumber,
+                'Query' => $query,
+                'Codes' => $codes
             ];
 
             $resultSet = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
             $structuredData = [];
 
+            $logger->debug("Résultat brut de la procédure stockée", ['resultSet' => $resultSet]);
+
             foreach ($resultSet as $row) {
                 $structuredData[] = [
-                    'IdPersonnel' => $row['Id'], // Adapte selon le nom de ton ID
+                    'IdPersonnel' => $row['Id'],
+                    'Code' => $row['Code'],
                     'Nom' => $row['Nom'],
                     'Prenom' => $row['Prenom'],
                     'Email' => $row['Email'],
