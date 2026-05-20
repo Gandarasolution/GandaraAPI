@@ -30,7 +30,7 @@ class PlanningEquipeController extends AbstractController
     public function list(EquipeRepository $equipeRepository): JsonResponse
     {
         $equipes = $equipeRepository->findAll();
-        return $this->json($equipes);
+        return $this->json(['error' => 0, 'data' => $equipes]);
 
     }
 

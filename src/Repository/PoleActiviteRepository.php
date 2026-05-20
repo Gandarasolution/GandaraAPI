@@ -14,4 +14,17 @@ class PoleActiviteRepository extends ServiceEntityRepository
         parent::__construct($registry, PoleActivite::class);
     }
 
+    public function findAll(): array
+    {
+        $rows = $this->createQueryBuilder('e')
+            ->select(['e.idpoleactivite AS Id', 'e.designationpoleactivite AS Nom'])
+            ->getQuery()
+            ->getResult();
+        $rows[] = [
+            'Id' => null,
+            'Designationpoleactivite' => 'Sans pôle',
+        ];
+        return $rows;
+    }
+
 }

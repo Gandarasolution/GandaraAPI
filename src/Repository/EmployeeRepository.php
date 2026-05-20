@@ -42,14 +42,8 @@ class EmployeeRepository extends ServiceEntityRepository
                     'Email' => $row['Email'],
                     'Actif' => $row['Actif'] === 1,
                     'Type' => $row['Type'],
-                    'PoleActivite' => [
-                        'Id' => $row['IdPoleActivite'],
-                        'Nom' => $row['DesignationPoleActivite']
-                    ],
-                    'Equipe' => [
-                        'Id' => $row['IdEquipe'],
-                        'Nom' => $row['DesignationEquipe']
-                    ]
+                    'PoleActivite' => $row['IdPoleActivite'],
+                    'Equipe' => $row['IdEquipe'],
                 ];
             }
             return $structuredData;
@@ -58,7 +52,7 @@ class EmployeeRepository extends ServiceEntityRepository
         }
     }
 
-    public function getEmployeePagination(mixed $limit, mixed $pageNumber, mixed $query, string $codes, LoggerInterface $logger){
+    public function getEmployeePagination(int $limit, int $pageNumber, string $query, string $codes, LoggerInterface $logger){
         try {
             $conn = $this->getEntityManager()->getConnection();
             $sql = 'EXEC ps_PlanningEmployeeSelectSearch @Limit = :Limit, @PageNumber = :PageNumber, @Query= :Query, @Codes= :Codes';
@@ -78,20 +72,13 @@ class EmployeeRepository extends ServiceEntityRepository
             foreach ($resultSet as $row) {
                 $structuredData[] = [
                     'IdPersonnel' => $row['Id'],
-                    'Code' => $row['Code'],
                     'Nom' => $row['Nom'],
                     'Prenom' => $row['Prenom'],
                     'Email' => $row['Email'],
                     'Actif' => $row['Actif'] === 1,
                     'Type' => $row['Type'],
-                    'PoleActivite' => [
-                        'Id' => $row['IdPoleActivite'],
-                        'Nom' => $row['DesignationPoleActivite']
-                    ],
-                    'Equipe' => [
-                        'Id' => $row['IdEquipe'],
-                        'Nom' => $row['DesignationEquipe']
-                    ]
+                    'PoleActivite' => $row['IdPoleActivite'],
+                    'Equipe' => $row['IdEquipe'],
                 ];
             }
             return $structuredData;
@@ -101,20 +88,21 @@ class EmployeeRepository extends ServiceEntityRepository
     }
 
 
-    public function setEquipeEployee(int $id, Array $data): int
+    public function setEquipeEmployee(int $id, Array $data, LoggerInterface $logger): int
     {
         try {
             $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_EmployeeSetEquipe @Id = :id, @Type = :type, @IdEquipe = :idEquipe, @IdPoleActive = :idPoleActive';
+            $logger->debug("Appel de la procédure stockée ps_EmployeeUpdateEquipe avec les paramètres", ['Id' => $id, 'Type' => $data['Type'], 'IdEquipe' => $data['IdEquipe']]);
+            $sql = 'EXEC ps_EmployeeUpdateEquipe @Id = :Id, @Type = :Type, @IdEquipe = :IdEquipe';
             $params = [
-                'id' => $id,
-                'type' => $data['Type'],
-                'idEquipe' => $data['IdEquipe'],
-                'idPoleActive' => $data['IdPoleActivite']
-
+                'Id' => $id,
+                'Type' => $data['Type'],
+                'IdEquipe' => $data['IdEquipe'],
             ];
 
-            return $conn->executeStatement($sql, $params);
+            $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+            return $result[0]['LignesModifiees'];
 
         } catch (Exception $e) {
             throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());

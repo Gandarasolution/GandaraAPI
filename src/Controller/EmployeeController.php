@@ -87,36 +87,35 @@ class EmployeeController extends AbstractController
         }
     }
 
-    //PUT /api/employees/:id- Modifier un employé
-    #[Route('{id}', name: 'api_employees_update', methods: ['PUT'])]
-    public function update(int $id, Request $request, EmployeeRepository $employeeRepo){
+    //PUT /api/employees/équipe/:id- Modifier un employé
+    #[Route('/équipe/{id}', name: 'api_employees_update', methods: ['PUT'])]
+    #[OA\Parameter(name: 'id', in: 'path', description: 'ID de l\'employé', schema: new OA\Schema(type: 'integer'))]
+    #[OA\Parameter(name: 'Type', in: 'body', description: 'Salarie ou Interim', schema: new OA\Schema(type: 'string', enum: ['Salarie', 'Interim']))]
+    #[OA\Parameter(name: 'IdEquipe', in: 'body', description: 'Salarie ou Interim', schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 204, description: 'Employé mis à jour avec succès')]
+    #[OA\Response(response: 400, description: 'Requête invalide')]
+    #[OA\Response(response: 404, description: 'Employé introuvable')]
 
-        try {
+
+    public function update(int $id, Request $request, LoggerInterface $logger){
+        try{
             $data = $request->toArray();
-        } catch (\Exception $e) {
-            return $this->json(['error' => 'Données JSON invalides.'], 400);
-        }
 
-        $type = $data['Type'] ?? null;
-        if (!$type || !in_array($type, ['Salarie', 'Interim'])) {
-            return $this->json(['error' => 'Le champ "type" (Salarie ou Interim) est obligatoire dans le body.'], 400);
-        }
+            $type = $data['Type'] ?? null;
+            if (!$type || !in_array($type, ['SALARIE', 'INTERIM'])) {
+                return $this->json(['error' => 1, 'message' => 'Le champ "type" (SALARIE ou INTERIM) est obligatoire dans le body.'], 400);
+            }
+            $lignesModifiees = $this->employeeRepository->setEquipeEmployee($id, $data, $logger);
 
-        try {
-            $lignesModifiees = $employeeRepo->updateEmployeeRaw($id, $type, $data);
-
-            // LOGIQUE MÉTIER (Le "if" qui gère le succès silencieux)
             if ($lignesModifiees === 0) {
-                // Pas d'erreur technique, mais l'ID n'existait pas
-                return $this->json(['error' => 'Employé introuvable.'], 404);
+                return $this->json(['error' => 1, 'message' => 'Employé introuvable.'], 404);
             }
 
-            return $this->json(['message' => 'Employé mis à jour avec succès'], 204);
+            return $this->json(['error' => 0, 'message' => 'Employé mis à jour avec succès'], 204);
 
         } catch (\Exception $e) {
-            return $this->json(['error' => $e->getMessage()], 500);
+            return $this->json(['error' => 1, 'message' => $e->getMessage()], 500);
         }
-
     }
 
 

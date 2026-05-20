@@ -13,4 +13,18 @@ class EquipeRepository extends ServiceEntityRepository
         parent::__construct($registry, Equipe::class);
     }
 
+    public function findAll(): array
+    {
+        $rows  = $this->createQueryBuilder('e')
+            ->select(['e.idequipe AS Id', 'e.designationequipe AS Nom'])
+            ->getQuery()
+            ->getResult();
+        $rows[] = [
+            'Id' => null,
+            'Nom' => 'Sans équipe',
+        ];
+        return $rows;
+    }
+
+
 }
