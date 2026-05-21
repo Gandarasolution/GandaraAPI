@@ -133,4 +133,112 @@ class PlanningRessourceRepository extends ServiceEntityRepository
         }
     }
 
+    public function getRubriquePaie(int $limit, int $pageNumber, string $query, string $codes, LoggerInterface $logger)
+    {
+        try {
+
+            $conn = $this->getEntityManager()->getConnection();
+            $sql = 'EXEC ps_PlanningRessourceSelectRubriquePaie @Limit= :Limit, @PageNumber= :PageNumber, @Query= :Query, @Codes= :Codes';
+            $params = [
+                'Limit' => $limit ?? 20,
+                'PageNumber' => $pageNumber ?? 1,
+                'Query' => $query,
+                'Codes' => $codes,
+            ];
+            $result = $conn->executeQuery($sql,$params)->fetchAllAssociative();
+
+            $structuredData = [];
+            foreach($result as $row) {
+                $structuredData[] = [
+                    'IdSocialRubriquePaie' => $row['IdSocialRubriquePaie'],
+                    'LibellePlanningRessource' => $row['LibellePlanningRessource'],
+                    'Image' => $row['IdPlanningImage'],
+                    'Actif' => (int)$row['Actif'] === 1,
+                    'CodePlanningRessource' => $row['CodePlanningRessource'],
+                    'Category' => $row['Category'],
+                    'Verrou' => (int)$row['Verrou'] === 1,
+                ];
+            }
+
+            $ligneTotal = $result[0]['TotalLignes'] ?? 0;
+
+            return
+                [
+                    'data' => $structuredData,
+                    'TotalLignes' => $ligneTotal
+                ];
+
+        }catch (Exception $e) {
+            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
+        }
+    }
+
+    public function getRubriqueManuel(int $limit, int $pageNumber, string $query, string $codes, LoggerInterface $logger)
+    {
+        try {
+
+            $conn = $this->getEntityManager()->getConnection();
+            $sql = 'EXEC ps_PlanningRessourceSelectRubriqueManuel @Limit= :Limit, @PageNumber= :PageNumber, @Query= :Query, @Codes= :Codes';
+            $params = [
+                'Limit' => $limit ?? 20,
+                'PageNumber' => $pageNumber ?? 1,
+                'Query' => $query,
+                'Codes' => $codes,
+            ];
+            $result = $conn->executeQuery($sql,$params)->fetchAllAssociative();
+
+            $structuredData = [];
+            foreach($result as $row) {
+                $structuredData[] = [
+                    'IdPlanningRessource' => $row['IdPlanningRessource'],
+                    'LibellePlanningRessource' => $row['LibellePlanningRessource'],
+                    'Image' => $row['IdPlanningImage'],
+                    'Actif' => (int)$row['Actif'] === 1,
+                    'CodePlanningRessource' => $row['CodePlanningRessource'],
+                    'Verrou' => (int)$row['Verrou'] === 1,
+                ];
+            }
+
+            $ligneTotal = $result[0]['TotalLignes'] ?? 0;
+
+            return
+                [
+                    'data' => $structuredData,
+                    'TotalLignes' => $ligneTotal
+                ];
+
+        }catch (Exception $e) {
+            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
+        }
+    }
+
+    public function createRessource(mixed $data)
+    {
+        try {
+            $conn = $this->getEntityManager()->getConnection();
+            $sql = 'EXEC ps_PlanningRessourceManuelInsert
+                    @LibellePlanningRessource = :LibellePlanningRessource,
+                    @Actif = :Actif, =
+                    @Code = :Code, @Actif=:Actif,
+                    @IdImage = :IdImage,
+                    @CouleurFondPlanningRessource = :CouleurFondPlanningRessource,
+                    @CouleurBordurePlanningRessource = :CouleurBordurePlanningRessource,
+                    @CouleurTextePlanningRessource = :CouleurTextePlanningRessource';
+            $params = [
+                'LibellePlanningRessource' => $data['LibellePlanningRessource'],
+                'Actif' => $data['Actif'],
+                'Code' => $data['Code'],
+                'IdImage' => $data['IdImage'] ?? null,
+                'CouleurFondPlanningRessource' => $data['CouleurFondPlanningRessource'],
+                'CouleurBordurePlanningRessource' => $data['CouleurBordurePlanningRessource'],
+                'CouleurTextePlanningRessource' => $data['CouleurTextePlanningRessource']
+            ];
+
+            return $conn->executeQuery($sql, $params)->fetchAllAssociative()[0]['IdPlanningRessource'];
+        }catch (Exception $e) {
+            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
+        }
+    }
+
+
 }

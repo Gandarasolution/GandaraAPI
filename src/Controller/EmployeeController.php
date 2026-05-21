@@ -35,11 +35,10 @@ class EmployeeController extends AbstractController
     public function list(Request $request, LoggerInterface $logger){
         try {
 
-            $employees = [];
-
             if (empty($request->query->all())) {
                 $logger->debug("Récupération de TOUS les employés (sans filtres/pagination)");
                 $employees = $this->employeeRepository->getEmployeelist();
+                return $this->json(['error' => 0, 'data' => $employees]);
             }
             else{
                 $limit = $request->query->get('limit', 20);
@@ -49,11 +48,10 @@ class EmployeeController extends AbstractController
 
                 $logger->debug("Récupération de la liste des employés", ['limit' => $limit, 'pageNum' => $pageNumber, 'q' => $q]);
 
-                $employees = $this->employeeRepository->getEmployeePagination($limit, $pageNumber, $q, $codes, $logger);
+                $result = $this->employeeRepository->getEmployeePagination($limit, $pageNumber, $q, $codes, $logger);
+
+                return $this->json(['error' => 0, 'data' => $result['data'], 'TotalLignes' => $result['TotalLignes']]);
             }
-
-
-            return $this->json(['error' => 0, 'data' => $employees]);
         } catch (\Exception $e) {
             return $this->json(['error' => 1, 'message' => 'Erreur lors de la récupération des employés: ' . $e->getMessage()], 500);
         }
@@ -92,11 +90,9 @@ class EmployeeController extends AbstractController
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de l\'employé', schema: new OA\Schema(type: 'integer'))]
     #[OA\Parameter(name: 'Type', in: 'body', description: 'Salarie ou Interim', schema: new OA\Schema(type: 'string', enum: ['Salarie', 'Interim']))]
     #[OA\Parameter(name: 'IdEquipe', in: 'body', description: 'Salarie ou Interim', schema: new OA\Schema(type: 'integer'))]
-    #[OA\Response(response: 204, description: 'Employé mis à jour avec succès')]
+    #[OA\Response(response: 200, description: 'Employé mis à jour avec succès')]
     #[OA\Response(response: 400, description: 'Requête invalide')]
     #[OA\Response(response: 404, description: 'Employé introuvable')]
-
-
     public function update(int $id, Request $request, LoggerInterface $logger){
         try{
             $data = $request->toArray();
@@ -111,7 +107,7 @@ class EmployeeController extends AbstractController
                 return $this->json(['error' => 1, 'message' => 'Employé introuvable.'], 404);
             }
 
-            return $this->json(['error' => 0, 'message' => 'Employé mis à jour avec succès'], 204);
+            return $this->json(['error' => 0, 'message' => 'Employé mis à jour avec succès']);
 
         } catch (\Exception $e) {
             return $this->json(['error' => 1, 'message' => $e->getMessage()], 500);

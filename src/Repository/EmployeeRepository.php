@@ -67,11 +67,10 @@ class EmployeeRepository extends ServiceEntityRepository
 
             $structuredData = [];
 
-            $logger->debug("Résultat brut de la procédure stockée", ['resultSet' => $resultSet]);
-
             foreach ($resultSet as $row) {
                 $structuredData[] = [
                     'IdPersonnel' => $row['Id'],
+                    'Code' => $row['Code'],
                     'Nom' => $row['Nom'],
                     'Prenom' => $row['Prenom'],
                     'Email' => $row['Email'],
@@ -81,7 +80,14 @@ class EmployeeRepository extends ServiceEntityRepository
                     'Equipe' => $row['IdEquipe'],
                 ];
             }
-            return $structuredData;
+            $ligneTotal = $resultSet[0]['TotalLignes'] ?? 0;
+
+            $logger->debug("Données structurées après transformation", ['structuredData' => $structuredData, 'TotalLignes' => $ligneTotal]);
+            return
+            [
+                'data' => $structuredData,
+                'TotalLignes' => $ligneTotal
+            ];
         } catch (Exception $e) {
             throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
         }

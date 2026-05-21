@@ -46,50 +46,15 @@ class PlanningRessourceController extends abstractController
         }
     }
 
-    #[Route('/{id}', name: 'app_planning_ressource_update', methods: ['PUT'])]
-    #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la ressource à modifier', schema: new OA\Schema(type: 'integer'))]
-    #[OA\RequestBody(
-        description: 'Les nouvelles informations de la ressource',
-        required: true,
-        content: new OA\JsonContent(
-            properties: [
-                new OA\Property(property: 'Libelle', type: 'string'),
-                new OA\Property(property: 'Code', type: 'string'),
-                new OA\Property(property: 'Actif', type: 'boolean')
-            ],
-            type: 'object'
-        )
-    )]
-    #[OA\Response(response: 200, description: 'Ressource mise à jour avec succès')]
-    public function upndatePlaningRessource(int $id, Request $request){
-        try {
-            $data = json_decode($request->getContent(), true);
-            // Validation des données
-            if (!isset($data['Libelle']) || !isset($data['Code'])) {
-                return $this->json(['error' => 'Les champs Libelle et Code sont requis'], 400);
-            }
-
-            // Appel à la méthode de mise à jour dans le repository
-            $result = $this->planningRessourceRepository->updateRessource($id, $data);
-
-            if ($result) {
-                return $this->json(['error' => 0, 'message' => 'Ressource mise à jour avec succès']);
-            } else {
-                return $this->json(['error' => 1, 'message' => 'Erreur lors de la mise à jour de la ressource'], 500);
-            }
-        } catch (\Exception $e) {
-            return $this->json([
-                'error' => 1,
-                'message' => $e->getMessage()
-            ], 500);
-        }
-    }
-
 
     #[Route('/projets', name: 'app_planning_ressource_projets', methods: ['GET'])]
     #[OA\Parameter(name: 'limit', in: 'query', description: 'Limite de résultats', schema: new OA\Schema(type: 'integer', default: 20))]
     #[OA\Parameter(name: 'pageNum', in: 'query', description: 'Numéro de page pour la pagination', schema: new OA\Schema(type: 'integer', default: 1))]
     #[OA\Parameter(name: 'q', in: 'query', description: '', schema: new OA\Schema(type: 'string', default: ''))]
+    #[OA\Parameter(name: 'chargeAffaire', in: 'query', description: 'Filtre sur les chargée d\'affaire', schema: new OA\Schema(type: 'string', default: ''))]
+    #[OA\Parameter(name: 'chefChantier', in: 'query', description: 'Filtre sur les chefs de chantiers', schema: new OA\Schema(type: 'string', default: ''))]
+    #[OA\Parameter(name: 'code', in: 'query', description: 'Filtre sur les codes d\'identification', schema: new OA\Schema(type: 'string', default: ''))]
+    #[OA\Parameter(name: 'etat', in: 'query', description: 'Filtre sur les état', schema: new OA\Schema(type: 'string', default: ''))]
     #[OA\Response(response: 200, description: 'Liste des projets')]
     public function getProjet(Request $request, LoggerInterface $logger)
     {
@@ -127,6 +92,159 @@ class PlanningRessourceController extends abstractController
 
             return $this->json(['error' => 0, 'data' => $result['data'], 'TotalLignes' => $result['TotalLignes']]);
 
+        } catch (\Exception $e) {
+            return $this->json([
+                'error' => 1,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    #[Route('/rubrique-paie', name: 'app_planning_ressource_rubrique-paie', methods: ['GET'])]
+    #[OA\Parameter(name: 'limit', in: 'query', description: 'Limite de résultats', schema: new OA\Schema(type: 'integer', default: 20))]
+    #[OA\Parameter(name: 'pageNum', in: 'query', description: 'Numéro de page pour la pagination', schema: new OA\Schema(type: 'integer', default: 1))]
+    #[OA\Parameter(name: 'q', in: 'query', description: '', schema: new OA\Schema(type: 'string', default: ''))]
+    #[OA\Parameter(name: 'code', in: 'query', description: 'Filtre sur les codes d\'identification', schema: new OA\Schema(type: 'string', default: ''))]
+    #[OA\Response(response: 200, description: 'Liste des rubrique de paie')]
+    public function getRubriquePaie(Request $request, LoggerInterface $logger)
+    {
+        try {
+            $limit = $request->query->get('limit', 20);
+            $pageNumber = $request->query->get('pageNum', 1);
+            $q = $request->query->get('q', '');
+            $codes = $request->query->get('code','');
+
+            $logger->debug('Récupération des rubriques de paie avec les paramètres',
+                [
+                    '@Limit' => $limit,
+                    '@PageNumber' => $pageNumber,
+                    '@Query' => $q,
+                    '@Codes' => $codes,
+                ]);
+
+            $result = $this->planningRessourceRepository->getRubriquePaie(
+                $limit,
+                $pageNumber,
+                $q,
+                $codes,
+                $logger
+            );
+
+            return $this->json(['error' => 0, 'data' => $result['data'], 'TotalLignes' => $result['TotalLignes']]);
+
+        } catch (\Exception $e) {
+            return $this->json([
+                'error' => 1,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    #[Route('/manual-events', name: 'app_planning_ressource_manuel', methods: ['GET'])]
+    #[OA\Parameter(name: 'limit', in: 'query', description: 'Limite de résultats', schema: new OA\Schema(type: 'integer', default: 20))]
+    #[OA\Parameter(name: 'pageNum', in: 'query', description: 'Numéro de page pour la pagination', schema: new OA\Schema(type: 'integer', default: 1))]
+    #[OA\Parameter(name: 'q', in: 'query', description: '', schema: new OA\Schema(type: 'string', default: ''))]
+    #[OA\Parameter(name: 'code', in: 'query', description: 'Filtre sur les codes d\'identification', schema: new OA\Schema(type: 'string', default: ''))]
+    #[OA\Response(response: 200, description: 'Liste des rubrique manuel')]
+    public function getRubriqueManuel(Request $request, LoggerInterface $logger){
+        try {
+            $limit = $request->query->get('limit', 20);
+            $pageNumber = $request->query->get('pageNum', 1);
+            $q = $request->query->get('q', '');
+            $codes = $request->query->get('code','');
+
+            $logger->debug('Récupération des rubriques manuel avec les paramètres',
+                [
+                    '@Limit' => $limit,
+                    '@PageNumber' => $pageNumber,
+                    '@Query' => $q,
+                    '@Codes' => $codes,
+                ]);
+
+            $result = $this->planningRessourceRepository->getRubriqueManuel(
+                $limit,
+                $pageNumber,
+                $q,
+                $codes,
+                $logger
+            );
+
+            return $this->json(['error' => 0, 'data' => $result['data'], 'TotalLignes' => $result['TotalLignes']]);
+
+        } catch (\Exception $e) {
+            return $this->json([
+                'error' => 1,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+
+    #[Route('/manual-events/create', name: 'app_planning_ressource_manuel_create', methods: ['POST'])]
+    #[OA\Response(response: 200, description: 'Ressource créée avec succès')]
+    #[OA\RequestBody(
+        description: 'Les informations de la ressource à créer',
+        required: true,
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'Libelle', type: 'string'),
+                new OA\Property(property: 'Code', type: 'string'),
+                new OA\Property(property: 'Actif', type: 'boolean')
+            ],
+            type: 'object'
+        )
+    )]
+    public function createPlaningRessource(Request $request){
+        try {
+            $data = json_decode($request->getContent(), true);
+            // Validation des données
+            if (!isset($data['Libelle']) || !isset($data['Code'])) {
+                return $this->json(['error' => 'Les champs Libelle et Code sont requis'], 400);
+            }
+            // Appel à la méthode de création dans le repository
+            $result = $this->planningRessourceRepository->createRessource($data);
+            return $this->json(['error' => 0, 'data' => $result]);
+        } catch (\Exception $e) {
+            return $this->json([
+                'error' => 1,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    #[Route('/{id}', name: 'app_planning_ressource_update', methods: ['PUT'])]
+    #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la ressource à modifier', schema: new OA\Schema(type: 'integer'))]
+    #[OA\RequestBody(
+        description: 'Les nouvelles informations de la ressource',
+        required: true,
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'Libelle', type: 'string'),
+                new OA\Property(property: 'Code', type: 'string'),
+                new OA\Property(property: 'Actif', type: 'boolean')
+            ],
+            type: 'object'
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Ressource mise à jour avec succès')]
+    public function upndatePlaningRessource(int $id, Request $request){
+        try {
+            $data = json_decode($request->getContent(), true);
+            // Validation des données
+            if (!isset($data['Libelle']) || !isset($data['Code'])) {
+                return $this->json(['error' => 'Les champs Libelle et Code sont requis'], 400);
+            }
+
+            // Appel à la méthode de mise à jour dans le repository
+            $result = $this->planningRessourceRepository->updateRessource($id, $data);
+
+            if ($result) {
+                return $this->json(['error' => 0, 'message' => 'Ressource mise à jour avec succès']);
+            } else {
+                return $this->json(['error' => 1, 'message' => 'Erreur lors de la mise à jour de la ressource'], 500);
+            }
         } catch (\Exception $e) {
             return $this->json([
                 'error' => 1,
