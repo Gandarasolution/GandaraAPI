@@ -180,6 +180,26 @@ class PlanningRessourceController extends abstractController
         }
     }
 
+    #[Route('/verify-code', name: 'app_planning_ressource_verify-code', methods: ['GET'])]
+    #[OA\Parameter(name: 'code', in: 'query', description: 'Code à vérifié', schema: new OA\Schema(type: 'string', default: ''))]
+    #[OA\Response(response: 200, description: 'Vérification du code de ressource')]
+    public function verifyCode(Request $request, LoggerInterface $logger){
+        try {
+            $code = $request->query->get('code', '');
+
+            $logger->debug('Vérification du code de ressource', ['@Code' => $code]);
+
+            $exists = $this->planningRessourceRepository->verifyCode($code);
+
+            return $this->json(['error' => 0, 'exists' => $exists]);
+
+        } catch (\Exception $e) {
+            return $this->json([
+                'error' => 1,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 
 
     #[Route('/manual-events/create', name: 'app_planning_ressource_manuel_create', methods: ['POST'])]
@@ -200,7 +220,7 @@ class PlanningRessourceController extends abstractController
         try {
             $data = json_decode($request->getContent(), true);
             // Validation des données
-            if (!isset($data['Libelle']) || !isset($data['Code'])) {
+            if (!isset($data['LibellePlanningRessource']) || !isset($data['CodePlanningRessource'])) {
                 return $this->json(['error' => 'Les champs Libelle et Code sont requis'], 400);
             }
             // Appel à la méthode de création dans le repository
@@ -229,7 +249,7 @@ class PlanningRessourceController extends abstractController
         )
     )]
     #[OA\Response(response: 200, description: 'Ressource mise à jour avec succès')]
-    public function upndatePlaningRessource(int $id, Request $request){
+    public function updatePlaningRessource(int $id, Request $request){
         try {
             $data = json_decode($request->getContent(), true);
             // Validation des données
@@ -252,4 +272,6 @@ class PlanningRessourceController extends abstractController
             ], 500);
         }
     }
+
+
 }

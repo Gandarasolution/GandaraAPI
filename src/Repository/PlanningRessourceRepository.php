@@ -218,8 +218,8 @@ class PlanningRessourceRepository extends ServiceEntityRepository
             $conn = $this->getEntityManager()->getConnection();
             $sql = 'EXEC ps_PlanningRessourceManuelInsert
                     @LibellePlanningRessource = :LibellePlanningRessource,
-                    @Actif = :Actif, =
-                    @Code = :Code, @Actif=:Actif,
+                    @Actif = :Actif,
+                    @Code = :Code,
                     @IdImage = :IdImage,
                     @CouleurFondPlanningRessource = :CouleurFondPlanningRessource,
                     @CouleurBordurePlanningRessource = :CouleurBordurePlanningRessource,
@@ -227,7 +227,7 @@ class PlanningRessourceRepository extends ServiceEntityRepository
             $params = [
                 'LibellePlanningRessource' => $data['LibellePlanningRessource'],
                 'Actif' => $data['Actif'],
-                'Code' => $data['Code'],
+                'Code' => $data['CodePlanningRessource'],
                 'IdImage' => $data['IdImage'] ?? null,
                 'CouleurFondPlanningRessource' => $data['CouleurFondPlanningRessource'],
                 'CouleurBordurePlanningRessource' => $data['CouleurBordurePlanningRessource'],
@@ -235,6 +235,37 @@ class PlanningRessourceRepository extends ServiceEntityRepository
             ];
 
             return $conn->executeQuery($sql, $params)->fetchAllAssociative()[0]['IdPlanningRessource'];
+        }catch (Exception $e) {
+            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
+        }
+    }
+
+    public function verifyCode(string $code)
+    {
+        try {
+            $conn = $this->getEntityManager()->getConnection();
+            $sql = '
+                SELECT COUNT(Code) AS Count
+                FROM (
+                    SELECT CAST(IdProjet AS VARCHAR(20)) as Code
+                    FROM Projet
+
+                    UNION ALL
+
+                    SELECT CodePlanningRubriquePersonalise as Code
+                    FROM PlanningRubriquePersonnalise
+
+                    UNION ALL
+
+                    SELECT CodeSocialRubriquePaie as Code
+                    FROM SocialRubriquePaie
+                ) AS TableGlobale
+                WHERE Code = :Code';
+            $params = [
+                'Code' => $code
+            ];
+
+            return (int)$conn->executeQuery($sql, $params)->fetchAllAssociative()[0]['Count'] > 0;
         }catch (Exception $e) {
             throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
         }
