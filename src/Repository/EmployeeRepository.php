@@ -24,10 +24,10 @@ class EmployeeRepository extends ServiceEntityRepository
     {
         try {
             $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningEmployeeSelect @Id = :Id, @Type = :Type';
+            $sql = 'EXEC ps_PlanningEmployeeSelect @Id = :Id'; //, @Type = :Type
             $params = [
                 'Id' => $id,
-                'Type' => $type
+                #'Type' => $type
             ];
 
             $resultSet = $conn->executeQuery($sql, $params)->fetchAllAssociative();

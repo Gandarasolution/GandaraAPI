@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Session;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,7 +21,7 @@ class SecurityController extends AbstractController
         required: true,
         content: new OA\JsonContent(
             properties: [
-                new OA\Property(property: 'username', type: 'string', description: 'nom d\'utilisateur / email'),
+                new OA\Property(property: 'username', type: 'string', description: 'login'),
                 new OA\Property(property: 'password', type: 'string', description: 'Mot de passe')
             ],
             type: 'object'
@@ -28,8 +29,9 @@ class SecurityController extends AbstractController
     )]
     #[OA\Response(response: 200, description: 'Connexion réussie et retourne l\'utilisateur ou le token de session')]
     #[OA\Response(response: 401, description: 'Identifiants invalides')]
-    public function login(#[CurrentUser] ?Session $user): JsonResponse
+    public function login(#[CurrentUser] ?Session $user, LoggerInterface $logger): JsonResponse
     {
+        $logger->debug('Tentative de connexion', ['user' => $user]);
         return $this->json(['error'=>0, $user]);
     }
 

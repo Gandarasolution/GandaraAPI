@@ -5,13 +5,14 @@ namespace App\EventSubscriber;
 use App\Entity\Session;
 use Lexik\Bundle\JWTAuthenticationBundle\Event\AuthenticationSuccessEvent;
 use Lexik\Bundle\JWTAuthenticationBundle\Events;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Doctrine\DBAL\Connection;
 
 class JwtEventSubscriber implements EventSubscriberInterface
 {
 
-    public function __construct(private Connection $connection)
+    public function __construct(private Connection $connection, private LoggerInterface $logger)
     {
     }
 
@@ -51,6 +52,12 @@ class JwtEventSubscriber implements EventSubscriberInterface
                 'id' => $user->getIdpersonnel()
             ]);
 
+            $sql = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id';
+            $planningDroit = $this->connection->fetchAssociative($sql, [
+                'id' => $user->getIdpersonnel()
+            ]);
+            $this->logger->debug("Requête pour récupérer les droits de l'utilisateur", ['IdPersonnel' => $user->getIdpersonnel(), 'PlanningDroit' => $planningDroit]);
+
             // 4. On prépare le tableau final à renvoyer au front
             $data['user'] = [
                 'IdPersonnel' => $user->getIdpersonnel(),
@@ -62,10 +69,14 @@ class JwtEventSubscriber implements EventSubscriberInterface
                 $data['user']['Prenom'] = $employeInfos['PrenomEmployee'];
             }
 
+            $data['permissions'] = (int)$planningDroit['IdDroitNiveau'] ?: 21; // Valeur par défaut si la requête ne retourne rien
+
             $data['error'] = 0;
 
             $event->setData($data);
         }catch (\Exception $e) {
+
+            $this->logger->debug("Erreur lors de la récupération des informations utilisateur après authentification", ['exception' => $e->getMessage()]);
             // En cas d'erreur, on peut logguer ou faire ce qu'on veut
             // Ici, je choisis de renvoyer une erreur générique au front
             $event->setData([
