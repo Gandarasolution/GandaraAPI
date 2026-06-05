@@ -136,6 +136,10 @@
       <excludeFolder url="file://$MODULE_DIR$/vendor/radebatz/type-info-extras" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/zircote/swagger-php" />
       <excludeFolder url="file://$MODULE_DIR$/var/cache" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/sebastian/file-filter" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/sebastian/git-state" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/symfony/mercure" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/symfony/mercure-bundle" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

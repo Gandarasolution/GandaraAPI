@@ -141,14 +141,23 @@ class PlanningEvenementRepository extends ServiceEntityRepository
             $finObj   = new \DateTime()->setTimestamp((int)($data['FinPlanningEvenement'] / 1000));
 
             $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningEvenementInsert @IdEmploye = :IdEmploye, @DebutPlanningEvenement = :DebutPlanningEvenement, @FinPlanningEvenement = :FinPlanningEvenement, @AnnotationPlanningEvenement = :AnnotationPlanningEvenement, @IdPlanningRessource = :IdPlanningRessource, @IdPlanningEtiquette = :IdPlanningEtiquette';
+            $sql = 'EXEC ps_PlanningEvenementInsert
+                    @IdEmploye = :IdEmploye,
+                    @DebutPlanningEvenement = :DebutPlanningEvenement,
+                    @FinPlanningEvenement = :FinPlanningEvenement,
+                    @AnnotationPlanningEvenement = :AnnotationPlanningEvenement,
+                    @IdPlanningRessource = :IdPlanningRessource,
+                    @IdPlanningEtiquette = :IdPlanningEtiquette,
+                    @PlanningEvenementPriorite = :PlanningEvenementPriorite
+            ';
             $params = [
                 'IdEmploye' => $data['IdEmploye'],
                 'DebutPlanningEvenement' => $debutObj->format('Y-m-d\TH:i:s'),
                 'FinPlanningEvenement' => $finObj->format('Y-m-d\TH:i:s'),
                 'AnnotationPlanningEvenement' => $data['AnnotationPlanningEvenement'] ?? null,
                 'IdPlanningRessource' => $data['IdPlanningRessource'],
-                'IdPlanningEtiquette' => $data['IdPlanningEtiquette'] ?? null
+                'IdPlanningEtiquette' => $data['IdPlanningEtiquette'] ?? null,
+                'PlanningEvenementPriorite' => $data['PlanningEvenementPriorite'] ?? null,
             ];
 
             $logger->debug('Executing SQL: ' . $sql . ' with params: ' . json_encode($params));
@@ -263,6 +272,33 @@ class PlanningEvenementRepository extends ServiceEntityRepository
         }catch (\Exception $e) {
             $conn->rollBack();
             throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
+        }
+    }
+
+    public function deleteEvents(array $data)
+    {
+        try {
+            $conn = $this->getEntityManager()->getConnection();
+            $conn->beginTransaction();
+
+            foreach ($data['Ids'] as $id) {
+                $sql = 'EXEC ps_PlanningEvenementDelete @IdEvenement = :IdEvenement';
+                $params = [
+                    'IdEvenement' => $id,
+                ];
+                $conn->executeStatement($sql, $params);
+            }
+
+            $conn->commit();
+            return 1;
+        } catch (\Throwable $e) {
+
+            if (isset($conn) && $conn->isTransactionActive()) {
+                $conn->rollBack();
+            }
+
+            // 5. On relance l'erreur pour que le contrôleur puisse renvoyer une erreur 500 au front
+            throw new \Exception('Erreur lors de la suppression en masse : ' . $e->getMessage(), 0, $e);
         }
     }
 }

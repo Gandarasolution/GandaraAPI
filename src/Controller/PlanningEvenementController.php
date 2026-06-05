@@ -4,6 +4,8 @@ namespace App\Controller;
 
 use App\Repository\PlanningEvenementRepository;
 use App\Repository\PlanningRessourceRepository;
+use App\Service\MercureNotificationService;
+use App\Entity\Session;
 use Psr\Log\LoggerInterface;
 use \Symfony\Component\HttpFoundation\Request;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -11,6 +13,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use Nelmio\ApiDocBundle\Annotation\Model;
 use OpenApi\Attributes as OA;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 #[Route('/api/event')]
 #[OA\Tag(name: 'Planning Événements')]
@@ -18,6 +21,7 @@ class PlanningEvenementController extends AbstractController
 {
 
     public function __construct(
+        private MercureNotificationService $notifier,
         private PlanningEvenementRepository $planningEvenementRepository,
         private PlanningRessourceRepository $planningRessourceRepository,
         //private EntityManagerInterface $entityManager,
@@ -135,9 +139,13 @@ class PlanningEvenementController extends AbstractController
         )
     )]
     #[OA\Response(response: 201, description: 'L\'événement a été créé avec succès')]
-    public function create(Request $request, LoggerInterface $logger): JsonResponse
+    public function create(Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
         try {
+            if (!$user) {
+                return $this->json(['error' => 1, 'message' => 'Utilisateur non authentifié.'], 401);
+            }
+
             $data = $request->toArray();
             // Validation des données d'entrée (simplifiée)
             if (
@@ -149,6 +157,15 @@ class PlanningEvenementController extends AbstractController
             }
 
             $result = $this->planningEvenementRepository->createEvent($data, $logger);
+
+            $data['IdPlanningEvenement'] = $result;
+
+            $this->notifier->notifyPlanningChange(
+                $data['IdPlanning'],
+                'APPOINTMENT_CREATED',
+                $user->getIdPersonnel(),
+                $data
+            );
 
             return $this->json(['error' => 0, 'data' => $result], 201);
 
@@ -211,13 +228,41 @@ class PlanningEvenementController extends AbstractController
      * @return JsonResponse JSON indiquant le succès: { "error": 0, "message": "..." } ou erreur
      */
     //DELETE /api/event/:id- Supprimer un RDV
-    #[Route('/{id}', name: 'api_evenements_delete', methods: ['DELETE'])]
+    #[Route('/{id}', name: 'api_evenement_delete', methods: ['DELETE'])]
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de l\'événement à supprimer', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Événement supprimé')]
     public function delete(int $id): JsonResponse
     {
         try {
             $lignesSupprimees = $this->planningEvenementRepository->deleteEvent($id);
+            if ($lignesSupprimees === 0) {
+                return $this->json(['error' => 1 , 'message' => 'Événement introuvable.'], 404);
+            }
+            return $this->json(['error' => 0, 'message' => 'Événement supprimé avec succès']);
+
+        } catch (\Exception $e) {
+            return $this->json(['error' => 1, 'message' => 'Erreur lors de la suppression de l\'événement: ' . $e->getMessage()], 500);
+        }
+    }
+
+
+    /**
+     * Supprime des événements par identifiants.
+     *
+     * @param Request $request La requête HTTP contenant un tableau d'IDs à supprimer: { "ids": [1, 2, 3] }
+     * @return JsonResponse JSON indiquant le succès: { "error": 0, "message": "..." } ou erreur
+     */
+    #[Route('', name: 'api_evenements_delete', methods: ['DELETE'])]
+    #[OA\Response(response: 200, description: 'Événement supprimé')]
+    public function deletes(Request $request): JsonResponse
+    {
+        try {
+            $data = $request->toArray();
+            if (!isset($data['ids']) || !is_array($data['ids'])) {
+                return $this->json(['error' => 1, 'message' => 'Le champ "ids" doit être un tableau d\'identifiants.'], 400);
+            }
+
+            $lignesSupprimees = $this->planningEvenementRepository->deleteEvents($data);
             if ($lignesSupprimees === 0) {
                 return $this->json(['error' => 1 , 'message' => 'Événement introuvable.'], 404);
             }
@@ -297,7 +342,7 @@ class PlanningEvenementController extends AbstractController
             // Si le payload contient des données de ressource, tenter de mettre à jour la ressource associée
             $ressourceId = $data['IdPlanningRessource'] ?? ($data['Ressource']['IdPlanningRessource'] ?? null);
             if ($ressourceId !== null && isset($data['Ressource']) && is_array($data['Ressource'])) {
-                $lignesModifiees = $this->planningRessourceRepository->updateRessource((int)$ressourceId, $data['Ressource']);
+                $lignesModifiees = $this->planningRessourceRepository->updateRessource((int)$ressourceId, $data['Ressource'], $logger);
 
                 if ($lignesModifiees === 0){
                     return $this->json(['error' => 1, 'message' => 'Ressource introuvable ou aucune modification effectuée.'], 404);
@@ -310,6 +355,7 @@ class PlanningEvenementController extends AbstractController
             ]);
 
         } catch (\Exception $e) {
+
             return $this->json(['error' => 1, 'message' => 'Erreur lors de la mise à jour via PS: ' . $e->getMessage()], 500);
         }
     }

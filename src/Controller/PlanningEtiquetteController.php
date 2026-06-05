@@ -67,4 +67,23 @@ class PlanningEtiquetteController extends AbstractController
             return new JsonResponse(['message' => $e->getMessage(), 'error' => 1], 500);
         }
     }
+
+    #[Route('/{idEtiquette}', name: 'etiquette_planning_delete', methods: ['DELETE'])]
+    #[OA\Response(response: 200, description: 'Supression d\'une nouvelle étiquette pour une ressource')]
+    public function delete(int $idEtiquette): JsonResponse {
+        if ($idEtiquette <= 0) {
+            return $this->json(['error' => 1, 'message' => 'ID d\'étiquette invalide'], 400);
+        }
+        try {
+            $result = $this->repository->deleteEtiquette($idEtiquette);
+            if ($result === false) {
+                return $this->json(['error' => 1, 'message' => 'Étiquette non trouvée ou déjà supprimée'], 404);
+            }
+
+            return $this->json(['error' => 0]);
+
+        }catch ( \Exception $e ) {
+            return new JsonResponse(['message' => $e->getMessage(), 'error' => 1], 500);
+        }
+    }
 }

@@ -49,17 +49,31 @@ class PlanningRessourceRepository extends ServiceEntityRepository
     }
 
 
-    public function updateRessource(int $id, mixed $data)
+    public function updateRessource(int $id, mixed $data, LoggerInterface $logger)
     {
         try {
+            $logger->debug('Données reçues pour la mise à jour de la ressource', ['id' => $id, 'data' => $data]);
             $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningRessourceUpdate @IdRessource = :Id, @CouleurFondPlanningRessource = :CouleurFondPlanningRessource, @CouleurBordurePlanningRessource = :CouleurBordurePlanningRessource, @CouleurTextePlanningRessource = :CouleurTextePlanningRessource, @IdImage = :IdImage';
+            $sql = '
+                EXEC ps_PlanningRessourceUpdate
+                    @IdRessource = :Id,
+                    @CouleurFondPlanningRessource = :CouleurFondPlanningRessource,
+                    @CouleurBordurePlanningRessource = :CouleurBordurePlanningRessource,
+                    @CouleurTextePlanningRessource = :CouleurTextePlanningRessource,
+                    @IdImage = :IdImage,
+                    @CodePlanningRessource = :CodePlanningRessource,
+                    @Actif = :Actif,
+                    @LibellePlanningRessource = :LibellePlanningRessource
+            ';
             $params = [
                 'Id' => $id,
                 'CouleurFondPlanningRessource' => $data['CouleurFondPlanningRessource'] ?? null,
                 'CouleurBordurePlanningRessource' => $data['CouleurBordurePlanningRessource'] ?? null,
                 'CouleurTextePlanningRessource' => $data['CouleurTextePlanningRessource'] ?? null,
-                'IdImage' => $data['IdImage'] ?? null
+                'IdImage' => $data['IdImage'] ?? null,
+                'CodePlanningRessource' => $data['CodePlanningRessource'] ?? null,
+                'Actif' => (int)($data['Actif'] ?? 1),
+                'LibellePlanningRessource' => $data['LibellePlanningRessource'] ?? null,
             ];
 
             return $conn->executeQuery($sql, $params)->fetchAllAssociative()[0]['LignesModifiees'];
@@ -100,6 +114,10 @@ class PlanningRessourceRepository extends ServiceEntityRepository
                     'LibellePlanningRessource' => $row['LibellePlanningRessource'],
                     'IdImage' => $row['IdImage'],
                     'Actif' => (int)$row['Actif'] === 1,
+                    'CouleurFondPlanningRessource' => $row['CouleurFondPlanningRessource'],
+                    'CouleurBordurePlanningRessource' => $row['CouleurBordurePlanningRessource'],
+                    'CouleurTextePlanningRessource' => $row['CouleurTextePlanningRessource'],
+                    'Type' => 'Projet',
                     'CodePlanningRessource' => $row['Code'],
                     'PoleActivite' => $row['DesignationPoleActivite'],
                     'ChargeAffaire' => $row['ChargeAffaire'],
@@ -150,9 +168,13 @@ class PlanningRessourceRepository extends ServiceEntityRepository
             $structuredData = [];
             foreach($result as $row) {
                 $structuredData[] = [
-                    'IdSocialRubriquePaie' => $row['IdSocialRubriquePaie'],
+                    'IdPlanningRessource' => $row['IdSocialRubriquePaie'],
                     'LibellePlanningRessource' => $row['LibellePlanningRessource'],
+                    'CouleurFondPlanningRessource' => $row['CouleurFondPlanningRessource'],
+                    'CouleurBordurePlanningRessource' => $row['CouleurBordurePlanningRessource'],
+                    'CouleurTextePlanningRessource' => $row['CouleurTextePlanningRessource'],
                     'Image' => $row['IdPlanningImage'],
+                    'Type' => 'Paie',
                     'Actif' => (int)$row['Actif'] === 1,
                     'CodePlanningRessource' => $row['CodePlanningRessource'],
                     'Category' => $row['Category'],
@@ -192,10 +214,14 @@ class PlanningRessourceRepository extends ServiceEntityRepository
                 $structuredData[] = [
                     'IdPlanningRessource' => $row['IdPlanningRessource'],
                     'LibellePlanningRessource' => $row['LibellePlanningRessource'],
+                    'CouleurFondPlanningRessource' => $row['CouleurFondPlanningRessource'],
+                    'CouleurBordurePlanningRessource' => $row['CouleurBordurePlanningRessource'],
+                    'CouleurTextePlanningRessource' => $row['CouleurTextePlanningRessource'],
                     'Image' => $row['IdPlanningImage'],
                     'Actif' => (int)$row['Actif'] === 1,
                     'CodePlanningRessource' => $row['CodePlanningRessource'],
                     'Verrou' => (int)$row['Verrou'] === 1,
+                    'Type' => 'Rubrique Perso'
                 ];
             }
 

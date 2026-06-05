@@ -34,19 +34,17 @@ class JwtEventSubscriber implements EventSubscriberInterface
                 return;
             }
 
-            // 3. On fait notre requête manuelle (ex: jointure ou procédure stockée)
-            // Ici, j'utilise la connexion DBAL comme tu en as l'habitude !
             $sql = '
-            SELECT
-                COALESCE(S.NomSalarie, I.NomInterim) as NomEmploye,
-                COALESCE(S.PrenomSalarie, I.PrenomInterim) as PrenomEmployee
-            FROM SESSION
-            LEFT JOIN
-                Salarie S ON S.IdSalarie = IdPersonnel
-            LEFT JOIN
-                Interim I ON I.IdInterim = IdPersonnel
-            WHERE IdPersonnel = :id
-        ';
+                SELECT
+                    COALESCE(S.NomSalarie, I.NomInterim) as NomEmploye,
+                    COALESCE(S.PrenomSalarie, I.PrenomInterim) as PrenomEmployee
+                FROM SESSION
+                LEFT JOIN
+                    Salarie S ON S.IdSalarie = IdPersonnel
+                LEFT JOIN
+                    Interim I ON I.IdInterim = IdPersonnel
+                WHERE IdPersonnel = :id
+            ';
 
             $employeInfos = $this->connection->fetchAssociative($sql, [
                 'id' => $user->getIdpersonnel()
@@ -57,6 +55,17 @@ class JwtEventSubscriber implements EventSubscriberInterface
                 'id' => $user->getIdpersonnel()
             ]);
             $this->logger->debug("Requête pour récupérer les droits de l'utilisateur", ['IdPersonnel' => $user->getIdpersonnel(), 'PlanningDroit' => $planningDroit]);
+
+            $sql = 'SELECT IdPlanning
+                    FROM PlanningAffectation
+                    WHERE IdPersonnel = :id
+            ';
+            $planningAffectation = $this->connection->fetchAllAssociative($sql, [
+                'id' => $user->getIdpersonnel()
+            ]);
+            $this->logger->debug("Requête pour récupérer les plannings affectés à l'utilisateur", ['IdPersonnel' => $user->getIdpersonnel(), 'PlanningAffectation' => $planningAffectation]);
+
+
 
             // 4. On prépare le tableau final à renvoyer au front
             $data['user'] = [
@@ -70,6 +79,8 @@ class JwtEventSubscriber implements EventSubscriberInterface
             }
 
             $data['permissions'] = (int)$planningDroit['IdDroitNiveau'] ?: 21; // Valeur par défaut si la requête ne retourne rien
+
+            $data['planning'] = array_column($planningAffectation, 'IdPlanning');
 
             $data['error'] = 0;
 

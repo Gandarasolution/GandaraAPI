@@ -53,4 +53,31 @@ class EtiquetteRepository extends ServiceEntityRepository
             throw new \Exception('Erreur lors de l\'exécution de la procédure stockée : ' . $e->getMessage());
         }
     }
+
+    public function deleteEtiquette(int $idEtiquette)
+    {
+        try {
+            $conn = $this->getEntityManager()->getConnection();
+            $sql = '
+                DELETE PlanningEtiquette WHERE IdPlanningEtiquette = :IdPlanningEtiquette
+            ';
+            $params = [
+                'IdPlanningEtiquette' => $idEtiquette
+            ];
+
+            $lignesSupprimees = $conn->executeStatement($sql, [
+                'IdPlanningEtiquette' => $idEtiquette
+            ]);
+
+            // Si c'est > 0, c'est que la ligne existait et a bien été supprimée !
+            if ($lignesSupprimees > 0) {
+                return true;
+            }
+
+            // Si ça retourne 0, la requête a marché, mais l'étiquette n'existait pas
+            return false;
+        }catch (Exception $e) {
+            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée : ' . $e->getMessage());
+        }
+    }
 }

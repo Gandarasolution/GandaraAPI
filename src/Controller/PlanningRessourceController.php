@@ -241,24 +241,25 @@ class PlanningRessourceController extends abstractController
         required: true,
         content: new OA\JsonContent(
             properties: [
-                new OA\Property(property: 'Libelle', type: 'string'),
-                new OA\Property(property: 'Code', type: 'string'),
-                new OA\Property(property: 'Actif', type: 'boolean')
+                new OA\Property(property: 'LibellePlanningRessource', type: 'string'),
+                new OA\Property(property: 'CodePlanningRessource', type: 'string'),
+                new OA\Property(property: 'Actif', type: 'boolean'),
+                new OA\Property(property: 'IdImage', type: 'integer'),
+                new OA\Property(property: 'CouleurFondPlanningRessource', type: 'string'),
+                new OA\Property(property: 'CouleurBordurePlanningRessource', type: 'string'),
+                new OA\Property(property: 'CouleurTextePlanningRessource', type: 'string'),
+
             ],
             type: 'object'
         )
     )]
     #[OA\Response(response: 200, description: 'Ressource mise à jour avec succès')]
-    public function updatePlaningRessource(int $id, Request $request){
+    public function updatePlaningRessource(int $id, Request $request, LoggerInterface $logger){
         try {
             $data = json_decode($request->getContent(), true);
-            // Validation des données
-            if (!isset($data['Libelle']) || !isset($data['Code'])) {
-                return $this->json(['error' => 'Les champs Libelle et Code sont requis'], 400);
-            }
 
             // Appel à la méthode de mise à jour dans le repository
-            $result = $this->planningRessourceRepository->updateRessource($id, $data);
+            $result = $this->planningRessourceRepository->updateRessource($id, $data, $logger);
 
             if ($result) {
                 return $this->json(['error' => 0, 'message' => 'Ressource mise à jour avec succès']);
