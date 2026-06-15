@@ -56,8 +56,9 @@ class JwtEventSubscriber implements EventSubscriberInterface
             ]);
             $this->logger->debug("Requête pour récupérer les droits de l'utilisateur", ['IdPersonnel' => $user->getIdpersonnel(), 'PlanningDroit' => $planningDroit]);
 
-            $sql = 'SELECT IdPlanning
-                    FROM PlanningAffectation
+            $sql = 'SELECT P.IdPlanning, NomPlanning, IdPlanningImage
+                    FROM Planning P
+                    LEFT JOIN PlanningAffectation PA ON P.IdPlanning = PA.IdPlanning
                     WHERE IdPersonnel = :id
             ';
             $planningAffectation = $this->connection->fetchAllAssociative($sql, [
@@ -80,7 +81,13 @@ class JwtEventSubscriber implements EventSubscriberInterface
 
             $data['permissions'] = (int)$planningDroit['IdDroitNiveau'] ?: 21; // Valeur par défaut si la requête ne retourne rien
 
-            $data['planning'] = array_column($planningAffectation, 'IdPlanning');
+            $data['planning'] = array_map(function($row) {
+                return [
+                    'IdPlanning'  => $row['IdPlanning'],
+                    'NomPlanning' => $row['NomPlanning'],
+                    'IdPlanningImage' => $row['IdPlanningImage']
+                ];
+            }, $planningAffectation);
 
             $data['error'] = 0;
 
@@ -88,8 +95,6 @@ class JwtEventSubscriber implements EventSubscriberInterface
         }catch (\Exception $e) {
 
             $this->logger->debug("Erreur lors de la récupération des informations utilisateur après authentification", ['exception' => $e->getMessage()]);
-            // En cas d'erreur, on peut logguer ou faire ce qu'on veut
-            // Ici, je choisis de renvoyer une erreur générique au front
             $event->setData([
                 'error' => 1,
                 'message' => 'Une erreur est survenue lors de la récupération des informations utilisateur.'

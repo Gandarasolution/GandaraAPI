@@ -158,10 +158,10 @@ class PlanningEvenementController extends AbstractController
 
             $result = $this->planningEvenementRepository->createEvent($data, $logger);
 
-            $data['IdPlanningEvenement'] = $result;
+            $data['IdPlanningEvenement'] = $result['appointments'][0]['IdPlanningEvenement'];
 
             $this->notifier->notifyPlanningChange(
-                $data['IdPlanning'],
+                $data['IdPlanningEvenement'],
                 'APPOINTMENT_CREATED',
                 $user->getIdPersonnel(),
                 $data

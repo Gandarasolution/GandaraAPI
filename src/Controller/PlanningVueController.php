@@ -33,6 +33,11 @@ class PlanningVueController extends AbstractController
     {
         try {
             $IdPlanning = $request->query->get('idPlanning');
+
+            if ($IdPlanning !== null && !is_numeric($IdPlanning) || $IdPlanning < 0) {
+                return $this->json(['error' => 1, 'message' => 'Le paramètre idPlanning doit être un entier positif.'], 400);
+            }
+
             $configs = $this->planningVueRepository->getConfigUser($userId, $IdPlanning);
             return $this->json(['error' => 0, 'data' => $configs]);
         } catch (\Exception $e) {
