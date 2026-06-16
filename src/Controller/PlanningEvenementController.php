@@ -142,6 +142,12 @@ class PlanningEvenementController extends AbstractController
     public function create(Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
         try {
+            $idPlanning = $request->headers->get('X-Planning-Id');
+
+            if (!$idPlanning) {
+                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            }
+
             if (!$user) {
                 return $this->json(['error' => 1, 'message' => 'Utilisateur non authentifié.'], 401);
             }
@@ -158,13 +164,11 @@ class PlanningEvenementController extends AbstractController
 
             $result = $this->planningEvenementRepository->createEvent($data, $logger);
 
-            $data['IdPlanningEvenement'] = $result['appointments'][0]['IdPlanningEvenement'];
-
             $this->notifier->notifyPlanningChange(
-                $data['IdPlanningEvenement'],
+                $idPlanning,
                 'APPOINTMENT_CREATED',
                 $user->getIdPersonnel(),
-                $data
+                $result
             );
 
             return $this->json(['error' => 0, 'data' => $result], 201);
@@ -195,9 +199,15 @@ class PlanningEvenementController extends AbstractController
         content: new OA\JsonContent(type: 'object')
     )]
     #[OA\Response(response: 201, description: 'Événement mis à jour avec succès')]
-    public function update(int $id, Request $request): JsonResponse
+    public function update(int $id, Request $request, #[CurrentUser] ?Session $user, LoggerInterface $logger): JsonResponse
      {
          try {
+             $idPlanning = $request->headers->get('X-Planning-Id');
+
+             if (!$idPlanning) {
+                 return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+             }
+
              $data = $request->toArray();
              if (($data === null) || $data === []) {
                  return $this->json(['error' => 'Données JSON invalides.'], 400);
@@ -206,12 +216,20 @@ class PlanningEvenementController extends AbstractController
                  $data['PlanningEvenementPriorite']= 0;
              }
 
-             $lignesModifiees = $this->planningEvenementRepository->updateEvent($id, $data);
+             $result = $this->planningEvenementRepository->updateEvent($id, $data);
 
-             if ($lignesModifiees === 0) {
+             $logger->debug('Résultat de la mise à jour de l\'événement', ['result' => $result]);
+             if ($result['LignesModifiees'] === 0) {
                  // Pas d'erreur technique, mais l'ID n'existait pas
                  return $this->json(['error' => 1, 'message' => 'Événement introuvable.'], 404);
              }
+
+             $this->notifier->notifyPlanningChange(
+                 $idPlanning,
+                 'APPOINTMENT_UPDATED',
+                 $user->getIdPersonnel(),
+                 $result['data']
+             );
 
              return $this->json(['error' => 0, 'message' => 'Événement mis à jour avec succès'], 201);
 
@@ -231,13 +249,27 @@ class PlanningEvenementController extends AbstractController
     #[Route('/{id}', name: 'api_evenement_delete', methods: ['DELETE'])]
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de l\'événement à supprimer', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Événement supprimé')]
-    public function delete(int $id): JsonResponse
+    public function delete(int $id, Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
         try {
+            $idPlanning = $request->headers->get('X-Planning-Id');
+
+            if (!$idPlanning) {
+                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            }
+
             $lignesSupprimees = $this->planningEvenementRepository->deleteEvent($id);
             if ($lignesSupprimees === 0) {
                 return $this->json(['error' => 1 , 'message' => 'Événement introuvable.'], 404);
             }
+
+            $this->notifier->notifyPlanningChange(
+                $idPlanning,
+                'APPOINTMENT_DELETED',
+                $user->getIdPersonnel(),
+                ['IdPlanningEvenement' => $id]
+            );
+
             return $this->json(['error' => 0, 'message' => 'Événement supprimé avec succès']);
 
         } catch (\Exception $e) {
@@ -254,9 +286,15 @@ class PlanningEvenementController extends AbstractController
      */
     #[Route('', name: 'api_evenements_delete', methods: ['DELETE'])]
     #[OA\Response(response: 200, description: 'Événement supprimé')]
-    public function deletes(Request $request): JsonResponse
+    public function deletes(Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
         try {
+            $idPlanning = $request->headers->get('X-Planning-Id');
+
+            if (!$idPlanning) {
+                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            }
+
             $data = $request->toArray();
             if (!isset($data['ids']) || !is_array($data['ids'])) {
                 return $this->json(['error' => 1, 'message' => 'Le champ "ids" doit être un tableau d\'identifiants.'], 400);
@@ -266,6 +304,14 @@ class PlanningEvenementController extends AbstractController
             if ($lignesSupprimees === 0) {
                 return $this->json(['error' => 1 , 'message' => 'Événement introuvable.'], 404);
             }
+
+            $this->notifier->notifyPlanningChange(
+                $idPlanning,
+                'APPOINTMENTS_DELETED',
+                $user->getIdPersonnel(),
+                ['deletedIds' => $data['ids']]
+            );
+
             return $this->json(['error' => 0, 'message' => 'Événement supprimé avec succès']);
 
         } catch (\Exception $e) {
@@ -308,9 +354,15 @@ class PlanningEvenementController extends AbstractController
         )
     )]
     #[OA\Response(response: 200, description: 'Événement et ressource mis à jour')]
-    public function updateWithProcedure(int $id, Request $request, LoggerInterface $logger): JsonResponse
+    public function updateWithProcedure(int $id, Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
         try {
+            $idPlanning = $request->headers->get('X-Planning-Id');
+
+            if (!$idPlanning) {
+                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            }
+
             $data = $request->toArray();
 
             if (($data === null) || $data === []) {
@@ -333,21 +385,36 @@ class PlanningEvenementController extends AbstractController
 
             $logger->info('Appel PS update pour événement ' . $id, ['payload' => $data]);
 
-            $lignesModifiees = $this->planningEvenementRepository->updateEvent($id, $data);
+            $returnData = [];
 
-            if ($lignesModifiees === 0) {
+            $result = $this->planningEvenementRepository->updateEvent($id, $data);
+
+            $logger->debug('Résultat de la mise à jour de l\'événement via PS', ['result' => $result]);
+
+            if ($result['LignesModifiees'] === 0) {
                 return $this->json(['error' => 1, 'message' => 'Événement introuvable ou aucune modification effectuée.'], 404);
             }
+
+            $returnData['appointment'] = $result['data'];
 
             // Si le payload contient des données de ressource, tenter de mettre à jour la ressource associée
             $ressourceId = $data['IdPlanningRessource'] ?? ($data['Ressource']['IdPlanningRessource'] ?? null);
             if ($ressourceId !== null && isset($data['Ressource']) && is_array($data['Ressource'])) {
-                $lignesModifiees = $this->planningRessourceRepository->updateRessource((int)$ressourceId, $data['Ressource'], $logger);
+                $result = $this->planningRessourceRepository->updateRessource((int)$ressourceId, $data['Ressource'], $logger);
 
-                if ($lignesModifiees === 0){
+                if ($result['LignesModifiees'] === 0){
                     return $this->json(['error' => 1, 'message' => 'Ressource introuvable ou aucune modification effectuée.'], 404);
                 }
             }
+            $logger->debug('Résultat de la mise à jour de la ressource via PS', ['result' => $result]);
+            $returnData['ressources'] = $result['data'];
+
+            $this->notifier->notifyPlanningChange(
+                $idPlanning,
+                'APPOINTMENT_AND_RESSOURCE_UPDATED',
+                $user->getIdPersonnel(),
+                $returnData
+            );
 
             return $this->json([
                 'error' => 0,
@@ -385,9 +452,15 @@ class PlanningEvenementController extends AbstractController
         )
     )]
     #[OA\Response(response: 200, description: 'L\'événement a été divisé, retour des nouvelles données')]
-    public function divideEvent(int $id, Request $request): JsonResponse
+    public function divideEvent(int $id, Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
         try {
+            $idPlanning = $request->headers->get('X-Planning-Id');
+
+            if (!$idPlanning) {
+                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            }
+
             $data = $request->toArray();
 
             if (($data === null) || $data === []) {
@@ -400,9 +473,20 @@ class PlanningEvenementController extends AbstractController
             }
 
 
-            $result = $this->planningEvenementRepository->divideEvent($id, $data);
+            $result = $this->planningEvenementRepository->divideEvent($id, $data, $logger);
 
-            return $this->json(['error' => 0, 'data' => $result], 200);
+            $this->notifier->notifyPlanningChange(
+                $idPlanning,
+                'APPOINTMENT_DIVISION_UPDATED',
+                $user->getIdPersonnel(),
+                [
+                    'originalEventId' => $id,
+                    'newEvent' => $result,
+                    'divisionDate' => $data['DateCoupure']
+                ]
+            );
+
+            return $this->json(['error' => 0, 'data' => ['NouvelIdEvenement' => $result['IdPlanningEvenement']]], 200);
 
         } catch (\Exception $e) {
             return $this->json(['error' => 1, 'message' => 'Erreur lors de la division de l\'événement: ' . $e->getMessage()], 500);

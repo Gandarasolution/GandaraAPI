@@ -23,6 +23,13 @@ class MercureNotificationService
     {
         $topic = self::BASE_TOPIC . $idPlanning;
 
+        $this->logger->debug("Envoi d'une notification Mercure", [
+            'topic' => $topic,
+            'action' => $action,
+            'updatedBy' => $updatedBy,
+            'data' => $data
+        ]);
+
         $payload = json_encode([
             'action'    => $action,
             'updatedBy' => $updatedBy,

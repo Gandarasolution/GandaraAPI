@@ -76,7 +76,20 @@ class PlanningRessourceRepository extends ServiceEntityRepository
                 'LibellePlanningRessource' => $data['LibellePlanningRessource'] ?? null,
             ];
 
-            return $conn->executeQuery($sql, $params)->fetchAllAssociative()[0]['LignesModifiees'];
+            $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+            $logger->debug('Résultat de la mise à jour de la ressource', ['result' => $result]);
+
+            $row = $result[0];
+
+            $lignesModifiees = $row['LignesModifiees'];
+
+            unset($row['LignesModifiees']);
+
+            return [
+                'LignesModifiees' => $lignesModifiees,
+                'data'            => $row
+            ];
         }catch (Exception $e) {
             throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
         }

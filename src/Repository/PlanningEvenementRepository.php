@@ -194,7 +194,26 @@ class PlanningEvenementRepository extends ServiceEntityRepository
             ];
             $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
-            return $result[0]['LignesModifiees'];
+            $structuredData = [
+                'IdPlanningEvenement' => (int)$result[0]['IdPlanningEvenement'],
+                'DebutPlanningEvenement' => (int)$result[0]['DebutPlanningEvenement'],
+                'FinPlanningEvenement' => (int)$result[0]['FinPlanningEvenement'],
+                'AnnotationPlanningEvenement' => $result[0]['AnnotationPlanningEvenement'],
+                'Etiquette' => [
+                    'IdPlanningEtiquette' => $result[0]['IdPlanningEtiquette'] ?? null,
+                    'LibelleLongPlanningEtiquette' => $result[0]['LibelleLongPlanningEtiquette'],
+                    'LibelleCourtPlanningEtiquette' => $result[0]['LibelleCourtPlanningEtiquette']
+                ],
+                'IdPlanningRessource' => (int)$result[0]['IdPlanningRessource'],
+                'IdEmploye' => (int)$result[0]['IdEmployee'],
+                'PlanningEvenementPriorite' => (int)$result[0]['PlanningEvenementPriorite']
+            ];
+
+
+
+
+
+            return ['LignesModifiees' => $result[0]['LignesModifiees'], 'data' => $structuredData];
 
         }catch (Exception $e) {
             throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
@@ -217,11 +236,12 @@ class PlanningEvenementRepository extends ServiceEntityRepository
         }
     }
 
-    public function divideEvent(int $id, array $data): array
+    public function divideEvent(int $id, array $data, LoggerInterface $logger): array
     {
         try {
             $debutObj = new \DateTime()->setTimestamp((int)($data['DateCoupure'] / 1000));
 
+            $logger->debug('Dividing event with ID: ' . $id . ' at date: ' . $debutObj->format('Y-m-d\TH:i:s'));
             $conn = $this->getEntityManager()->getConnection();
             $sql = 'EXEC ps_PlanningEvenementDivide @IdEvenement = :IdEvenement, @DateCoupure = :DateCoupure';
             $params = [
@@ -230,7 +250,22 @@ class PlanningEvenementRepository extends ServiceEntityRepository
             ];
             $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
-            return $result[0];
+            $structuredData = [
+                'IdPlanningEvenement' => (int)$result[0]['IdPlanningEvenement'],
+                'DebutPlanningEvenement' => (int)$result[0]['DebutPlanningEvenement'],
+                'FinPlanningEvenement' => (int)$result[0]['FinPlanningEvenement'],
+                'AnnotationPlanningEvenement' => $result[0]['AnnotationPlanningEvenement'],
+                'Etiquette' => [
+                    'IdPlanningEtiquette' => $result[0]['IdPlanningEtiquette'] ?? null,
+                    'LibelleLongPlanningEtiquette' => $result[0]['LibelleLongPlanningEtiquette'],
+                    'LibelleCourtPlanningEtiquette' => $result[0]['LibelleCourtPlanningEtiquette']
+                ],
+                'IdPlanningRessource' => (int)$result[0]['IdPlanningRessource'],
+                'IdEmploye' => (int)$result[0]['IdEmployee'],
+                'PlanningEvenementPriorite' => (int)$result[0]['PlanningEvenementPriorite']
+            ];
+
+            return $structuredData;
         } catch (Exception $e) {
             throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
         }
