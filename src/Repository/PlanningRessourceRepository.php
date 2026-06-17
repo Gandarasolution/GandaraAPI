@@ -17,13 +17,41 @@ class PlanningRessourceRepository extends ServiceEntityRepository
         parent::__construct($registry, Planningressource::class);
     }
 
-    public function getRessource(mixed $query, mixed $limit, mixed $types)
+
+    public function getRessource($id){
+        try {
+            $conn = $this->getEntityManager()->getConnection();
+            $sql = 'EXEC ps_PlanningRessourceSelect @ID = :id';
+            $params = ['id' => $id];
+            $data = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+            $structuredData = [];
+            foreach($data as $row) {
+                $structuredData[] = [
+                    'IdPlanningRessource' => $row['IdPlanningRessource'],
+                    'LibellePlanningRessource' => $row['LibellePlanningRessource'],
+                    'Type' => $row['Type'],
+                    'IdImage' => $row['IdImage'],
+                    'Actif' => (int)$row['Actif'] === 1,
+                    'CouleurFondPlanningRessource' => $row['CouleurFondPlanningRessource'],
+                    'CouleurBordurePlanningRessource' => $row['CouleurBordurePlanningRessource'],
+                    'CouleurTextePlanningRessource' => $row['CouleurTextePlanningRessource'],
+                    'CodePlanningRessource' => $row['CodePlanningRessource']
+                ];
+            }
+
+            return $structuredData;
+        }catch (Exception $e) {
+            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
+        }
+    }
+    public function getRessources(mixed $query, mixed $limit, mixed $types)
     {
         try {
             $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningRessourceSelectSearch @Query = :Query, @Limit = :limit, @Types = :types';
+            $sql = 'EXEC ps_PlanningRessourceSelectSearch @Query = :query, @Limit = :limit, @Types = :types';
             $params = [
-                'Query' => $query,
+                'query' => $query,
                 'limit' => $limit,
                 'types' => $types
             ];

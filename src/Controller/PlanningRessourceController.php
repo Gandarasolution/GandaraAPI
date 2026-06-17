@@ -2,7 +2,9 @@
 
 namespace App\Controller;
 
+use App\Entity\Session;
 use App\Repository\PlanningRessourceRepository;
+use App\Service\MercureNotificationService;
 use Monolog\Logger;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -10,6 +12,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Nelmio\ApiDocBundle\Annotation\Model;
 use OpenApi\Attributes as OA;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 #[Route("/api/ressources")]
 #[OA\Tag(name: 'Ressources')]
@@ -17,11 +20,13 @@ class PlanningRessourceController extends abstractController
 {
 
     public function __construct(
+        private MercureNotificationService $notifier,
         private PlanningRessourceRepository $planningRessourceRepository,
     )
     {
 
     }
+
 
     ///api/ressource/search?q=q&types=type1,type2&limit=20
     #[Route('/search', name: 'app_planning_ressource_search', methods: ['GET'])]
@@ -35,7 +40,7 @@ class PlanningRessourceController extends abstractController
             $limit = $request->query->get('limit', 20);
             $type = $request->query->get('types', '');
 
-            $result = $this->planningRessourceRepository->getRessource($query, $limit, $type);
+            $result = $this->planningRessourceRepository->getRessources($query, $limit, $type);
 
             return $this->json(['error' => 0, 'data' => $result]);
         }catch (\Exception $e) {
@@ -201,6 +206,23 @@ class PlanningRessourceController extends abstractController
         }
     }
 
+    #[Route('/{id}', name: 'app_planning_ressource_get', methods: ['GET'])]
+    #[OA\Parameter(name: 'id', in: 'path', description: 'Id de la ressource voulu', schema: new OA\Schema(type: 'string', default: ''))]
+    #[OA\Response(response: 200, description: 'Ressource')]
+    public function getRessource(int $id){
+        try {
+
+            $result = $this->planningRessourceRepository->getRessource($id);
+
+            return $this->json(['error' => 0, 'data' => $result]);
+        }catch (\Exception $e) {
+            return $this->json([
+                'error' => 1,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
 
     #[Route('/manual-events/create', name: 'app_planning_ressource_manuel_create', methods: ['POST'])]
     #[OA\Response(response: 200, description: 'Ressource créée avec succès')]
@@ -254,14 +276,28 @@ class PlanningRessourceController extends abstractController
         )
     )]
     #[OA\Response(response: 200, description: 'Ressource mise à jour avec succès')]
-    public function updatePlaningRessource(int $id, Request $request, LoggerInterface $logger){
+    public function updatePlaningRessource(int $id, Request $request, LoggerInterface $logger, #[CurrentUser] Session $user){
         try {
+            $idPlanning = $request->headers->get('X-Planning-Id');
+
+            if (!$idPlanning) {
+                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            }
+
             $data = json_decode($request->getContent(), true);
 
             // Appel à la méthode de mise à jour dans le repository
             $result = $this->planningRessourceRepository->updateRessource($id, $data, $logger);
 
-            if ($result) {
+            if ($result['LignesModifiees'] > 0) {
+
+                $this->notifier->notifyPlanningChange(
+                    $idPlanning,
+                    'RESSOURCE_UPDATED',
+                    $user->getIdpersonnel(),
+                    $result['data']
+                );
+
                 return $this->json(['error' => 0, 'message' => 'Ressource mise à jour avec succès']);
             } else {
                 return $this->json(['error' => 1, 'message' => 'Erreur lors de la mise à jour de la ressource'], 500);

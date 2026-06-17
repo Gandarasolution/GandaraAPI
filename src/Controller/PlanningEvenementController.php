@@ -6,6 +6,7 @@ use App\Repository\PlanningEvenementRepository;
 use App\Repository\PlanningRessourceRepository;
 use App\Service\MercureNotificationService;
 use App\Entity\Session;
+use Doctrine\DBAL\Exception;
 use Psr\Log\LoggerInterface;
 use \Symfony\Component\HttpFoundation\Request;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -62,10 +63,10 @@ class PlanningEvenementController extends AbstractController
     #[OA\Parameter(name: 'id', in: 'path', description: 'Identifiant numérique de l\'événement', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Détails de l\'événement')]
     #[OA\Response(response: 404, description: 'Événement non trouvé')]
-    public function show(int $id): JsonResponse
+    public function show(int $id, LoggerInterface $logger): JsonResponse
     {
         try{
-            $result = $this->planningEvenementRepository->findEventById($id);
+            $result = $this->planningEvenementRepository->findEventById($id, $logger);
             if (!$result) {
                 return $this->json(['error' => 1, 'message' => 'Événement non trouvé'], 404);
             }
@@ -499,6 +500,7 @@ class PlanningEvenementController extends AbstractController
      *
      * @param Request $request
      * @return JsonResponse JSON avec le résultat de la répétition: { "error": 0, "data": {...} }
+     * @throws Exception
      */
     #[Route('/repeat', name: 'api_evenement_repeat', methods: ['POST'])]
     #[OA\Tag(name: 'Opérations complexes événement')]
@@ -508,9 +510,15 @@ class PlanningEvenementController extends AbstractController
         content: new OA\JsonContent(type: 'object')
     )]
     #[OA\Response(response: 201, description: 'Répétition effectuée avec succès')]
-    public function repeatEvent(Request $request): JsonResponse
+    public function repeatEvent(Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
         try {
+            $idPlanning = $request->headers->get('X-Planning-Id');
+
+            if (!$idPlanning) {
+                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            }
+
             $data = $request->toArray();
 
             if (!isset($data['Date']) || !is_array($data['Date'])) {
@@ -520,7 +528,14 @@ class PlanningEvenementController extends AbstractController
 
             $result = $this->planningEvenementRepository->repeatEvent($data);
 
-            return $this->json(['error' => 0, 'data' => $result], 201);
+            $this->notifier->notifyPlanningChange(
+                $idPlanning,
+                'APPOINTMENT_REPEATED',
+                $user->getIdPersonnel(),
+                $result['data']
+            );
+
+            return $this->json(['error' => 0, 'data' => $result['ids']], 201);
 
         } catch (\Exception $e) {
             return $this->json(['error' => 1, 'message' => 'Erreur lors de la répétition de l\'événement: ' . $e->getMessage()], 500);

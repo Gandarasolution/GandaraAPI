@@ -22,6 +22,11 @@ class PlanningEvenementRepository extends ServiceEntityRepository
 
     private function structuredData(array $data): array
     {
+
+        if (isset($data['IdPlanningEvenement'])) {
+            $data = [$data];
+        }
+        
         $appointments = [];
         $ressources = [];
         foreach($data as $row){
@@ -95,7 +100,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
         }
     }
 
-    public function findEventById(int $id): array
+    public function findEventById(int $id, LoggerInterface $logger): array
     {
         try {
             $conn = $this->getEntityManager()->getConnection();
@@ -108,6 +113,8 @@ class PlanningEvenementRepository extends ServiceEntityRepository
             if (!$result) {
                 return [];
             }
+
+            $logger->debug('Event found: ' . json_encode($result));
 
             return $this->structuredData($result);
         }catch (Exception $e) {
@@ -280,6 +287,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
 
         try {
             $createdIds = [];
+            $results = [];
             $idEmploye = $data['IdEmploye'];
             $idRessource = $data['IdPlanningRessource'];
             $annotation = $data['AnnotationPlanningEvenement'] ?? null;
@@ -299,11 +307,13 @@ class PlanningEvenementRepository extends ServiceEntityRepository
                     'AnnotationPlanningEvenement' => $annotation,
                     'IdPlanningRessource' => $idRessource
                 ];
-                $id = $conn->executeQuery($sql, $params)->fetchAllAssociative()[0]['IdPlanningEvenement'];
+                $result = $conn->executeQuery($sql, $params)->fetchAllAssociative()[0];
+                $id = $result['IdPlanningEvenement'];
                 $createdIds[] = $id;
+                $results[] = $result;
             }
             $conn->commit();
-            return $createdIds;
+            return ['ids' => $createdIds, 'data' => $this->structuredData($results)];
         }catch (\Exception $e) {
             $conn->rollBack();
             throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());

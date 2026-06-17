@@ -11,7 +11,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Nelmio\ApiDocBundle\Annotation\Model;
 use OpenApi\Attributes as OA;
 
-#[Route('/api/poles')]
+#[Route('/api/pole-activites')]
 #[OA\Tag(name: 'Pôles d\'activité')]
 class PoleActiviteController extends AbstractController
 {
@@ -26,7 +26,8 @@ class PoleActiviteController extends AbstractController
     #[Route('', name: 'pole_activite_list', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Liste de tous les pôles d\'activité')]
     public function list(){
-        return $this->poleActiviteRepository->findAll();
+        $result = $this->poleActiviteRepository->findAll();
+        return $this->json(['error' => 0, 'data' => $result]);
     }
 
     // POST /api/ poles- Créer un pôle

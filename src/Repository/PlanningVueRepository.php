@@ -72,6 +72,7 @@ class PlanningVueRepository extends ServiceEntityRepository
 
             $result = $conn->executeQuery($sql, $params)->fetchAllAssociative()[0];
 
+
             if ((int)$result['LignesInserees'] === 0){
                 throw new \Exception('Aucun jour non travaillé n\'a été ajouté. Veuillez vérifier les données fournies.');
             }
@@ -94,13 +95,13 @@ class PlanningVueRepository extends ServiceEntityRepository
                 'IdDate' => $idDate,
             ];
 
-            $result = $conn->executeQuery($sql, $params)->fetchAllAssociative()[0]['LignesSupprimee'];
+            $result = $conn->executeQuery($sql, $params)->fetchAllAssociative()[0];
 
-            if ($result === 0){
+            if (['LignesSupprimee'] === 0){
                 throw new \Exception('Aucun jour non travaillé n\'a été supprimé. Veuillez vérifier les données fournies.');
             }
 
-            return ['message' => 'Jour non travaillé ajouté avec succès.', 'LignesSupprimee' => $result];
+            return ['message' => 'Jour non travaillé ajouté avec succès.', 'LignesSupprimee' => $result, 'date' => $result['DatePlanningJourNontravaille']];
         } catch (Exception $e) {
             throw new \Exception('Erreur lors de la suppression d\'un jour non travaillé:: ' . $e->getMessage());
         }

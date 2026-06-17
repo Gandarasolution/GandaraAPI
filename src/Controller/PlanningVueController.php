@@ -2,7 +2,9 @@
 
 namespace App\Controller;
 
+use App\Entity\Session;
 use App\Repository\PlanningVueRepository;
+use App\Service\MercureNotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -11,6 +13,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Nelmio\ApiDocBundle\Annotation\Model;
 use OpenApi\Attributes as OA;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 #[Route('/api/planning')]
 #[OA\Tag(name: 'Configurations/Vues')]
@@ -19,6 +22,7 @@ class PlanningVueController extends AbstractController
 
     public function __construct(
         private readonly LoggerInterface $logger,
+        private MercureNotificationService $notifier,
         private EntityManagerInterface $entityManager,
         private PlanningVueRepository $planningVueRepository,
     )
@@ -51,12 +55,25 @@ class PlanningVueController extends AbstractController
 
     // POST /api/planning/{idPlanning}/non-working-dates Ajout d'un jour non travaillé
     #[Route('/{idPlanning}/non-working-dates', name: 'ap i_non-working-dates', methods: ['POST'])]
-    public function addNonWorkingDates(Request $request, int $idPlanning, LoggerInterface $logger): JsonResponse
+    public function addNonWorkingDates(Request $request, int $idPlanning, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
         try {
+            $idPlanning = $request->headers->get('X-Planning-Id');
+
+            if (!$idPlanning) {
+                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            }
+
             $data = $request->toArray();
 
             $result = $this->planningVueRepository->createNonWorkingDates($data, $idPlanning, $logger);
+
+            $this->notifier->notifyPlanningChange(
+                $idPlanning,
+                'ADD_NON_WORKING_DAY',
+                $user->getIdpersonnel(),
+                ['date' => $data['nonWorkingDate']]
+            );
 
             return $this->json(['error' => 0, 'message' => 'Jours non travaillés ajoutés avec succès.', 'data' => $result]);
         } catch (\Exception $e) {
@@ -66,11 +83,23 @@ class PlanningVueController extends AbstractController
 
 
     #[Route('/{idDate}/non-working-dates', name: 'api_non-working-dates', methods: ['DELETE'])]
-    public function deleteNonWorkingDates(Request $request, int $idDate): JsonResponse
+    public function deleteNonWorkingDates(Request $request, int $idDate, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
         try {
+            $idPlanning = $request->headers->get('X-Planning-Id');
+
+            if (!$idPlanning) {
+                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            }
 
             $result = $this->planningVueRepository->deleteNonWorkingDates($idDate);
+
+            $this->notifier->notifyPlanningChange(
+                $idPlanning,
+                'DELETE_NON_WORKING_DAY',
+                $user->getIdpersonnel(),
+                ['id' => $result['DatePlanningJourNontravaille']]
+            );
 
             return $this->json(['error' => 0, 'message' => 'Jours non travaillé supprimé avec succès.']);
         } catch (\Exception $e) {
