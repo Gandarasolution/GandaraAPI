@@ -3,21 +3,25 @@
 namespace App\Repository;
 
 use App\Entity\Planningevenement;
+use App\Entity\Session;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\Exception;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\Lock\LockFactory;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
+use Symfony\Contracts\Cache\CacheInterface;
 
 /**
  * @extends ServiceEntityRepository<Planningevenement>
  */
 class PlanningEvenementRepository extends ServiceEntityRepository
 {
-
-    public function __construct(ManagerRegistry $registry)
+    private CacheInterface $cache;
+    public function __construct(ManagerRegistry $registry, CacheInterface $cache)
     {
         parent::__construct($registry, Planningevenement::class);
-
+        $this->cache = $cache;
     }
 
     private function structuredData(array $data): array
@@ -26,12 +30,25 @@ class PlanningEvenementRepository extends ServiceEntityRepository
         if (isset($data['IdPlanningEvenement'])) {
             $data = [$data];
         }
-        
+
         $appointments = [];
         $ressources = [];
         foreach($data as $row){
+            $idRdv = (int)$row['IdPlanningEvenement'];
+//            $lock = $this->lockFactory->createLock('edit_rdv_' . $idRdv);
+//
+//            if (!$lock->acquire(false)) {
+//                // Quelqu'un a déjà le verrou !
+//                $isLocked = true;
+//            } else {
+//                // Personne ne l'avait. On le relâche immédiatement pour ne pas le bloquer nous-mêmes.
+//                $isLocked = false;
+//                $lock->release();
+//            }
+
             $appointments[]= [
-                'IdPlanningEvenement' => (int)$row['IdPlanningEvenement'],
+                'IdPlanningEvenement' => $idRdv,
+                'isLocked' => false,//$isLocked,
                 'DebutPlanningEvenement' => (int)$row['DebutPlanningEvenement'],
                 'FinPlanningEvenement' => (int)$row['FinPlanningEvenement'],
                 'AnnotationPlanningEvenement' => $row['AnnotationPlanningEvenement'],

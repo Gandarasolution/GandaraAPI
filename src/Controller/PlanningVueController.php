@@ -53,9 +53,36 @@ class PlanningVueController extends AbstractController
         }
     }
 
+
+    #[Route('/non-working-dates', name: 'api_non_working_dates', methods: ['GET'])]
+    #[OA\Response(response: 200, description: 'Liste des jours non travaillé du planning')]
+    public function getNonWorkingDates(Request $request): JsonResponse
+    {
+        try {
+            $idPlanning = $request->headers->get('X-Planning-Id');
+
+            if ($idPlanning !== null && !is_numeric($idPlanning) || $idPlanning < 0) {
+                $this->logger->debug('Le paramètre idPlanning doit être un entier positif. Valeur reçue: {idPlanning}', [
+                    'idPlanning' => $idPlanning,
+                ]);
+                return $this->json(['error' => 1, 'message' => 'Le paramètre idPlanning doit être un entier positif.'], 400);
+            }
+
+            $result = $this->planningVueRepository->getNonWorkingDates($idPlanning);
+
+            return $this->json(['error' => 0, 'data' => $result]);
+        } catch (\Exception $e) {
+            $this->logger->error('Erreur lors de la récupération des jours non travaillés pour le planning {idPlanning}: {message}', [
+                'idPlanning' => $idPlanning,
+                'message' => $e->getMessage(),
+            ]);
+            return $this->json(['error' => 1, 'message' => 'Une erreur est survenue lors de la récupération des jours non travaillés: ' . $e->getMessage()], 500);
+        }
+    }
+
     // POST /api/planning/{idPlanning}/non-working-dates Ajout d'un jour non travaillé
-    #[Route('/{idPlanning}/non-working-dates', name: 'ap i_non-working-dates', methods: ['POST'])]
-    public function addNonWorkingDates(Request $request, int $idPlanning, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
+    #[Route('/non-working-dates', name: 'api_add_non-working-dates', methods: ['POST'])]
+    public function addNonWorkingDates(Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
         try {
             $idPlanning = $request->headers->get('X-Planning-Id');
@@ -72,7 +99,7 @@ class PlanningVueController extends AbstractController
                 $idPlanning,
                 'ADD_NON_WORKING_DAY',
                 $user->getIdpersonnel(),
-                ['date' => $data['nonWorkingDate']]
+                ['date' => $data['nonWorkingDate'], 'id' => $result]
             );
 
             return $this->json(['error' => 0, 'message' => 'Jours non travaillés ajoutés avec succès.', 'data' => $result]);
@@ -98,7 +125,7 @@ class PlanningVueController extends AbstractController
                 $idPlanning,
                 'DELETE_NON_WORKING_DAY',
                 $user->getIdpersonnel(),
-                ['id' => $result['DatePlanningJourNontravaille']]
+                ['date' => $result['date']]
             );
 
             return $this->json(['error' => 0, 'message' => 'Jours non travaillé supprimé avec succès.']);

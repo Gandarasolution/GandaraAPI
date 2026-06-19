@@ -94,7 +94,7 @@ class JwtEventSubscriber implements EventSubscriberInterface
             $event->setData($data);
         }catch (\Exception $e) {
 
-            $this->logger->debug("Erreur lors de la récupération des informations utilisateur après authentification", ['exception' => $e->getMessage()]);
+            $this->logger->debug('Erreur lors de la récupération des informations utilisateur après authentification, exception: ' . $e->getMessage());
             $event->setData([
                 'error' => 1,
                 'message' => 'Une erreur est survenue lors de la récupération des informations utilisateur.'

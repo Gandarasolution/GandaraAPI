@@ -45,15 +45,28 @@ class PlanningVueRepository extends ServiceEntityRepository
                 ];
             }
 
+
+
+            return ['Configs' => $structuredData];
+        } catch (Exception $e) {
+            throw new \Exception('Erreur lors de la récupération des configurations pour l\'utilisateur ' . $idSession . ': ' . $e->getMessage());
+        }
+    }
+
+    public function getNonWorkingDates(int $idPlanning){
+
+        try {
+            $conn = $this->getEntityManager()->getConnection();
+
             $sql = 'EXEC ps_PlanningJourNonTravailleSelect @IdPlanning = :IdPlanning';
             $params = [
                 'IdPlanning' => $idPlanning,
             ];
             $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
-            return ['Configs' => $structuredData, 'JoursNonTravailles' => $result];
-        } catch (Exception $e) {
-            throw new \Exception('Erreur lors de la récupération des configurations pour l\'utilisateur ' . $idSession . ': ' . $e->getMessage());
+            return $result;
+        }catch (Exception $e){
+            throw new \Exception('Erreur lors de la récupération des jours non travaillés pour le planning ' . $idPlanning . ': ' . $e->getMessage());
         }
     }
 

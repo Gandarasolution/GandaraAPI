@@ -7,6 +7,7 @@ use App\Repository\PlanningRessourceRepository;
 use App\Service\MercureNotificationService;
 use App\Entity\Session;
 use Doctrine\DBAL\Exception;
+use Psr\Cache\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use \Symfony\Component\HttpFoundation\Request;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -15,6 +16,8 @@ use Symfony\Component\Routing\Attribute\Route;
 use Nelmio\ApiDocBundle\Annotation\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
+use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 
 #[Route('/api/event')]
 #[OA\Tag(name: 'Planning Événements')]
@@ -25,6 +28,7 @@ class PlanningEvenementController extends AbstractController
         private MercureNotificationService $notifier,
         private PlanningEvenementRepository $planningEvenementRepository,
         private PlanningRessourceRepository $planningRessourceRepository,
+        private CacheInterface $cache
         //private EntityManagerInterface $entityManager,
     ){}
 
@@ -57,19 +61,59 @@ class PlanningEvenementController extends AbstractController
      *
      * @param int $id Identifiant de l'événement
      * @return JsonResponse JSON avec les détails de l'événement: { "error": 0, "data": {...} } ou erreur
+     * @throws InvalidArgumentException
      */
     //GET /api/event/:id- Récupérer un RDV
     #[Route('/{id}', name: 'api_evenements_show', methods: ['GET'])]
     #[OA\Parameter(name: 'id', in: 'path', description: 'Identifiant numérique de l\'événement', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Détails de l\'événement')]
     #[OA\Response(response: 404, description: 'Événement non trouvé')]
-    public function show(int $id, LoggerInterface $logger): JsonResponse
+    public function show(int $id, LoggerInterface $logger, #[CurrentUser] Session $user, Request $request): JsonResponse
     {
+        $cacheKey = 'edit_rdv_' . $id;
+        $idUser = $user->getIdpersonnel();
+
         try{
+
+            $lockOwnerId = $this->cache->get($cacheKey, function (ItemInterface $item) use ($idUser) {
+                // Si la clé n'existait pas (RDV libre), ce bloc s'exécute.
+                // On fixe la durée de vie du verrou (ex: 2 minutes)
+                $item->expiresAfter(120);
+
+                // On retourne l'ID de l'utilisateur actuel.
+                // C'est cette valeur qui sera sauvegardée dans Redis !
+                return $idUser;
+            });
+
+            if ($lockOwnerId !== $idUser) {
+                // Le verrou appartient à quelqu'un d'autre ! (ex: $lockOwnerId = 45, et toi = 12)
+                return $this->json([
+                    'error' => 409,
+                    'isLocked' => true,
+                    'message' => 'Ce rendez-vous est actuellement en cours d\'édition.'
+                ]);
+            }
+
+
+            $idPlanning = $request->headers->get('X-Planning-Id');
+
+            if (!$idPlanning) {
+                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            }
+
             $result = $this->planningEvenementRepository->findEventById($id, $logger);
             if (!$result) {
                 return $this->json(['error' => 1, 'message' => 'Événement non trouvé'], 404);
             }
+
+            $this->notifier->notifyPlanningChange(
+                $idPlanning,
+                'APPOINTMENT_LOCKED',
+                $idUser,
+                ['IdPlanningEvenement' => $id]
+            );
+
+
             return $this->json(['error' => 0, 'data' => $result]);
 
         }catch(\Exception $e){
@@ -190,6 +234,7 @@ class PlanningEvenementController extends AbstractController
      * @param int $id Identifiant de l'événement
      * @param Request $request
      * @return JsonResponse JSON indiquant le succès de l'opération: { "error": 0, "message": "..." } ou erreur
+     * @throws InvalidArgumentException
      */
     //PUT /api/event/:id- Modifier un RDV
     #[Route('/{id}', name: 'api_evenements_update', methods: ['PUT'])]
@@ -224,6 +269,12 @@ class PlanningEvenementController extends AbstractController
                  // Pas d'erreur technique, mais l'ID n'existait pas
                  return $this->json(['error' => 1, 'message' => 'Événement introuvable.'], 404);
              }
+
+             $cacheKey = 'edit_rdv_' . $id;
+             // La fonction delete() supprime instantanément la clé de Redis
+             $this->cache->delete($cacheKey);
+
+             $result['data']['isLocked'] = false;
 
              $this->notifier->notifyPlanningChange(
                  $idPlanning,
@@ -540,5 +591,38 @@ class PlanningEvenementController extends AbstractController
         } catch (\Exception $e) {
             return $this->json(['error' => 1, 'message' => 'Erreur lors de la répétition de l\'événement: ' . $e->getMessage()], 500);
         }
+    }
+
+
+    /**
+     * @throws InvalidArgumentException
+     */
+    #[Route('/{id}/unlock', methods: ['POST'])]
+    #[OA\Response(response: 200, description: 'Rendez-vous déverrouillé avec succès')]
+    #[OA\Response(response: 500, description: 'Erreur lors du déverrouillage du rendez-vous')]
+    public function unlockRdv(int $id, #[CurrentUser] ?Session $user, Request $request): JsonResponse
+    {
+        try {
+            $idPlanning = $request->headers->get('X-Planning-Id');
+
+            if (!$idPlanning) {
+                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            }
+
+            $cacheKey = 'edit_rdv_' . $id;
+            // La fonction delete() supprime instantanément la clé de Redis
+            $this->cache->delete($cacheKey);
+
+            $this->notifier->notifyPlanningChange(
+                $idPlanning,
+                'APPOINTMENT_UNLOCKED',
+                $user->getIdPersonnel(),
+                ['IdPlanningEvenement' => $id]
+            );
+
+        } catch (\Exception $e) {
+            return $this->json(['error' => 1, 'message' => 'Erreur lors du déverrouillage du rendez-vous: ' . $e->getMessage()], 500);
+        }
+        return $this->json(['success' => true]);
     }
 }

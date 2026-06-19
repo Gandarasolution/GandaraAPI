@@ -44,6 +44,14 @@ services:
       - mercure_data:/data
       - mercure_config:/config
 ###< symfony/mercure-bundle ###
+  redis:
+    image: redis:alpine
+    container_name: mon-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
 
 volumes:
 ###> doctrine/doctrine-bundle ###
@@ -54,3 +62,4 @@ volumes:
   mercure_data:
   mercure_config:
 ###< symfony/mercure-bundle ###
+  redis_data:
