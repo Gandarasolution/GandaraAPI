@@ -8,6 +8,7 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\Exception;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Contracts\Cache\CacheInterface;
@@ -17,11 +18,9 @@ use Symfony\Contracts\Cache\CacheInterface;
  */
 class PlanningEvenementRepository extends ServiceEntityRepository
 {
-    private CacheInterface $cache;
-    public function __construct(ManagerRegistry $registry, CacheInterface $cache)
+    public function __construct(ManagerRegistry $registry, private CacheInterface $cache, private Security $security,)
     {
         parent::__construct($registry, Planningevenement::class);
-        $this->cache = $cache;
     }
 
     private function structuredData(array $data): array
@@ -33,22 +32,31 @@ class PlanningEvenementRepository extends ServiceEntityRepository
 
         $appointments = [];
         $ressources = [];
+
+        $currentUser = $this->security->getUser();
+        $currentUserId = $currentUser ? $currentUser->getUserIdentifier() : null;
+
         foreach($data as $row){
             $idRdv = (int)$row['IdPlanningEvenement'];
-//            $lock = $this->lockFactory->createLock('edit_rdv_' . $idRdv);
-//
-//            if (!$lock->acquire(false)) {
-//                // Quelqu'un a déjà le verrou !
-//                $isLocked = true;
-//            } else {
-//                // Personne ne l'avait. On le relâche immédiatement pour ne pas le bloquer nous-mêmes.
-//                $isLocked = false;
-//                $lock->release();
-//            }
+            $isLocked = false;
+            $cacheKey = 'edit_rdv_' . $idRdv;
+
+            $cacheItem = $this->cache->getItem($cacheKey);
+
+            if ($cacheItem->isHit()) {
+                // Le RDV est dans le cache Redis !
+                $ownerId = $cacheItem->get();
+
+                // Est-ce que le propriétaire du verrou est différent de moi ?
+                // (Si ownerId === currentUserId, c'est mon verrou, donc ce n'est pas locked pour moi)
+                if ($ownerId !== $currentUserId) {
+                    $isLocked = true;
+                }
+            }
 
             $appointments[]= [
                 'IdPlanningEvenement' => $idRdv,
-                'isLocked' => false,//$isLocked,
+                'isLocked' => $isLocked,
                 'DebutPlanningEvenement' => (int)$row['DebutPlanningEvenement'],
                 'FinPlanningEvenement' => (int)$row['FinPlanningEvenement'],
                 'AnnotationPlanningEvenement' => $row['AnnotationPlanningEvenement'],

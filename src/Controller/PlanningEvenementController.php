@@ -94,16 +94,10 @@ class PlanningEvenementController extends AbstractController
                 ]);
             }
 
-
             $idPlanning = $request->headers->get('X-Planning-Id');
 
             if (!$idPlanning) {
                 return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
-            }
-
-            $result = $this->planningEvenementRepository->findEventById($id, $logger);
-            if (!$result) {
-                return $this->json(['error' => 1, 'message' => 'Événement non trouvé'], 404);
             }
 
             $this->notifier->notifyPlanningChange(
@@ -112,6 +106,18 @@ class PlanningEvenementController extends AbstractController
                 $idUser,
                 ['IdPlanningEvenement' => $id]
             );
+
+            $result = $this->planningEvenementRepository->findEventById($id, $logger);
+            if (!$result) {
+                $this->notifier->notifyPlanningChange(
+                    $idPlanning,
+                    'APPOINTMENT_UNLOCKED',
+                    $idUser,
+                    ['IdPlanningEvenement' => $id]
+                );
+                return $this->json(['error' => 1, 'message' => 'Événement non trouvé'], 404);
+            }
+
 
 
             return $this->json(['error' => 0, 'data' => $result]);
@@ -247,7 +253,25 @@ class PlanningEvenementController extends AbstractController
     #[OA\Response(response: 201, description: 'Événement mis à jour avec succès')]
     public function update(int $id, Request $request, #[CurrentUser] ?Session $user, LoggerInterface $logger): JsonResponse
      {
+         $cacheKey = 'edit_rdv_' . $id;
+         $idUser = $user->getIdpersonnel();
+
          try {
+             $cacheItem = $this->cache->getItem($cacheKey);
+
+             if ($cacheItem->isHit()) {
+                 $ownerId = $cacheItem->get();
+
+                 if($ownerId !== $idUser) {
+                     return $this->json([
+                         'error' => 409,
+                         'isLocked' => true,
+                         'message' => 'Ce rendez-vous est actuellement en cours d\'édition.'
+                     ]);
+                 }
+             }
+
+
              $idPlanning = $request->headers->get('X-Planning-Id');
 
              if (!$idPlanning) {
@@ -600,7 +624,7 @@ class PlanningEvenementController extends AbstractController
     #[Route('/{id}/unlock', methods: ['POST'])]
     #[OA\Response(response: 200, description: 'Rendez-vous déverrouillé avec succès')]
     #[OA\Response(response: 500, description: 'Erreur lors du déverrouillage du rendez-vous')]
-    public function unlockRdv(int $id, #[CurrentUser] ?Session $user, Request $request): JsonResponse
+    public function unlockRdv(int $id, #[CurrentUser] Session $user, Request $request): JsonResponse
     {
         try {
             $idPlanning = $request->headers->get('X-Planning-Id');
@@ -625,4 +649,37 @@ class PlanningEvenementController extends AbstractController
         }
         return $this->json(['success' => true]);
     }
+
+
+    #[Route('/{id}/lock-quick', methods: ['POST'])]
+    public function quickLock(int $id, #[CurrentUser] Session $user, LoggerInterface $logger, Request $request): JsonResponse
+    {
+        $idPlanning = $request->headers->get('X-Planning-Id');
+
+        if (!$idPlanning) {
+            return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+        }
+
+        $cacheKey = 'edit_rdv_' . $id;
+        $currentUserId = $user->getIdPersonnel();
+
+        try {
+            $ownerId = $this->cache->get($cacheKey, function (ItemInterface $item) use ($currentUserId) {
+                // ⏱️ MICRO-VERROU : Expire dans 10 secondes !
+                // Largement suffisant pour un Drag & Drop. S'il abandonne, ça se libère très vite.
+                $item->expiresAfter(20);
+                return $currentUserId;
+            });
+        } catch (InvalidArgumentException $e) {
+            $logger->debug('Erreur lors de la récupération du verrou pour l\'événement ' . $id, ['exception' => $e]);
+            return $this->json(['error' => 1, 'message' => 'Erreur'], 500);
+        }
+
+        if ($ownerId !== $currentUserId) {
+            return $this->json(['error' => 409, 'message' => 'Ce rendez-vous est actuellement en cours d\'édition.'], 409);
+        }
+
+        return $this->json(['error' => 0]);
+    }
+
 }
