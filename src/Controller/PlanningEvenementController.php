@@ -68,6 +68,7 @@ class PlanningEvenementController extends AbstractController
     #[OA\Parameter(name: 'id', in: 'path', description: 'Identifiant numérique de l\'événement', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Détails de l\'événement')]
     #[OA\Response(response: 404, description: 'Événement non trouvé')]
+    #[OA\Response(response: 409, description: 'Événement verrouillé par un autre utilisateur')]
     public function show(int $id, LoggerInterface $logger, #[CurrentUser] Session $user, Request $request): JsonResponse
     {
         $cacheKey = 'edit_rdv_' . $id;
@@ -286,6 +287,8 @@ class PlanningEvenementController extends AbstractController
                  $data['PlanningEvenementPriorite']= 0;
              }
 
+             $logger->debug('Appel de la mise à jour de l\'événement', ['payload' => $data]);
+
              $result = $this->planningEvenementRepository->updateEvent($id, $data);
 
              $logger->debug('Résultat de la mise à jour de l\'événement', ['result' => $result]);
@@ -485,6 +488,10 @@ class PlanningEvenementController extends AbstractController
             $logger->debug('Résultat de la mise à jour de la ressource via PS', ['result' => $result]);
             $returnData['ressources'] = $result['data'];
 
+            $cacheKey = 'edit_rdv_' . $id;
+            // La fonction delete() supprime instantanément la clé de Redis
+            $this->cache->delete($cacheKey);
+
             $this->notifier->notifyPlanningChange(
                 $idPlanning,
                 'APPOINTMENT_AND_RESSOURCE_UPDATED',
@@ -500,6 +507,8 @@ class PlanningEvenementController extends AbstractController
         } catch (\Exception $e) {
 
             return $this->json(['error' => 1, 'message' => 'Erreur lors de la mise à jour via PS: ' . $e->getMessage()], 500);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(['error' => 1, 'message' => 'Erreur de cache: ' . $e->getMessage()], 500);
         }
     }
 
@@ -548,8 +557,10 @@ class PlanningEvenementController extends AbstractController
                 $data['DateCoupure'] = (int) $data['DateCoupure'];
             }
 
-
             $result = $this->planningEvenementRepository->divideEvent($id, $data, $logger);
+
+            $cacheKey = 'edit_rdv_' . $id;
+            $this->cache->delete($cacheKey);
 
             $this->notifier->notifyPlanningChange(
                 $idPlanning,
@@ -566,8 +577,10 @@ class PlanningEvenementController extends AbstractController
 
         } catch (\Exception $e) {
             return $this->json(['error' => 1, 'message' => 'Erreur lors de la division de l\'événement: ' . $e->getMessage()], 500);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(['error' => 1, 'message' => 'Erreur de cache: ' . $e->getMessage()], 500);
         }
-     }
+    }
 
     /**
      * Répète un événement existant.
@@ -577,7 +590,7 @@ class PlanningEvenementController extends AbstractController
      * @return JsonResponse JSON avec le résultat de la répétition: { "error": 0, "data": {...} }
      * @throws Exception
      */
-    #[Route('/repeat', name: 'api_evenement_repeat', methods: ['POST'])]
+    #[Route('/repeat/{id}', name: 'api_evenement_repeat', methods: ['POST'])]
     #[OA\Tag(name: 'Opérations complexes événement')]
     #[OA\RequestBody(
         description: 'Paramètres logiques pour la répétition de l\'événement',
@@ -585,7 +598,7 @@ class PlanningEvenementController extends AbstractController
         content: new OA\JsonContent(type: 'object')
     )]
     #[OA\Response(response: 201, description: 'Répétition effectuée avec succès')]
-    public function repeatEvent(Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
+    public function repeatEvent(int $id, Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
         try {
             $idPlanning = $request->headers->get('X-Planning-Id');
@@ -603,17 +616,26 @@ class PlanningEvenementController extends AbstractController
 
             $result = $this->planningEvenementRepository->repeatEvent($data);
 
+            $cacheKey = 'edit_rdv_' . $id;
+            $this->cache->delete($cacheKey);
+
             $this->notifier->notifyPlanningChange(
                 $idPlanning,
                 'APPOINTMENT_REPEATED',
                 $user->getIdPersonnel(),
-                $result['data']
+                [
+                    'data' => $result['data'],
+                    'originalEventId' => $id
+                ]
+
             );
 
             return $this->json(['error' => 0, 'data' => $result['ids']], 201);
 
         } catch (\Exception $e) {
             return $this->json(['error' => 1, 'message' => 'Erreur lors de la répétition de l\'événement: ' . $e->getMessage()], 500);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(['error' => 1, 'message' => 'Erreur de cache: ' . $e->getMessage()], 500);
         }
     }
 
@@ -665,7 +687,6 @@ class PlanningEvenementController extends AbstractController
 
         try {
             $ownerId = $this->cache->get($cacheKey, function (ItemInterface $item) use ($currentUserId) {
-                // ⏱️ MICRO-VERROU : Expire dans 10 secondes !
                 // Largement suffisant pour un Drag & Drop. S'il abandonne, ça se libère très vite.
                 $item->expiresAfter(20);
                 return $currentUserId;
@@ -678,6 +699,13 @@ class PlanningEvenementController extends AbstractController
         if ($ownerId !== $currentUserId) {
             return $this->json(['error' => 409, 'message' => 'Ce rendez-vous est actuellement en cours d\'édition.'], 409);
         }
+
+        $this->notifier->notifyPlanningChange(
+            $idPlanning,
+            'APPOINTMENT_LOCKED',
+            $currentUserId,
+            ['IdPlanningEvenement' => $id]
+        );
 
         return $this->json(['error' => 0]);
     }

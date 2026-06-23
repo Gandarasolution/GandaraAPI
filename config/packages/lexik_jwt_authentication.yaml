@@ -14,7 +14,7 @@ lexik_jwt_authentication:
             name: BEARER
     set_cookies:
         BEARER:
-            lifetime: 3600
+            lifetime: 2592000
             samesite: none
             secure: true
             httpOnly: true
