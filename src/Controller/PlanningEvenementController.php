@@ -252,7 +252,7 @@ class PlanningEvenementController extends AbstractController
         content: new OA\JsonContent(type: 'object')
     )]
     #[OA\Response(response: 201, description: 'Événement mis à jour avec succès')]
-    public function update(int $id, Request $request, #[CurrentUser] ?Session $user, LoggerInterface $logger): JsonResponse
+    public function update(int $id, Request $request, #[CurrentUser] Session $user, LoggerInterface $logger): JsonResponse
      {
          $cacheKey = 'edit_rdv_' . $id;
          $idUser = $user->getIdpersonnel();

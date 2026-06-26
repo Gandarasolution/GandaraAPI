@@ -4,6 +4,7 @@ namespace App\Repository;
 
 use App\Entity\Session;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\Exception;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
 
@@ -70,4 +71,19 @@ class SecurityRepository extends ServiceEntityRepository
     }
 
 
+    public function getPermission(Session $user,LoggerInterface $logger){
+        $conn = $this->getEntityManager()->getConnection();
+        $sql = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id';
+
+        try {
+            $planningDroit = $conn->fetchAssociative($sql, [
+                'id' => $user->getIdpersonnel()
+            ]);
+        } catch (Exception $e) {
+            $logger->error($e->getMessage());
+        }
+
+        return $level = (int)$planningDroit['IdDroitNiveau'] ?: 21;
+
+    }
 }

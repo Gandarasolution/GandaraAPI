@@ -4,15 +4,18 @@ namespace App\Controller;
 
 use App\Entity\Session;
 use App\Repository\PlanningRessourceRepository;
+use App\Repository\SecurityRepository;
 use App\Service\MercureNotificationService;
 use Monolog\Logger;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Nelmio\ApiDocBundle\Annotation\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route("/api/ressources")]
 #[OA\Tag(name: 'Ressources')]
@@ -22,9 +25,9 @@ class PlanningRessourceController extends abstractController
     public function __construct(
         private MercureNotificationService $notifier,
         private PlanningRessourceRepository $planningRessourceRepository,
+        private SecurityRepository $securityRepository
     )
     {
-
     }
 
 
@@ -61,8 +64,17 @@ class PlanningRessourceController extends abstractController
     #[OA\Parameter(name: 'code', in: 'query', description: 'Filtre sur les codes d\'identification', schema: new OA\Schema(type: 'string', default: ''))]
     #[OA\Parameter(name: 'etat', in: 'query', description: 'Filtre sur les état', schema: new OA\Schema(type: 'string', default: ''))]
     #[OA\Response(response: 200, description: 'Liste des projets')]
-    public function getProjet(Request $request, LoggerInterface $logger)
+    public function getProjet(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user)
     {
+
+        $droit = $this->securityRepository->getPermission($user, $logger);
+        if (!in_array($droit, [22, 23])) {
+            return $this->json([
+                'error' => 1,
+                'message' => 'Vous n\'avez pas la permission de voir les projets.'
+            ], 403);
+        }
+
         try {
             $limit = $request->query->get('limit', 20);
             $pageNumber = $request->query->get('pageNum', 1);
@@ -112,8 +124,17 @@ class PlanningRessourceController extends abstractController
     #[OA\Parameter(name: 'q', in: 'query', description: '', schema: new OA\Schema(type: 'string', default: ''))]
     #[OA\Parameter(name: 'code', in: 'query', description: 'Filtre sur les codes d\'identification', schema: new OA\Schema(type: 'string', default: ''))]
     #[OA\Response(response: 200, description: 'Liste des rubrique de paie')]
-    public function getRubriquePaie(Request $request, LoggerInterface $logger)
+    public function getRubriquePaie(Request $request, LoggerInterface $logger,  #[CurrentUser] Session $user)
     {
+
+        $droit = $this->securityRepository->getPermission($user, $logger);
+        if ($droit != 23) {
+            return $this->json([
+                'error' => 1,
+                'message' => 'Vous n\'avez pas la permission de voir les rubrique de paie.'
+            ], 403);
+        }
+
         try {
             $limit = $request->query->get('limit', 20);
             $pageNumber = $request->query->get('pageNum', 1);
@@ -152,7 +173,16 @@ class PlanningRessourceController extends abstractController
     #[OA\Parameter(name: 'q', in: 'query', description: '', schema: new OA\Schema(type: 'string', default: ''))]
     #[OA\Parameter(name: 'code', in: 'query', description: 'Filtre sur les codes d\'identification', schema: new OA\Schema(type: 'string', default: ''))]
     #[OA\Response(response: 200, description: 'Liste des rubrique manuel')]
-    public function getRubriqueManuel(Request $request, LoggerInterface $logger){
+    public function getRubriqueManuel(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user){
+
+        $droit = $this->securityRepository->getPermission($user, $logger);
+        if ($droit != 23) {
+            return $this->json([
+                'error' => 1,
+                'message' => 'Vous n\'avez pas la permission de voir les rubrique manuel.'
+            ], 403);
+        }
+
         try {
             $limit = $request->query->get('limit', 20);
             $pageNumber = $request->query->get('pageNum', 1);
@@ -209,6 +239,7 @@ class PlanningRessourceController extends abstractController
     #[Route('/{id}', name: 'app_planning_ressource_get', methods: ['GET'])]
     #[OA\Parameter(name: 'id', in: 'path', description: 'Id de la ressource voulu', schema: new OA\Schema(type: 'string', default: ''))]
     #[OA\Response(response: 200, description: 'Ressource')]
+    #[IsGranted('RESOURCE_VIEW', subject: 'resource')]
     public function getRessource(int $id){
         try {
 
@@ -238,7 +269,16 @@ class PlanningRessourceController extends abstractController
             type: 'object'
         )
     )]
-    public function createPlaningRessource(Request $request){
+    public function createPlaningRessource(Request $request, #[CurrentUser] Session $user, LoggerInterface $logger): JsonResponse
+    {
+        $droit = $this->securityRepository->getPermission($user, $logger);
+        if ($droit != 23) {
+            return $this->json([
+                'error' => 1,
+                'message' => 'Vous n\'avez pas la permission de créer cette ressource.'
+            ], 403);
+        }
+
         try {
             $data = json_decode($request->getContent(), true);
             // Validation des données
@@ -276,6 +316,7 @@ class PlanningRessourceController extends abstractController
         )
     )]
     #[OA\Response(response: 200, description: 'Ressource mise à jour avec succès')]
+    #[IsGranted('RESOURCE_EDIT', subject: 'resource')]
     public function updatePlaningRessource(int $id, Request $request, LoggerInterface $logger, #[CurrentUser] Session $user){
         try {
             $idPlanning = $request->headers->get('X-Planning-Id');
