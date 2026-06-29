@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entity\Planningressource;
 use App\Entity\Session;
 use App\Repository\PlanningRessourceRepository;
 use App\Repository\SecurityRepository;
@@ -239,8 +240,7 @@ class PlanningRessourceController extends abstractController
     #[Route('/{id}', name: 'app_planning_ressource_get', methods: ['GET'])]
     #[OA\Parameter(name: 'id', in: 'path', description: 'Id de la ressource voulu', schema: new OA\Schema(type: 'string', default: ''))]
     #[OA\Response(response: 200, description: 'Ressource')]
-    #[IsGranted('RESOURCE_VIEW', subject: 'resource')]
-    public function getRessource(int $id){
+    public function getRessource(int $id, Planningressource $resource){
         try {
 
             $result = $this->planningRessourceRepository->getRessource($id);
@@ -269,6 +269,7 @@ class PlanningRessourceController extends abstractController
             type: 'object'
         )
     )]
+    #[IsGranted('MANAGE_PERMISSIONS', message: 'Vous n\'avez pas la permission de créer cette ressource.')]
     public function createPlaningRessource(Request $request, #[CurrentUser] Session $user, LoggerInterface $logger): JsonResponse
     {
         $droit = $this->securityRepository->getPermission($user, $logger);
@@ -316,8 +317,8 @@ class PlanningRessourceController extends abstractController
         )
     )]
     #[OA\Response(response: 200, description: 'Ressource mise à jour avec succès')]
-    #[IsGranted('RESOURCE_EDIT', subject: 'resource')]
-    public function updatePlaningRessource(int $id, Request $request, LoggerInterface $logger, #[CurrentUser] Session $user){
+    #[IsGranted('RESOURCE_EDIT', subject: 'resource',  message: 'Vous n\'avez pas la permission de modifier cette ressource.')]
+    public function updatePlaningRessource(int $id, Request $request, LoggerInterface $logger, #[CurrentUser] Session $user, Planningressource $resource){
         try {
             $idPlanning = $request->headers->get('X-Planning-Id');
 
@@ -350,6 +351,5 @@ class PlanningRessourceController extends abstractController
             ], 500);
         }
     }
-
 
 }

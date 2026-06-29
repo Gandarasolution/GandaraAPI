@@ -16,7 +16,8 @@ class SecurityRepository extends ServiceEntityRepository
         parent::__construct($registry, Session::class);
     }
 
-    public function me(Session $user,LoggerInterface $logger){
+    public function me(Session $user,LoggerInterface $logger): array
+    {
         try {
             $conn = $this->getEntityManager()->getConnection();
 
@@ -71,7 +72,8 @@ class SecurityRepository extends ServiceEntityRepository
     }
 
 
-    public function getPermission(Session $user,LoggerInterface $logger){
+    public function getPermission(Session $user,LoggerInterface $logger): int
+    {
         $conn = $this->getEntityManager()->getConnection();
         $sql = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id';
 
@@ -85,5 +87,95 @@ class SecurityRepository extends ServiceEntityRepository
 
         return $level = (int)$planningDroit['IdDroitNiveau'] ?: 21;
 
+    }
+
+    public function getPermissions(LoggerInterface $logger){
+        $conn = $this->getEntityManager()->getConnection();
+        $sqlEmployeeDroit = 'EXEC ps_PlanningDroitSelect';
+        $sqlListDroit = '
+            SELECT
+                IdDroitNiveau,
+                LibelleDroitNiveau
+            FROM ListeDroitNiveau
+            WHERE IdDroitNiveau IN (21, 22, 23)
+        ';
+
+        try {
+            $employeeData = $conn->fetchAllAssociative($sqlEmployeeDroit);
+            $allPermissions = $conn->fetchAllAssociative($sqlListDroit);
+        } catch (Exception $e) {
+            $logger->error($e->getMessage());
+            throw new \Exception('Erreur lors de l\'exécution des requêtes SQL: ' . $e->getMessage());
+        }
+
+        $employees = [];
+        $permission = [];
+
+        foreach ($employeeData as $row) {
+            if (!isset($employees[$row['IdSalarie']])) {
+                $employees[$row['IdSalarie']] = [
+                    'IdPersonnel' => (int)$row['IdSalarie'],
+                    'NomPersonnel' => $row['NomPersonnel'],
+                    'PrenomPersonnel' => $row['PrenomPersonnel'],
+                    'IdDroit' => (int)$row['IdDroitNiveau'],
+                ];
+            }
+        }
+
+        foreach ($allPermissions as $row) {
+            if (!isset($permission[$row['IdDroitNiveau']])) {
+                $permission[$row['IdDroitNiveau']] = [
+                    'IdDroit' => (int)$row['IdDroitNiveau'],
+                    'LibelleDroit' => $row['LibelleDroitNiveau'],
+                ];
+            }
+        }
+
+        $employees = array_values($employees);
+        $permissions = array_values($permission);
+
+        return ['employees' => $employees, 'permissions' => $permissions];
+
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function bulkUpdatePermissions(mixed $updates, LoggerInterface $logger): bool
+    {
+        $conn = $this->getEntityManager()->getConnection();
+
+        try {
+            $conn->beginTransaction();
+
+            // Requête appelant ta procédure stockée (Modifie le nom de la PS si nécessaire)
+            $sql = 'EXEC ps_PlanningDroitUpdate @IdPersonnel = ?, @IdDroitNiveau = ?';
+
+            // On prépare la requête une seule fois pour de meilleures performances
+            $stmt = $conn->prepare($sql);
+
+            foreach ($updates as $update) {
+                // Vérification de sécurité anti-triche
+                if (!isset($update['IdPersonnel']) || !isset($update['IdDroit'])) {
+                    throw new \Exception("Structure des données invalide.");
+                }
+
+                $stmt->bindValue(1, (int) $update['IdPersonnel']);
+                $stmt->bindValue(2, (int) $update['IdDroit']);
+
+                $stmt->executeStatement();
+            }
+
+            // Si on arrive ici sans erreur, on valide TOUTES les modifications d'un coup
+            $conn->commit();
+            return true;
+
+        } catch (Exception $e) {
+            // Si une seule erreur survient, on ANNULE tout ce qui a été fait dans la boucle
+            $conn->rollBack();
+            $logger->error('Erreur SQL dans bulkUpdatePermissions : ' . $e->getMessage());
+
+            return false;
+        }
     }
 }

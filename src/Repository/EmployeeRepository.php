@@ -116,42 +116,4 @@ class EmployeeRepository extends ServiceEntityRepository
     }
 
 
-    public function getPermissions(LoggerInterface $logger){
-        $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningDroitSelect';
-
-        try {
-            $results = $conn->fetchAllAssociative($sql);
-        } catch (Exception $e) {
-            $logger->error($e->getMessage());
-        }
-
-        $employees = [];
-        $permissions = [];
-
-        foreach ($results as $row) {
-            if (!isset($employees[$row['IdSalarie']])) {
-                $employees[$row['IdSalarie']] = [
-                    'IdPersonnel' => $row['IdSalarie'],
-                    'NomPersonnel' => $row['NomPersonnel'],
-                    'PrenomPersonnel' => $row['PrenomPersonnel'],
-                    'IdDroit' => $row['IdDroitNiveau'],
-                ];
-            }
-
-            if (!isset($permissions[$row['IdDroitNiveau']])) {
-                $permissions[$row['IdDroitNiveau']] = [
-                    'IdDroit' => $row['IdDroitNiveau'],
-                    'LibelleDroit' => $row['LibelleDroitNiveau']
-                ];
-            }
-        }
-
-        $employees = array_values($employees);
-        $permissions = array_values($permissions);
-
-        return ['employees' => $employees, 'permissions' => $permissions];
-
-    }
-
 }
