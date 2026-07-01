@@ -23,7 +23,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
         parent::__construct($registry, Planningevenement::class);
     }
 
-    private function structuredData(array $data): array
+    private function structuredData(array $data, int $idPlanning): array
     {
 
         if (isset($data['IdPlanningEvenement'])) {
@@ -39,7 +39,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
         foreach($data as $row){
             $idRdv = (int)$row['IdPlanningEvenement'];
             $isLocked = false;
-            $cacheKey = 'edit_rdv_' . $idRdv;
+            $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $idRdv;
 
             $cacheItem = $this->cache->getItem($cacheKey);
 
@@ -102,7 +102,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
     /**
      * @return PlanningEvenement[] Returns an array of PlanningEvenement objects
      */
-    public function findEventsByDate(\DateTimeInterface $dateStart, \DateTimeInterface $dateEnd ): array
+    public function findEventsByDate(\DateTimeInterface $dateStart, \DateTimeInterface $dateEnd, int $idPlanning): array
     {
         try {
             $startOfDay = (clone $dateStart)->setTime(0, 0, 0);
@@ -118,14 +118,14 @@ class PlanningEvenementRepository extends ServiceEntityRepository
              $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
 
-            return $this->structuredData($result);
+            return $this->structuredData($result, $idPlanning);
 
         } catch (Exception $e) {
             throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
         }
     }
 
-    public function findEventById(int $id, LoggerInterface $logger): array
+    public function findEventById(int $id, LoggerInterface $logger, int $idPlanning): array
     {
         try {
             $conn = $this->getEntityManager()->getConnection();
@@ -141,14 +141,14 @@ class PlanningEvenementRepository extends ServiceEntityRepository
 
             $logger->debug('Event found: ' . json_encode($result));
 
-            return $this->structuredData($result);
+            return $this->structuredData($result, $idPlanning);
         }catch (Exception $e) {
             throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
         }
 
     }
 
-    public function findEventsByEmployee(int $employeeId, string $type): array
+    public function findEventsByEmployee(int $employeeId, string $type, int $idPlanning): array
     {
         try {
             $conn = $this->getEntityManager()->getConnection();
@@ -159,14 +159,14 @@ class PlanningEvenementRepository extends ServiceEntityRepository
             ];
             $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
-            return $this->structuredData($result);
+            return $this->structuredData($result, $idPlanning);
 
         } catch (Exception $e) {
             throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
         }
     }
 
-    public function createEvent(array $data, LoggerInterface $logger): array
+    public function createEvent(array $data, LoggerInterface $logger, int $idPlanning): array
     {
         try {
             $debutObj = new \DateTime()->setTimestamp((int)($data['DebutPlanningEvenement'] / 1000));
@@ -198,7 +198,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
             if (!$result) {
                 throw new \Exception("Erreur : l'événement n'a pas pu être créé.");
             }
-            return $this->structuredData($result);
+            return $this->structuredData($result, $idPlanning);
         } catch (Exception $e) {
             throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
         }
@@ -306,7 +306,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
     /**
      * @throws Exception
      */
-    public function repeatEvent(array $data): array
+    public function repeatEvent(array $data, int $idPlanning): array
     {
         $conn = $this->getEntityManager()->getConnection();
 
@@ -338,7 +338,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
                 $results[] = $result;
             }
             $conn->commit();
-            return ['ids' => $createdIds, 'data' => $this->structuredData($results)];
+            return ['ids' => $createdIds, 'data' => $this->structuredData($results, $idPlanning)];
         }catch (\Exception $e) {
             $conn->rollBack();
             throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());

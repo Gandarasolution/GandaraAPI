@@ -3,6 +3,7 @@
 namespace App\EventSubscriber;
 
 use App\Entity\Session;
+use Doctrine\DBAL\Exception;
 use Lexik\Bundle\JWTAuthenticationBundle\Event\AuthenticationSuccessEvent;
 use Lexik\Bundle\JWTAuthenticationBundle\Events;
 use Psr\Log\LoggerInterface;
@@ -66,8 +67,6 @@ class JwtEventSubscriber implements EventSubscriberInterface
             ]);
             $this->logger->debug("Requête pour récupérer les plannings affectés à l'utilisateur", ['IdPersonnel' => $user->getIdpersonnel(), 'PlanningAffectation' => $planningAffectation]);
 
-
-
             // 4. On prépare le tableau final à renvoyer au front
             $data['user'] = [
                 'IdPersonnel' => $user->getIdpersonnel(),
@@ -92,7 +91,7 @@ class JwtEventSubscriber implements EventSubscriberInterface
             $data['error'] = 0;
 
             $event->setData($data);
-        }catch (\Exception $e) {
+        }catch (Exception $e) {
 
             $this->logger->debug('Erreur lors de la récupération des informations utilisateur après authentification, exception: ' . $e->getMessage());
             $event->setData([

@@ -5,7 +5,9 @@ namespace App\Controller;
 use App\Entity\Session;
 use App\Repository\PlanningVueRepository;
 use App\Service\MercureNotificationService;
+use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Cache\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -14,6 +16,8 @@ use Symfony\Component\Routing\Attribute\Route;
 use Nelmio\ApiDocBundle\Annotation\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
+use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 
 #[Route('/api/planning')]
 #[OA\Tag(name: 'Configurations/Vues')]
@@ -25,6 +29,7 @@ class PlanningVueController extends AbstractController
         private MercureNotificationService $notifier,
         private EntityManagerInterface $entityManager,
         private PlanningVueRepository $planningVueRepository,
+        private CacheInterface $cache
     )
     {}
 
@@ -54,6 +59,34 @@ class PlanningVueController extends AbstractController
     }
 
 
+    #[Route('/getLastVue', name: 'api_last_config_user', methods: ['GET'])]
+    #[OA\Response(response: 200, description: 'Récupère la dernière vue d\'un utilisateur pour un planning donné')]
+    #[OA\Response(response: 400, description: 'Paramètre idPlanning manquant ou invalide')]
+    #[OA\Response(response: 500, description: 'Erreur serveur')]
+    public function getLastVue(#[CurrentUser] Session $user, Request $request) :JsonResponse{
+        $idPlanning = $request->headers->get('X-Planning-Id');
+
+        if ($idPlanning !== null && !is_numeric($idPlanning) || $idPlanning < 0) {
+            $this->logger->debug('Le paramètre idPlanning doit être un entier positif. Valeur reçue: {idPlanning}', [
+                'idPlanning' => $idPlanning,
+            ]);
+            return $this->json(['error' => 1, 'message' => 'Le paramètre idPlanning doit être un entier positif.'], 400);
+        }
+
+        try {
+            $result = $this->planningVueRepository->getLastVue($user, $idPlanning);
+            return $this->json(['error' => 0, 'data' => $result]);
+        }catch (Exception $e) {
+            $this->logger->error('Erreur lors de la récupération de la dernière vue pour l\'utilisateur {userId}: {message}', [
+                'userId' => $user->getIdpersonnel(),
+                'message' => $e->getMessage(),
+            ]);
+            return $this->json(['error' => 1, 'message' => 'Une erreur est survenue lors de la récupération de la dernière vue: ' . $e->getMessage()], 500);
+        }
+    }
+
+
+
     #[Route('/non-working-dates', name: 'api_non_working_dates', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Liste des jours non travaillé du planning')]
     public function getNonWorkingDates(Request $request): JsonResponse
@@ -80,9 +113,36 @@ class PlanningVueController extends AbstractController
         }
     }
 
+    #[Route('/setLastVue', name: 'api_set_last_vue', methods: ['POST'])]
+    #[OA\Response(response: 200, description: 'Met à jour la dernière vue d\'un utilisateur pour un planning donné')]
+    #[OA\Response(response: 400, description: 'Paramètre idVue manquant ou invalide')]
+    #[OA\Response(response: 500, description: 'Erreur serveur')]
+    public function setLastVue(#[CurrentUser] Session $user, Request $request) :JsonResponse{
+
+        $data = $request->toArray();
+
+        if($data['idVue'] !== null && !is_numeric($data['idVue']) || $data['idVue'] < 0) {
+            $this->logger->debug('Le paramètre idVue doit être un entier positif. Valeur reçue: {idVue}', [
+                'idVue' => $data['idVue'],
+            ]);
+            return $this->json(['error' => 1, 'message' => 'Le paramètre idVue doit être un entier positif.'], 400);
+        }
+        try {
+            $this->planningVueRepository->setLastVue($user, $data['idVue']);
+            return $this->json(['error' => 0]);
+        }catch (\Exception $e) {
+            $this->logger->error('Erreur lors de la récupération de la dernière vue pour l\'utilisateur {userId}: {message}', [
+                'userId' => $user->getIdpersonnel(),
+                'message' => $e->getMessage(),
+            ]);
+            return $this->json(['error' => 1, 'message' => 'Une erreur est survenue lors de la récupération de la dernière vue: ' . $e->getMessage()], 500);
+        }
+    }
+
+
     // POST /api/planning/{idPlanning}/non-working-dates Ajout d'un jour non travaillé
     #[Route('/non-working-dates', name: 'api_add_non-working-dates', methods: ['POST'])]
-    public function addNonWorkingDates(Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
+    public function addNonWorkingDates(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
         try {
             $idPlanning = $request->headers->get('X-Planning-Id');
@@ -110,7 +170,7 @@ class PlanningVueController extends AbstractController
 
 
     #[Route('/{idDate}/non-working-dates', name: 'api_non-working-dates', methods: ['DELETE'])]
-    public function deleteNonWorkingDates(Request $request, int $idDate, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
+    public function deleteNonWorkingDates(Request $request, int $idDate, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
         try {
             $idPlanning = $request->headers->get('X-Planning-Id');
@@ -135,5 +195,41 @@ class PlanningVueController extends AbstractController
             ]);
             return $this->json(['error' => 1, 'message' =>  $e->getMessage()], 500);
         }
+    }
+
+    #[Route('/vue/{id}/lock', methods: ['POST'])]
+    public function quickLock(int $id, #[CurrentUser] Session $user, LoggerInterface $logger, Request $request): JsonResponse
+    {
+        $idPlanning = $request->headers->get('X-Planning-Id');
+
+        if (!$idPlanning) {
+            return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+        }
+
+        $cacheKey = 'edit_config_' . $idPlanning . '_' . $id;
+        $currentUserId = $user->getIdPersonnel();
+
+        try {
+            $ownerId = $this->cache->get($cacheKey, function (ItemInterface $item) use ($currentUserId) {
+                $item->expiresAfter(120);
+                return $currentUserId;
+            });
+        } catch (InvalidArgumentException $e) {
+            $logger->debug('Erreur lors de la récupération du verrou pour la configuration ' . $id, ['exception' => $e]);
+            return $this->json(['error' => 1, 'message' => 'Erreur'], 500);
+        }
+
+        if ($ownerId !== $currentUserId) {
+            return $this->json(['error' => 409, 'message' => 'Cette configuration est actuellement en cours d\'édition.'], 409);
+        }
+
+        $this->notifier->notifyPlanningChange(
+            $idPlanning,
+            'CONFIG_LOCKED',
+            $currentUserId,
+            ['IdPlanningVue' => $id]
+        );
+
+        return $this->json(['error' => 0]);
     }
 }

@@ -9,7 +9,7 @@ use App\Entity\Session;
 use Doctrine\DBAL\Exception;
 use Psr\Cache\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
-use \Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -25,10 +25,10 @@ class PlanningEvenementController extends AbstractController
 {
 
     public function __construct(
-        private MercureNotificationService $notifier,
-        private PlanningEvenementRepository $planningEvenementRepository,
-        private PlanningRessourceRepository $planningRessourceRepository,
-        private CacheInterface $cache
+        private readonly MercureNotificationService $notifier,
+        private readonly PlanningEvenementRepository         $planningEvenementRepository,
+        private readonly PlanningRessourceRepository         $planningRessourceRepository,
+        private readonly CacheInterface                      $cache
         //private EntityManagerInterface $entityManager,
     ){}
 
@@ -44,11 +44,16 @@ class PlanningEvenementController extends AbstractController
     #[OA\Parameter(name: 'dateStart', in: 'path', description: 'Date de début (ex: 2024-01-01)', schema: new OA\Schema(type: 'string', format: 'date'))]
     #[OA\Parameter(name: 'dateEnd', in: 'path', description: 'Date de fin (ex: 2024-12-31)', schema: new OA\Schema(type: 'string', format: 'date'))]
     #[OA\Response(response: 200, description: 'Liste des événements correspondants')]
-    public function index(\DateTimeInterface $dateStart, \DateTimeInterface $dateEnd): JsonResponse
+    public function index(\DateTimeInterface $dateStart, \DateTimeInterface $dateEnd, Request $request): JsonResponse
     {
+        $idPlanning = $request->headers->get('X-Planning-Id');
+
+        if (!$idPlanning) {
+            return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+        }
 
         try{
-            $result = $this->planningEvenementRepository->findEventsByDate($dateStart, $dateEnd);
+            $result = $this->planningEvenementRepository->findEventsByDate($dateStart, $dateEnd, $idPlanning);
             return $this->json(['error' => 0, 'data' => $result]);
 
         }catch(\Exception $e){
@@ -71,7 +76,14 @@ class PlanningEvenementController extends AbstractController
     #[OA\Response(response: 409, description: 'Événement verrouillé par un autre utilisateur')]
     public function show(int $id, LoggerInterface $logger, #[CurrentUser] Session $user, Request $request): JsonResponse
     {
-        $cacheKey = 'edit_rdv_' . $id;
+
+        $idPlanning = $request->headers->get('X-Planning-Id');
+
+        if (!$idPlanning) {
+            return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+        }
+
+        $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
         $idUser = $user->getIdpersonnel();
 
         try{
@@ -95,12 +107,6 @@ class PlanningEvenementController extends AbstractController
                 ]);
             }
 
-            $idPlanning = $request->headers->get('X-Planning-Id');
-
-            if (!$idPlanning) {
-                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
-            }
-
             $this->notifier->notifyPlanningChange(
                 $idPlanning,
                 'APPOINTMENT_LOCKED',
@@ -108,7 +114,7 @@ class PlanningEvenementController extends AbstractController
                 ['IdPlanningEvenement' => $id]
             );
 
-            $result = $this->planningEvenementRepository->findEventById($id, $logger);
+            $result = $this->planningEvenementRepository->findEventById($id, $logger, $idPlanning);
             if (!$result) {
                 $this->notifier->notifyPlanningChange(
                     $idPlanning,
@@ -142,6 +148,12 @@ class PlanningEvenementController extends AbstractController
     #[OA\Response(response: 200, description: 'Liste des événements liés à cet employé')]
     public function getEventsByEmployee(Request $request): JsonResponse
     {
+        $idPlanning = $request->headers->get('X-Planning-Id');
+
+        if (!$idPlanning) {
+            return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+        }
+
         try {
             $employeeId =$request->query->get('employee');
             $type = $request->query->get('type');
@@ -154,7 +166,7 @@ class PlanningEvenementController extends AbstractController
                 return $this->json(['error' => 1, 'message' => 'Le paramètre ?employee=:id est obligatoire'], 400);
             }
 
-            $result = $this->planningEvenementRepository->findEventsByEmployee($employeeId, $type);
+            $result = $this->planningEvenementRepository->findEventsByEmployee($employeeId, $type, $idPlanning);
             return $this->json(['error' => 0, 'data' => $result]);
         } catch (\Exception $e) {
             return $this->json(['error' => 1, 'message' => $e->getMessage()], 500);
@@ -214,7 +226,7 @@ class PlanningEvenementController extends AbstractController
                 return $this->json(['error' => 1, 'message' => 'Les champs DebutPlanningEvenement, FinPlanningEvenement, IdPlanningRessource  sont obligatoires.'], 400);
             }
 
-            $result = $this->planningEvenementRepository->createEvent($data, $logger);
+            $result = $this->planningEvenementRepository->createEvent($data, $logger, $idPlanning);
 
             $this->notifier->notifyPlanningChange(
                 $idPlanning,
@@ -254,7 +266,13 @@ class PlanningEvenementController extends AbstractController
     #[OA\Response(response: 201, description: 'Événement mis à jour avec succès')]
     public function update(int $id, Request $request, #[CurrentUser] Session $user, LoggerInterface $logger): JsonResponse
      {
-         $cacheKey = 'edit_rdv_' . $id;
+         $idPlanning = $request->headers->get('X-Planning-Id');
+
+         if (!$idPlanning) {
+             return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+         }
+         $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
+
          $idUser = $user->getIdpersonnel();
 
          try {
@@ -272,12 +290,6 @@ class PlanningEvenementController extends AbstractController
                  }
              }
 
-
-             $idPlanning = $request->headers->get('X-Planning-Id');
-
-             if (!$idPlanning) {
-                 return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
-             }
 
              $data = $request->toArray();
              if (($data === null) || $data === []) {
@@ -297,7 +309,8 @@ class PlanningEvenementController extends AbstractController
                  return $this->json(['error' => 1, 'message' => 'Événement introuvable.'], 404);
              }
 
-             $cacheKey = 'edit_rdv_' . $id;
+             $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
+
              // La fonction delete() supprime instantanément la clé de Redis
              $this->cache->delete($cacheKey);
 
@@ -488,7 +501,7 @@ class PlanningEvenementController extends AbstractController
             $logger->debug('Résultat de la mise à jour de la ressource via PS', ['result' => $result]);
             $returnData['ressources'] = $result['data'];
 
-            $cacheKey = 'edit_rdv_' . $id;
+            $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
             // La fonction delete() supprime instantanément la clé de Redis
             $this->cache->delete($cacheKey);
 
@@ -559,7 +572,7 @@ class PlanningEvenementController extends AbstractController
 
             $result = $this->planningEvenementRepository->divideEvent($id, $data, $logger);
 
-            $cacheKey = 'edit_rdv_' . $id;
+            $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
             $this->cache->delete($cacheKey);
 
             $this->notifier->notifyPlanningChange(
@@ -614,9 +627,9 @@ class PlanningEvenementController extends AbstractController
             }
 
 
-            $result = $this->planningEvenementRepository->repeatEvent($data);
+            $result = $this->planningEvenementRepository->repeatEvent($data, $idPlanning);
 
-            $cacheKey = 'edit_rdv_' . $id;
+            $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
             $this->cache->delete($cacheKey);
 
             $this->notifier->notifyPlanningChange(
@@ -655,7 +668,7 @@ class PlanningEvenementController extends AbstractController
                 return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
             }
 
-            $cacheKey = 'edit_rdv_' . $id;
+            $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
             // La fonction delete() supprime instantanément la clé de Redis
             $this->cache->delete($cacheKey);
 
@@ -682,7 +695,7 @@ class PlanningEvenementController extends AbstractController
             return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
         }
 
-        $cacheKey = 'edit_rdv_' . $id;
+        $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
         $currentUserId = $user->getIdPersonnel();
 
         try {

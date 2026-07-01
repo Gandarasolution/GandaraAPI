@@ -44,9 +44,9 @@ class EmployeeController extends AbstractController
                 $limit = $request->query->get('limit', 20);
                 $pageNumber = $request->query->get('pageNum', 1);
                 $q = $request->query->get('q', '');
-                $codes = $request->query->get('codes', '');
+                $codes = $request->query->get('code', '');
 
-                $logger->debug("Récupération de la liste des employés", ['limit' => $limit, 'pageNum' => $pageNumber, 'q' => $q]);
+                $logger->debug("Récupération de la liste des employés", ['limit' => $limit, 'pageNum' => $pageNumber, 'q' => $q, 'codes' => $codes]);
 
                 $result = $this->employeeRepository->getEmployeePagination($limit, $pageNumber, $q, $codes, $logger);
 

@@ -47,6 +47,7 @@ services:
   redis:
     image: redis:alpine
     container_name: mon-redis
+    command: redis-server --notify-keyspace-events Ex
     ports:
       - "6379:6379"
     volumes:
