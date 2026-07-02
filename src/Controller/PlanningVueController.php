@@ -33,32 +33,6 @@ class PlanningVueController extends AbstractController
     )
     {}
 
-    //GET /api/planning/vue/user/:userId?idPlanning=:id- Configs d'un utilisateur
-    #[Route('/vue/user/{userId}', name: 'api_configs_user', methods: ['GET'])]
-    #[OA\Parameter(name: 'userId', in: 'path', description: 'ID de l\'utilisateur', schema: new OA\Schema(type: 'integer'))]
-    #[OA\Parameter(name: 'idPlanning', in: 'query', description: 'ID de planning (optionnel)', schema: new OA\Schema(type: 'integer'))]
-    #[OA\Response(response: 200, description: 'Liste des configurations de l\'utilisateur et des jours non travaillé du planning')]
-    public function getUserConfigs(int $userId, Request $request): JsonResponse
-    {
-        try {
-            $IdPlanning = $request->query->get('idPlanning');
-
-            if ($IdPlanning !== null && !is_numeric($IdPlanning) || $IdPlanning < 0) {
-                return $this->json(['error' => 1, 'message' => 'Le paramètre idPlanning doit être un entier positif.'], 400);
-            }
-
-            $configs = $this->planningVueRepository->getConfigUser($userId, $IdPlanning);
-            return $this->json(['error' => 0, 'data' => $configs]);
-        } catch (\Exception $e) {
-            $this->logger->error('Erreur lors de la récupération des configs pour l\'utilisateur {userId}: {message}', [
-                'userId' => $userId,
-                'message' => $e->getMessage(),
-            ]);
-            return $this->json(['error' => 1, 'message' => 'Une erreur est survenue lors de la récupération des configurations:' . $e->getMessage()], 500);
-        }
-    }
-
-
     #[Route('/getLastVue', name: 'api_last_config_user', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Récupère la dernière vue d\'un utilisateur pour un planning donné')]
     #[OA\Response(response: 400, description: 'Paramètre idPlanning manquant ou invalide')]
@@ -85,6 +59,50 @@ class PlanningVueController extends AbstractController
         }
     }
 
+
+
+    #[Route('/vue/{id}', name: 'api_config', methods: ['GET'])]
+    #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la vue', schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'Récupère les détails d\'une vue spécifique')]
+    public function getVue(int $id) :JsonResponse {
+        try {
+            $result = $this->planningVueRepository->getVue($id, $this->logger);
+
+            return $this->json(['error' => 0, 'data' => $result]);
+        }catch(\Exception $e){
+            $this->logger->debug('Erreur lors de la récupération de la vue {id}: {message}', [
+                'id' => $id,
+                'message' => $e->getMessage(),
+            ]);
+            return $this->json(['error' => 1, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+
+    //GET /api/planning/vue/user/:userId?idPlanning=:id- Configs d'un utilisateur
+    #[Route('/vue/user/{userId}', name: 'api_configs_user', methods: ['GET'])]
+    #[OA\Parameter(name: 'userId', in: 'path', description: 'ID de l\'utilisateur', schema: new OA\Schema(type: 'integer'))]
+    #[OA\Parameter(name: 'idPlanning', in: 'query', description: 'ID de planning (optionnel)', schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'Liste des configurations de l\'utilisateur et des jours non travaillé du planning')]
+    public function getUserConfigs(int $userId, Request $request): JsonResponse
+    {
+        try {
+            $IdPlanning = $request->query->get('idPlanning');
+
+            if ($IdPlanning !== null && !is_numeric($IdPlanning) || $IdPlanning < 0) {
+                return $this->json(['error' => 1, 'message' => 'Le paramètre idPlanning doit être un entier positif.'], 400);
+            }
+
+            $configs = $this->planningVueRepository->getConfigUser($userId, $IdPlanning);
+            return $this->json(['error' => 0, 'data' => $configs]);
+        } catch (\Exception $e) {
+            $this->logger->error('Erreur lors de la récupération des configs pour l\'utilisateur {userId}: {message}', [
+                'userId' => $userId,
+                'message' => $e->getMessage(),
+            ]);
+            return $this->json(['error' => 1, 'message' => 'Une erreur est survenue lors de la récupération des configurations:' . $e->getMessage()], 500);
+        }
+    }
 
 
     #[Route('/non-working-dates', name: 'api_non_working_dates', methods: ['GET'])]

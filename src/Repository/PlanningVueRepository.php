@@ -7,6 +7,7 @@ use App\Entity\Session;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\DBAL\Exception;
+use Monolog\Logger;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Contracts\Cache\CacheInterface;
@@ -199,6 +200,64 @@ class PlanningVueRepository extends ServiceEntityRepository
             ]);
         } catch (Exception $e) {
             throw new \Exception('Erreur lors de la mise à jour de la dernière vue pour l\'utilisateur ' . $user->getIdpersonnel() . ': ' . $e->getMessage());
+        }
+    }
+
+    public function getVue(int $id, LoggerInterface $logger)
+    {
+        $sql = 'EXEC ps_PlanningVueFiltreListeSelect @IdPlanningVue = :IdPlanningVue';
+        $conn = $this->getEntityManager()->getConnection();
+
+        try {
+            $result = $conn->executeQuery($sql, ['IdPlanningVue' => $id])->fetchAllAssociative();
+
+            $logger->debug('Résultat de la requête pour l\'ID ' . $id . ': ' . json_encode($result));
+
+            if (!$result) {
+                throw new \Exception('Auncun type de filtre trouvé pour cette vue: ' . $id);
+            }
+            $structuredData = [];
+
+            foreach ($result as $row) {
+                $sql = 'EXEC ps_PlanningVueFiltreValeurSelect @IdPlanningVue = :IdPlanningVue, @IdFiltre = :IdFiltre, @EstFiltreGandara = :EstFiltreGandara';
+                $params = [
+                    'IdPlanningVue' => $id,
+                    'IdFiltre' => $row['IdTypeFiltre'],
+                    'EstFiltreGandara' => $row['EstFiltreGandara'],
+                ];
+                $values = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+                $structuredData[] = [
+                    'IdFiltre' => $row['IdTypeFiltre'],
+                    'LibelleFiltre' => $row['NomFiltre'],
+                    'EstFiltreGandara' => $row['EstFiltreGandara'] === 1,
+                    'Valeurs' => $values,
+                ];
+
+            }
+
+            $sql = 'SELECT * FROM PlanningVue WHERE IdPlanningVue = :IdPlanningVue';
+            $params = [
+                'IdPlanningVue' => $id,
+            ];
+            $result = $conn->executeQuery($sql, $params)->fetchAssociative();
+
+            $structurePlanningVue = [
+                'IdPlanningVue' => $id,
+                'DescriptionPlanningVue' => $result['DescriptionPlanningVue'],
+                'LibellePlanningVue' => $result['LibellePlanningVue'],
+                'Group' =>[
+                    'ChampsPremierGroupePlanningVue' => $result['ChampsPremierGroupePlanningVue'],
+                    'ChampsDeuxiemeGroupePlanningVue' => $result['ChampsDeuxiemeGroupePlanningVue']
+                ],
+                'IdPlanningImage' => $result['IdPlanningImage'],
+                'isLocked' => false,
+            ];
+
+            return ['filtrePerso' => $structuredData, 'planningVue' => $structurePlanningVue];
+
+        } catch (Exception $e) {
+            throw new \Exception('Erreur lors de la récupération de la vue pour l\'ID ' . $id . ': ' . $e->getMessage());
         }
     }
 }
