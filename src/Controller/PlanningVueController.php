@@ -250,4 +250,44 @@ class PlanningVueController extends AbstractController
 
         return $this->json(['error' => 0]);
     }
+
+    #[Route('/vue/{id}', name: 'api_vue', methods: ['PUT'])]
+    public function setvue(int $id, LoggerInterface $logger, Request $request): JsonResponse{
+        $idPlanning = $request->headers->get('X-Planning-Id');
+        if (!$idPlanning) {
+            return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+        }
+
+        $data = $request->toArray();
+
+        $planningVue = $data['planningVue'];
+
+        if (!$planningVue)
+            return $this->json(['error' => 1, 'message' => 'Données de la vue manquantes'], 400);{
+        }
+
+        $filtrePerso = $data['filtrePerso'];
+
+        if (!$filtrePerso){
+            return $this->json(['error' => 1, 'message' => 'Données du filtre perso manquantes'], 400);
+
+        }
+
+        try {
+            $result = $this->planningVueRepository->setVue($id, $planningVue, $filtrePerso, $logger);
+
+            if (!$result) {
+                return $this->json(['error' => 1, 'message' => 'La vue n\'a pas pu être mise à jour.'], 500);
+            }
+
+            return $this->json(['error' => 0, 'message' => 'Vue mise à jour avec succès.', 'data' => $result]);
+        }
+        catch (\Exception $e) {
+            $logger->error('Erreur lors de la mise à jour de la vue {id}: {message}', [
+                'id' => $id,
+                'message' => $e->getMessage(),
+            ]);
+            return $this->json(['error' => 1, 'message' => 'Une erreur est survenue lors de la mise à jour de la vue: ' . $e->getMessage()], 500);
+        }
+    }
 }

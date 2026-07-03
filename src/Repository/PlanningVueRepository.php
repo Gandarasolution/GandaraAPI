@@ -220,13 +220,17 @@ class PlanningVueRepository extends ServiceEntityRepository
 
             foreach ($result as $row) {
                 $sql = 'EXEC ps_PlanningVueFiltreValeurSelect @IdPlanningVue = :IdPlanningVue, @IdFiltre = :IdFiltre, @EstFiltreGandara = :EstFiltreGandara';
+                $logger->debug('Row ' . ' : ' . json_encode($row));
                 $params = [
                     'IdPlanningVue' => $id,
                     'IdFiltre' => $row['IdTypeFiltre'],
                     'EstFiltreGandara' => $row['EstFiltreGandara'],
                 ];
+
                 $values = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
+                $logger->debug('Valeurs pour le filtre ' . $row['NomFiltre'] . ': ' . json_encode($values));
+                $logger->debug('Row ' . ' : ' . json_encode($row));
                 $structuredData[] = [
                     'IdFiltre' => $row['IdTypeFiltre'],
                     'LibelleFiltre' => $row['NomFiltre'],
@@ -235,6 +239,87 @@ class PlanningVueRepository extends ServiceEntityRepository
                 ];
 
             }
+
+            if ($id === 0){
+                return ['filtrePerso' => $structuredData, 'planningVue' => [
+                    'IdPlanningVue' => 0,
+                    'DescriptionPlanningVue' => '',
+                    'LibellePlanningVue' => '',
+                    'Group' =>[
+                        'ChampsPremierGroupePlanningVue' => '',
+                        'ChampsDeuxiemeGroupePlanningVue' => ''
+                    ],
+                    'chantierEvenement' => false,
+                    'paieEvenement' => false,
+                    'persoEvenement' => false,
+                    'IdPlanningImage' => null,
+                    'isLocked' => false,
+                ]];
+            }
+            $sql = 'SELECT * FROM PlanningVue WHERE IdPlanningVue = :IdPlanningVue';
+            $params = [
+                'IdPlanningVue' => $id,
+            ];
+            $result = $conn->executeQuery($sql, $params)->fetchAssociative();
+
+            $structurePlanningVue = [
+                'IdPlanningVue' => $id,
+                'DescriptionPlanningVue' => $result['DescriptionPlanningVue'],
+                'LibellePlanningVue' => $result['LibellePlanningVue'],
+                'Group' =>[
+                    'ChampsPremierGroupePlanningVue' => $result['ChampsPremierGroupePlanningVue'],
+                    'ChampsDeuxiemeGroupePlanningVue' => $result['ChampsDeuxiemeGroupePlanningVue']
+                ],
+                'chantierEvenement' => $result['FiltreChantierPlanningVue'] === 1,
+                'paieEvenement' => $result['FiltreSocialPlanningVue'] === 1,
+                'persoEvenement' => $result ['FiltreAutresPlanningVue'] === 1,
+                'IdPlanningImage' => $result['IdPlanningImage'],
+                'isLocked' => false,
+            ];
+
+            return ['filtrePerso' => $structuredData, 'planningVue' => $structurePlanningVue];
+
+        } catch (Exception $e) {
+            throw new \Exception('Erreur lors de la récupération de la vue pour l\'ID ' . $id . ': ' . $e->getMessage());
+        }
+    }
+
+    public function setVue(int $id, array $planningVue, array $filtrePerso, LoggerInterface $logger)
+    {
+        $conn = $this->getEntityManager()->getConnection();
+
+        try {
+            $conn->beginTransaction();
+
+            // Mise à jour de la vue
+            $sqlSetplanningVue = 'EXEC ps_PlanningVueUpdate @IdPlanningVue = :IdPlanningVue, @DescriptionPlanningVue = :DescriptionPlanningVue, @LibellePlanningVue = :LibellePlanningVue, @ChampsPremierGroupePlanningVue = :ChampsPremierGroupePlanningVue, @ChampsDeuxiemeGroupePlanningVue = :ChampsDeuxiemeGroupePlanningVue, @FiltreChantierPlanningVue = :FiltreChantierPlanningVue, @FiltreSocialPlanningVue = :FiltreSocialPlanningVue, @FiltreAutresPlanningVue = :FiltreAutresPlanningVue, @IdPlanningImage = :IdPlanningImage';
+
+            $conn->executeQuery($sqlSetplanningVue, [
+                'IdPlanningVue' => $id,
+                'DescriptionPlanningVue' => $planningVue['DescriptionPlanningVue'],
+                'LibellePlanningVue' => $planningVue['LibellePlanningVue'],
+                'ChampsPremierGroupePlanningVue' => $planningVue['Group']['ChampsPremierGroupePlanningVue'],
+                'ChampsDeuxiemeGroupePlanningVue' => $planningVue['Group']['ChampsDeuxiemeGroupePlanningVue'],
+                'FiltreChantierPlanningVue' => $planningVue['chantierEvenement'] ? 1 : 0,
+                'FiltreSocialPlanningVue' => $planningVue['paieEvenement'] ? 1 : 0,
+                'FiltreAutresPlanningVue' => $planningVue['persoEvenement'] ? 1 : 0,
+                'IdPlanningImage' => $planningVue['IdPlanningImage'] ?? null,
+            ]);
+
+
+            // Mise à jour des filtres personnalisés
+            foreach ($filtrePerso as $filtre) {
+                $logger->debug('Mise à jour du filtre: ' . json_encode($filtre));
+                $sqlSetFilterPerso = 'EXEC ps_PlanningVueFiltreInsertUpdateDelete @IdPlanningVue = :IdPlanningVue, @IdFiltre = :IdFiltre, @EstFiltreGandara = :EstFiltreGandara, @ValeurFiltre = :ValeurFiltre';
+                $conn->executeQuery($sqlSetFilterPerso, [
+                    'IdPlanningVue' => $id,
+                    'IdFiltre' => $filtre['IdFiltre'],
+                    'EstFiltreGandara' => $filtre['EstFiltreGandara'],
+                    'ValeurFiltre' => implode(', ', $filtre['Valeurs'])
+                ]);
+            }
+
+            $conn->commit();
 
             $sql = 'SELECT * FROM PlanningVue WHERE IdPlanningVue = :IdPlanningVue';
             $params = [
@@ -254,10 +339,13 @@ class PlanningVueRepository extends ServiceEntityRepository
                 'isLocked' => false,
             ];
 
-            return ['filtrePerso' => $structuredData, 'planningVue' => $structurePlanningVue];
+            return $structurePlanningVue;
 
         } catch (Exception $e) {
-            throw new \Exception('Erreur lors de la récupération de la vue pour l\'ID ' . $id . ': ' . $e->getMessage());
+            $conn->rollBack();
+            throw new \Exception('Erreur lors de la mise à jour de la vue: ' . $e->getMessage());
         }
+
+
     }
 }
