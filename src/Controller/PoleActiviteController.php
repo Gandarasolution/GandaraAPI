@@ -25,8 +25,19 @@ class PoleActiviteController extends AbstractController
     //GET /api/poles- Lister les pôles
     #[Route('', name: 'pole_activite_list', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Liste de tous les pôles d\'activité')]
-    public function list(){
-        $result = $this->poleActiviteRepository->findAll();
+    public function list(Request $request){
+        $idPlanningVue = $request->headers->get('X-PlanningVue-Id');
+
+        if (!$idPlanningVue) {
+            return $this->json(['error' => 1, 'message' => 'Id de la vue du planning manquante'], 400);
+        }
+
+        try {
+            $result = $this->poleActiviteRepository->getPoles((int)$idPlanningVue);
+        }catch (\Exception $e){
+            return $this->json(['error' => 1, 'message' => $e->getMessage()], 400);
+        }
+
         return $this->json(['error' => 0, 'data' => $result]);
     }
 

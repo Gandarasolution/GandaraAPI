@@ -52,8 +52,14 @@ class PlanningEvenementController extends AbstractController
             return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
         }
 
+        $idPlanningVue = $request->headers->get('X-PlanningVue-Id');
+
+        if (!$idPlanningVue) {
+            return $this->json(['error' => 1, 'message' => 'Id de la vue du planning manquante'], 400);
+        }
+
         try{
-            $result = $this->planningEvenementRepository->findEventsByDate($dateStart, $dateEnd, $idPlanning);
+            $result = $this->planningEvenementRepository->findEventsByDate($dateStart, $dateEnd, $idPlanning, $idPlanningVue);
             return $this->json(['error' => 0, 'data' => $result]);
 
         }catch(\Exception $e){
@@ -81,6 +87,12 @@ class PlanningEvenementController extends AbstractController
 
         if (!$idPlanning) {
             return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+        }
+
+        $idPlanningVue = $request->headers->get('X-PlanningVue-Id');
+
+        if (!$idPlanningVue) {
+            return $this->json(['error' => 1, 'message' => 'Id de la vue du planning manquante'], 400);
         }
 
         $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
@@ -114,7 +126,7 @@ class PlanningEvenementController extends AbstractController
                 ['IdPlanningEvenement' => $id]
             );
 
-            $result = $this->planningEvenementRepository->findEventById($id, $logger, $idPlanning);
+            $result = $this->planningEvenementRepository->findEventById($id, $logger, $idPlanning, $idPlanningVue);
             if (!$result) {
                 $this->notifier->notifyPlanningChange(
                     $idPlanning,
@@ -154,6 +166,12 @@ class PlanningEvenementController extends AbstractController
             return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
         }
 
+        $idPlanningVue = $request->headers->get('X-PlanningVue-Id');
+
+        if (!$idPlanningVue) {
+            return $this->json(['error' => 1, 'message' => 'Id de la vue du planning manquante'], 400);
+        }
+
         try {
             $employeeId =$request->query->get('employee');
             $type = $request->query->get('type');
@@ -166,7 +184,7 @@ class PlanningEvenementController extends AbstractController
                 return $this->json(['error' => 1, 'message' => 'Le paramètre ?employee=:id est obligatoire'], 400);
             }
 
-            $result = $this->planningEvenementRepository->findEventsByEmployee($employeeId, $type, $idPlanning);
+            $result = $this->planningEvenementRepository->findEventsByEmployee($employeeId, $type, $idPlanning, $idPlanningVue);
             return $this->json(['error' => 0, 'data' => $result]);
         } catch (\Exception $e) {
             return $this->json(['error' => 1, 'message' => $e->getMessage()], 500);

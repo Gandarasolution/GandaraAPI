@@ -315,7 +315,7 @@ class PlanningVueRepository extends ServiceEntityRepository
                     'IdPlanningVue' => $id,
                     'IdFiltre' => $filtre['IdFiltre'],
                     'EstFiltreGandara' => $filtre['EstFiltreGandara'],
-                    'ValeurFiltre' => implode(', ', $filtre['Valeurs'])
+                    'ValeurFiltre' => $filtre['Valeurs'] ? implode(', ', $filtre['Valeurs']) : null
                 ]);
             }
 

@@ -39,7 +39,6 @@ class EmployeeRepository extends ServiceEntityRepository
                     'IdPersonnel' => $row['Id'], // Adapte selon le nom de ton ID
                     'Nom' => $row['Nom'],
                     'Prenom' => $row['Prenom'],
-                    'Email' => $row['Email'],
                     'Actif' => $row['Actif'] === 1,
                     'Type' => $row['Type'],
                     'PoleActivite' => $row['IdPoleActivite'],

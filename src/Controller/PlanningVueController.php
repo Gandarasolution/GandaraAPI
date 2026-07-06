@@ -260,6 +260,11 @@ class PlanningVueController extends AbstractController
 
         $data = $request->toArray();
 
+        $logger->debug('Données reçues pour la mise à jour de la vue {id}: {data}', [
+            'id' => $id,
+            'data' => $data,
+        ]);
+
         $planningVue = $data['planningVue'];
 
         if (!$planningVue)
@@ -268,7 +273,7 @@ class PlanningVueController extends AbstractController
 
         $filtrePerso = $data['filtrePerso'];
 
-        if (!$filtrePerso){
+        if (is_null($filtrePerso)){
             return $this->json(['error' => 1, 'message' => 'Données du filtre perso manquantes'], 400);
 
         }

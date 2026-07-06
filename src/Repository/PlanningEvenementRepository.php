@@ -102,17 +102,20 @@ class PlanningEvenementRepository extends ServiceEntityRepository
     /**
      * @return PlanningEvenement[] Returns an array of PlanningEvenement objects
      */
-    public function findEventsByDate(\DateTimeInterface $dateStart, \DateTimeInterface $dateEnd, int $idPlanning): array
+    public function findEventsByDate(\DateTimeInterface $dateStart, \DateTimeInterface $dateEnd, int $idPlanning, int $idPlanningVue): array
     {
+
+
         try {
             $startOfDay = (clone $dateStart)->setTime(0, 0, 0);
             $endOfDay = (clone $dateEnd)->setTime(23, 59, 59);
 
             $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningEvenementSelect @StartDate = :StartDate, @EndDate = :EndDate';
+            $sql = 'EXEC ps_PlanningEvenementSelect @StartDate = :StartDate, @EndDate = :EndDate, @IdPlanningVue = :IdPlanningVue';
             $params = [
                 'StartDate' => $startOfDay->format('Y-m-d\TH:i:s'),
                 'EndDate'   => $endOfDay->format('Y-m-d\TH:i:s'),
+                'IdPlanningVue' => $idPlanningVue
             ];
 
              $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
@@ -125,13 +128,14 @@ class PlanningEvenementRepository extends ServiceEntityRepository
         }
     }
 
-    public function findEventById(int $id, LoggerInterface $logger, int $idPlanning): array
+    public function findEventById(int $id, LoggerInterface $logger, int $idPlanning, int $idPlanningVue): array
     {
         try {
             $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningEvenementSelect @Id = :Id';
+            $sql = 'EXEC ps_PlanningEvenementSelect @Id = :Id, @IdPlanningVue = :IdPlanningVue';
             $params = [
                 'Id' => $id,
+                'IdPlanningVue' => $idPlanningVue
             ];
             $result = $conn->executeQuery($sql, $params)->fetchAssociative();
 
@@ -148,14 +152,14 @@ class PlanningEvenementRepository extends ServiceEntityRepository
 
     }
 
-    public function findEventsByEmployee(int $employeeId, string $type, int $idPlanning): array
+    public function findEventsByEmployee(int $employeeId, string $type, int $idPlanning, int $idPlanningVue): array
     {
         try {
             $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningEvenementSelect @IdEmploye = :IdEmployee, @Type = :Type';
+            $sql = 'EXEC ps_PlanningEvenementSelect @IdEmploye = :IdEmployee, @IdPlanningVue = :IdPlanningVue';
             $params = [
                 'IdEmployee' => $employeeId,
-                'Type' => $type
+                'IdPlanningVue' => $idPlanningVue
             ];
             $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
