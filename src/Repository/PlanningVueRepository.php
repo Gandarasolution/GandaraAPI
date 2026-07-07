@@ -348,4 +348,46 @@ class PlanningVueRepository extends ServiceEntityRepository
 
 
     }
+
+    public function createVue(array $planningVue, array $filtrePerso, string $idPlanning, LoggerInterface $logger)
+    {
+        $conn =  $this->getEntityManager()->getConnection();
+
+        try {
+            $sql = 'EXEC ps_PlanningVueInsert @IdPlanning = :IdPlanning, @DescriptionPlanningVue = :DescriptionPlanningVue, @LibellePlanningVue = :LibellePlanningVue, @ChampsPremierGroupePlanningVue = :ChampsPremierGroupePlanningVue, @ChampsDeuxiemeGroupePlanningVue = :ChampsDeuxiemeGroupePlanningVue, @FiltreChantierPlanningVue = :FiltreChantierPlanningVue, @FiltreSocialPlanningVue = :FiltreSocialPlanningVue, @FiltreAutresPlanningVue = :FiltreAutresPlanningVue, @IdPlanningImage = :IdPlanningImage';
+
+            $conn->beginTransaction();
+
+            $params = [
+                'IdPlanning' => $idPlanning,
+                'DescriptionPlanningVue' => $planningVue['DescriptionPlanningVue'],
+                'LibellePlanningVue' => $planningVue['LibellePlanningVue'],
+                'ChampsPremierGroupePlanningVue' => $planningVue['Group']['ChampsPremierGroupePlanningVue'],
+                'ChampsDeuxiemeGroupePlanningVue' => $planningVue['Group']['ChampsDeuxiemeGroupePlanningVue'],
+                'FiltreChantierPlanningVue' => $planningVue['chantierEvenement'] ? 1 : 0,
+                'FiltreSocialPlanningVue' => $planningVue['paieEvenement'] ? 1 : 0,
+                'FiltreAutresPlanningVue' => $planningVue['persoEvenement'] ? 1 : 0,
+                'IdPlanningImage' => $planningVue['IdPlanningImage'] ?? null,
+            ];
+
+            $result = $conn->executeQuery($sql, $params)->fetchAllAssociative()[0];
+            $newId = $result['NouvelId'];
+
+            foreach ($filtrePerso as $filtre) {
+                $logger->debug('Mise à jour du filtre: ' . json_encode($filtre));
+                $sqlSetFilterPerso = 'EXEC ps_PlanningVueFiltreInsertUpdateDelete @IdPlanningVue = :IdPlanningVue, @IdFiltre = :IdFiltre, @EstFiltreGandara = :EstFiltreGandara, @ValeurFiltre = :ValeurFiltre';
+                $conn->executeQuery($sqlSetFilterPerso, [
+                    'IdPlanningVue' => $newId,
+                    'IdFiltre' => $filtre['IdFiltre'],
+                    'EstFiltreGandara' => $filtre['EstFiltreGandara'],
+                    'ValeurFiltre' => $filtre['Valeurs'] ? implode(', ', $filtre['Valeurs']) : null
+                ]);
+            }
+
+            $conn->commit();
+            return ['message' => 'Nouvelle vue créée avec succès.', 'NouvelId' => $newId];
+        } catch (Exception $e) {
+            throw new \Exception('Erreur lors de la création de la nouvelle vue: ' . $e->getMessage());
+        }
+    }
 }

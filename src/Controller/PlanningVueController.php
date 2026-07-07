@@ -187,6 +187,44 @@ class PlanningVueController extends AbstractController
     }
 
 
+    #[Route('/vue', name: 'api_vue_create', methods: ['POST'])]
+    public function addVue(#[CurrentUser] Session $user, Request $request): JsonResponse
+    {
+        try {
+            $idPlanning = $request->headers->get('X-Planning-Id');
+
+            if (!$idPlanning) {
+                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            }
+
+            $data = $request->toArray();
+
+            $planningVue = $data['planningVue'];
+
+            if (!$planningVue){
+                return $this->json(['error' => 1, 'message' => 'Données de la vue manquantes'], 400);
+            }
+
+            $filtrePerso = $data['filtrePerso'];
+            if (!$filtrePerso){
+                return $this->json(['error' => 1, 'message' => 'Données du filtre perso manquantes'], 400);
+            }
+
+            $result = $this->planningVueRepository->createVue($planningVue, $filtrePerso, $idPlanning, $this->logger);
+
+            $this->notifier->notifyPlanningChange(
+                $idPlanning,
+                'ADD_VUE',
+                $user->getIdpersonnel(),
+                ['vue' => $result]
+            );
+
+            return $this->json(['error' => 0, 'message' => 'Vue ajoutée avec succès.', 'data' => $result]);
+        } catch (\Exception $e) {
+            return $this->json(['error' => 1, 'message' =>  $e->getMessage()], 500);
+        }
+    }
+
     #[Route('/{idDate}/non-working-dates', name: 'api_non-working-dates', methods: ['DELETE'])]
     public function deleteNonWorkingDates(Request $request, int $idDate, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
