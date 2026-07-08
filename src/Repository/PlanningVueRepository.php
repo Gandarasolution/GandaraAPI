@@ -349,17 +349,18 @@ class PlanningVueRepository extends ServiceEntityRepository
 
     }
 
-    public function createVue(array $planningVue, array $filtrePerso, string $idPlanning, LoggerInterface $logger)
+    public function createVue(array $planningVue, array $filtrePerso, string $idPlanning, int $idUser, LoggerInterface $logger)
     {
         $conn =  $this->getEntityManager()->getConnection();
 
         try {
-            $sql = 'EXEC ps_PlanningVueInsert @IdPlanning = :IdPlanning, @DescriptionPlanningVue = :DescriptionPlanningVue, @LibellePlanningVue = :LibellePlanningVue, @ChampsPremierGroupePlanningVue = :ChampsPremierGroupePlanningVue, @ChampsDeuxiemeGroupePlanningVue = :ChampsDeuxiemeGroupePlanningVue, @FiltreChantierPlanningVue = :FiltreChantierPlanningVue, @FiltreSocialPlanningVue = :FiltreSocialPlanningVue, @FiltreAutresPlanningVue = :FiltreAutresPlanningVue, @IdPlanningImage = :IdPlanningImage';
+            $sql = 'EXEC ps_PlanningVueUpdateInsert @IdPlanning = :IdPlanning, @IdSession = :IdSession, @DescriptionPlanningVue = :DescriptionPlanningVue, @LibellePlanningVue = :LibellePlanningVue, @ChampsPremierGroupePlanningVue = :ChampsPremierGroupePlanningVue, @ChampsDeuxiemeGroupePlanningVue = :ChampsDeuxiemeGroupePlanningVue, @FiltreChantierPlanningVue = :FiltreChantierPlanningVue, @FiltreSocialPlanningVue = :FiltreSocialPlanningVue, @FiltreAutresPlanningVue = :FiltreAutresPlanningVue, @IdPlanningImage = :IdPlanningImage';
 
             $conn->beginTransaction();
 
             $params = [
                 'IdPlanning' => $idPlanning,
+                'IdSession' => $idUser,
                 'DescriptionPlanningVue' => $planningVue['DescriptionPlanningVue'],
                 'LibellePlanningVue' => $planningVue['LibellePlanningVue'],
                 'ChampsPremierGroupePlanningVue' => $planningVue['Group']['ChampsPremierGroupePlanningVue'],
@@ -370,8 +371,27 @@ class PlanningVueRepository extends ServiceEntityRepository
                 'IdPlanningImage' => $planningVue['IdPlanningImage'] ?? null,
             ];
 
-            $result = $conn->executeQuery($sql, $params)->fetchAllAssociative()[0];
-            $newId = $result['NouvelId'];
+            $result = $conn->executeQuery($sql, $params)->fetchAssociative();
+            $logger->debug('Résultat de la création de la vue: ' . json_encode($result));
+
+            if ($result === false) {
+                // Si tu arrives ici sans que le THROW n'ait déclenché d'Exception
+                return['error' => 1, 'message' => 'Échec de la création en base de données.'];
+            }
+
+            $newId = $result['IdPlanningVue'];
+
+            $result = [
+                'IdPlanningVue' => $newId,
+                'DescriptionPlanningVue' => $result['DescriptionPlanningVue'],
+                'LibellePlanningVue' => $result['LibellePlanningVue'],
+                'Group' =>[
+                    'ChampsPremierGroupePlanningVue' => $result['ChampsPremierGroupePlanningVue'],
+                    'ChampsDeuxiemeGroupePlanningVue' => $result['ChampsDeuxiemeGroupePlanningVue']
+                ],
+                'IdPlanningImage' => $result['IdPlanningImage'],
+                'isLocked' => false,
+            ];
 
             foreach ($filtrePerso as $filtre) {
                 $logger->debug('Mise à jour du filtre: ' . json_encode($filtre));
@@ -385,8 +405,9 @@ class PlanningVueRepository extends ServiceEntityRepository
             }
 
             $conn->commit();
-            return ['message' => 'Nouvelle vue créée avec succès.', 'NouvelId' => $newId];
+            return ['error' => 0, 'message' => 'Nouvelle vue créée avec succès.', 'data' => $result];
         } catch (Exception $e) {
+            $conn->rollBack();
             throw new \Exception('Erreur lors de la création de la nouvelle vue: ' . $e->getMessage());
         }
     }

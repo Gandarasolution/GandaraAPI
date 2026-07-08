@@ -210,8 +210,11 @@ class PlanningVueController extends AbstractController
                 return $this->json(['error' => 1, 'message' => 'Données du filtre perso manquantes'], 400);
             }
 
-            $result = $this->planningVueRepository->createVue($planningVue, $filtrePerso, $idPlanning, $this->logger);
+            $result = $this->planningVueRepository->createVue($planningVue, $filtrePerso, $idPlanning, $user->getIdpersonnel(),  $this->logger);
 
+            if ($result['error'] === 1){
+                return $this->json(['error' => 1, 'message' => $result['message']], 500);
+            }
             $this->notifier->notifyPlanningChange(
                 $idPlanning,
                 'ADD_VUE',
