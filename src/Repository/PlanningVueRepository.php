@@ -382,7 +382,7 @@ class PlanningVueRepository extends ServiceEntityRepository
             $newId = $result['IdPlanningVue'];
 
             $result = [
-                'IdPlanningVue' => $newId,
+                'IdPlanningVue' => (int)$newId,
                 'DescriptionPlanningVue' => $result['DescriptionPlanningVue'],
                 'LibellePlanningVue' => $result['LibellePlanningVue'],
                 'Group' =>[
@@ -408,6 +408,36 @@ class PlanningVueRepository extends ServiceEntityRepository
             return ['error' => 0, 'message' => 'Nouvelle vue créée avec succès.', 'data' => $result];
         } catch (Exception $e) {
             $conn->rollBack();
+            throw new \Exception('Erreur lors de la création de la nouvelle vue: ' . $e->getMessage());
+        }
+    }
+
+    public function deleteVue(int $id, LoggerInterface $logger)
+    {
+        $conn = $this->getEntityManager()->getConnection();
+
+        try {
+            $sql = 'EXEC ps_PlanningVueDelete @IdPlanningVue = :IdPlanningVue';
+            $params = [
+                'IdPlanningVue' => $id,
+            ];
+
+            $result = $conn->fetchAssociative($sql, $params);
+
+            if (!$result) return ['error' => 1, 'message' => 'Erreur lors de la suppression de la vue.'];
+
+            $nbLignes = $result['LignesAffectees'];
+
+            if ($nbLignes === 0) {
+                $logger->warning("Aucune vue n'a été supprimée (ID introuvable : $id)");
+                return ['error' => 1, 'message' => 'Erreur lors de la suppression de la vue.'];
+            } else {
+                $logger->info("$nbLignes vue(s) supprimée(s) avec succès.");
+
+                return ['error' => 0, 'message' => 'Vue supprimée avec succès.'];
+            }
+
+        }catch(Exception $e){
             throw new \Exception('Erreur lors de la création de la nouvelle vue: ' . $e->getMessage());
         }
     }

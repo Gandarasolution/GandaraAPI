@@ -207,7 +207,7 @@ class PlanningVueController extends AbstractController
 
             $filtrePerso = $data['filtrePerso'];
             if (!$filtrePerso){
-                return $this->json(['error' => 1, 'message' => 'Données du filtre perso manquantes'], 400);
+               $filtrePerso = [];
             }
 
             $result = $this->planningVueRepository->createVue($planningVue, $filtrePerso, $idPlanning, $user->getIdpersonnel(),  $this->logger);
@@ -219,10 +219,10 @@ class PlanningVueController extends AbstractController
                 $idPlanning,
                 'ADD_VUE',
                 $user->getIdpersonnel(),
-                ['vue' => $result]
+                ['vue' => $result['data']]
             );
 
-            return $this->json(['error' => 0, 'message' => 'Vue ajoutée avec succès.', 'data' => $result]);
+            return $this->json($result);
         } catch (\Exception $e) {
             return $this->json(['error' => 1, 'message' =>  $e->getMessage()], 500);
         }
@@ -334,6 +334,39 @@ class PlanningVueController extends AbstractController
                 'message' => $e->getMessage(),
             ]);
             return $this->json(['error' => 1, 'message' => 'Une erreur est survenue lors de la mise à jour de la vue: ' . $e->getMessage()], 500);
+        }
+    }
+
+    #[Route('/vue/{id}', name: 'api_vue_delete', methods: ['DELETE'])]
+    public function deleteVue(int $id, LoggerInterface $logger, Request $request,  #[CurrentUser] Session $user): JsonResponse{
+        $idPlanning = $request->headers->get('X-Planning-Id');
+        if (!$idPlanning) {
+            return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+        }
+
+
+        try {
+            $result = $this->planningVueRepository->deleteVue($id, $logger);
+
+            if ($result['error'] === 1 ) {
+                return $this->json(['error' => 1, 'message' => "La vue n'a pas pus être supprimé"], 500);
+            }
+
+            $this->notifier->notifyPlanningChange(
+                $idPlanning,
+                'DELETE_VUE',
+                $user->getIdpersonnel(),
+                ['IdPlanningVue' => $id]
+            );
+
+            return $this->json($result);
+        }
+        catch (\Exception $e) {
+                $logger->error('Erreur lors de la mise à jour de la vue {id}: {message}', [
+                    'id' => $id,
+                    'message' => $e->getMessage(),
+                ]);
+                return $this->json(['error' => 1, 'message' => 'Une erreur est survenue lors de la suppression de la vue: ' . $e->getMessage()], 500);
         }
     }
 }
