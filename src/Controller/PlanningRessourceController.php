@@ -38,13 +38,21 @@ class PlanningRessourceController extends abstractController
     #[OA\Parameter(name: 'limit', in: 'query', description: 'Limite de résultats', schema: new OA\Schema(type: 'integer', default: 20))]
     #[OA\Parameter(name: 'types', in: 'query', description: 'Types de ressources (ex: type1,type2)', schema: new OA\Schema(type: 'string', default: ''))]
     #[OA\Response(response: 200, description: 'Liste des ressources correspondantes')]
-    public function getPlanningRessources(Request $request){
+    public function getPlanningRessources(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user){
+        $droitLevel = $this->securityRepository->getPermission($user, $logger);
+
+        $logger->debug('Récupération des ressources avec les paramètres', [
+            '@Query' => $request->query->get('q', ''),
+            '@Limit' => $request->query->get('limit', 20),
+            '@Types' => $request->query->get('types', ''),
+            '@DroitLevel' => $droitLevel
+        ]);
         try {
             $query = $request->query->get('q', '');
             $limit = $request->query->get('limit', 20);
             $type = $request->query->get('types', '');
 
-            $result = $this->planningRessourceRepository->getRessources($query, $limit, $type);
+            $result = $this->planningRessourceRepository->getRessources($query, $limit, $type, $droitLevel);
 
             return $this->json(['error' => 0, 'data' => $result]);
         }catch (\Exception $e) {

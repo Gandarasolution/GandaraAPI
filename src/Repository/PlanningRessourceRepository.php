@@ -45,15 +45,16 @@ class PlanningRessourceRepository extends ServiceEntityRepository
             throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
         }
     }
-    public function getRessources(mixed $query, mixed $limit, mixed $types)
+    public function getRessources(mixed $query, mixed $limit, mixed $types, int $droitLevel)
     {
         try {
             $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningRessourceSelectSearch @Query = :query, @Limit = :limit, @Types = :types';
+            $sql = 'EXEC ps_PlanningRessourceSelectSearch @Query = :query, @Limit = :limit, @Types = :types, @DroitLevel = :droitLevel';
             $params = [
                 'query' => $query,
                 'limit' => $limit,
-                'types' => $types
+                'types' => $types,
+                'droitLevel' => $droitLevel
             ];
 
             $data = $conn->executeQuery($sql, $params)->fetchAllAssociative();

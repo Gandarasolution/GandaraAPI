@@ -16,6 +16,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Nelmio\ApiDocBundle\Annotation\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
@@ -64,6 +65,7 @@ class PlanningVueController extends AbstractController
     #[Route('/vue/{id}', name: 'api_config', methods: ['GET'])]
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la vue', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Récupère les détails d\'une vue spécifique')]
+    #[IsGranted('VUE_VIEW', message: 'Vous n\'avez pas la permission de visualiser cette vue.')]
     public function getVue(int $id) :JsonResponse {
         try {
             $result = $this->planningVueRepository->getVue($id, $this->logger);
@@ -160,6 +162,7 @@ class PlanningVueController extends AbstractController
 
     // POST /api/planning/{idPlanning}/non-working-dates Ajout d'un jour non travaillé
     #[Route('/non-working-dates', name: 'api_add_non-working-dates', methods: ['POST'])]
+    #[IsGranted('VUE_CREATE_DATE', message: 'Vous n\'avez pas la permission de créer cette journée.')]
     public function addNonWorkingDates(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
         try {
@@ -188,6 +191,7 @@ class PlanningVueController extends AbstractController
 
 
     #[Route('/vue', name: 'api_vue_create', methods: ['POST'])]
+    #[IsGranted('VUE_CREATE', message: 'Vous n\'avez pas la permission de créer de vue.')]
     public function addVue(#[CurrentUser] Session $user, Request $request): JsonResponse
     {
         try {
@@ -229,6 +233,7 @@ class PlanningVueController extends AbstractController
     }
 
     #[Route('/{idDate}/non-working-dates', name: 'api_non-working-dates', methods: ['DELETE'])]
+    #[IsGranted('VUE_EDIT_DATE', message: 'Vous n\'avez pas la permission de supprimer cette journée.')]
     public function deleteNonWorkingDates(Request $request, int $idDate, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
         try {
@@ -257,6 +262,7 @@ class PlanningVueController extends AbstractController
     }
 
     #[Route('/vue/{id}/lock', methods: ['POST'])]
+    #[IsGranted('VUE_LOCK', message: 'Vous n\'avez pas la permission de lock cette vue.')]
     public function quickLock(int $id, #[CurrentUser] Session $user, LoggerInterface $logger, Request $request): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
@@ -293,6 +299,7 @@ class PlanningVueController extends AbstractController
     }
 
     #[Route('/vue/{id}', name: 'api_vue', methods: ['PUT'])]
+    #[IsGranted('VUE_EDIT', message: 'Vous n\'avez pas la permission de modifier cette vue.')]
     public function setvue(int $id, LoggerInterface $logger, Request $request): JsonResponse{
         $idPlanning = $request->headers->get('X-Planning-Id');
         if (!$idPlanning) {
@@ -338,6 +345,7 @@ class PlanningVueController extends AbstractController
     }
 
     #[Route('/vue/{id}', name: 'api_vue_delete', methods: ['DELETE'])]
+    #[IsGranted('VUE_EDIT', message: 'Vous n\'avez pas la permission de supprimer cette vue.')]
     public function deleteVue(int $id, LoggerInterface $logger, Request $request,  #[CurrentUser] Session $user): JsonResponse{
         $idPlanning = $request->headers->get('X-Planning-Id');
         if (!$idPlanning) {

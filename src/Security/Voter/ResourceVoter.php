@@ -48,7 +48,7 @@ class ResourceVoter extends Voter
         $sql = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id';
         try {
             $planningDroit = $this->connection->fetchAssociative($sql, ['id' => $user->getIdpersonnel()]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return false;
         }
         $level = (int)($planningDroit['IdDroitNiveau'] ?? 21);

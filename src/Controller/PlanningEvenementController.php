@@ -16,6 +16,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Nelmio\ApiDocBundle\Annotation\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
@@ -44,6 +45,7 @@ class PlanningEvenementController extends AbstractController
     #[OA\Parameter(name: 'dateStart', in: 'path', description: 'Date de début (ex: 2024-01-01)', schema: new OA\Schema(type: 'string', format: 'date'))]
     #[OA\Parameter(name: 'dateEnd', in: 'path', description: 'Date de fin (ex: 2024-12-31)', schema: new OA\Schema(type: 'string', format: 'date'))]
     #[OA\Response(response: 200, description: 'Liste des événements correspondants')]
+    #[IsGranted('VIEW_ALL', message: 'Vous n\'avez pas la permission de récupérer tous les événements.')]
     public function index(\DateTimeInterface $dateStart, \DateTimeInterface $dateEnd, Request $request): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
@@ -223,7 +225,17 @@ class PlanningEvenementController extends AbstractController
     #[OA\Response(response: 201, description: 'L\'événement a été créé avec succès')]
     public function create(Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
+        $data = $request->toArray();
+
         try {
+            $idRessource = $data['idRessource'] ?? null;
+            if (!$idRessource) {
+                return $this->json(['error' => 1, 'message' => 'Le champ IdPlanningRessource est obligatoire.'], 400);
+            }
+
+            // 3. On passe la ressource au Voter !
+            $this->denyAccessUnlessGranted('CREATE_EVENEMENT', $idRessource);
+
             $idPlanning = $request->headers->get('X-Planning-Id');
 
             if (!$idPlanning) {
@@ -234,14 +246,12 @@ class PlanningEvenementController extends AbstractController
                 return $this->json(['error' => 1, 'message' => 'Utilisateur non authentifié.'], 401);
             }
 
-            $data = $request->toArray();
             // Validation des données d'entrée (simplifiée)
             if (
                 empty($data['DebutPlanningEvenement'])
                 || empty($data['FinPlanningEvenement'])
-                || empty($data['IdPlanningRessource'])
             ) {
-                return $this->json(['error' => 1, 'message' => 'Les champs DebutPlanningEvenement, FinPlanningEvenement, IdPlanningRessource  sont obligatoires.'], 400);
+                return $this->json(['error' => 1, 'message' => 'Les champs DebutPlanningEvenement, FinPlanningEvenement sont obligatoires.'], 400);
             }
 
             $result = $this->planningEvenementRepository->createEvent($data, $logger, $idPlanning);
@@ -282,6 +292,7 @@ class PlanningEvenementController extends AbstractController
         content: new OA\JsonContent(type: 'object')
     )]
     #[OA\Response(response: 201, description: 'Événement mis à jour avec succès')]
+    #[IsGranted('UPDATE_EVENEMENT', message: 'Vous n\'avez pas la permission de modifier cet événement.')]
     public function update(int $id, Request $request, #[CurrentUser] Session $user, LoggerInterface $logger): JsonResponse
      {
          $idPlanning = $request->headers->get('X-Planning-Id');
@@ -359,6 +370,7 @@ class PlanningEvenementController extends AbstractController
     #[Route('/{id}', name: 'api_evenement_delete', methods: ['DELETE'])]
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de l\'événement à supprimer', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Événement supprimé')]
+    #[IsGranted('DELETE_EVENEMENT', message: 'Vous n\'avez pas la permission de supprimer cet événement.')]
     public function delete(int $id, Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
         try {
@@ -399,15 +411,17 @@ class PlanningEvenementController extends AbstractController
     public function deletes(Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
         try {
+
+            $data = $request->toArray();
+            if (!isset($data['ids']) || !is_array($data['ids']) || empty($data['ids'])) {
+                return $this->json(['error' => 1, 'message' => 'Le champ "ids" doit être un tableau d\'identifiants non vide.'], 400);
+            }
+            $this->denyAccessUnlessGranted('MASS_DELETE_EVENEMENT', $data['ids']);
+
             $idPlanning = $request->headers->get('X-Planning-Id');
 
             if (!$idPlanning) {
                 return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
-            }
-
-            $data = $request->toArray();
-            if (!isset($data['ids']) || !is_array($data['ids'])) {
-                return $this->json(['error' => 1, 'message' => 'Le champ "ids" doit être un tableau d\'identifiants.'], 400);
             }
 
             $lignesSupprimees = $this->planningEvenementRepository->deleteEvents($data);
@@ -464,6 +478,7 @@ class PlanningEvenementController extends AbstractController
         )
     )]
     #[OA\Response(response: 200, description: 'Événement et ressource mis à jour')]
+    #[IsGranted('UPDATE_EVENEMENT', message: 'Vous n\'avez pas la permission de modifier cet événement.')]
     public function updateWithProcedure(int $id, Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
         try {
@@ -568,6 +583,7 @@ class PlanningEvenementController extends AbstractController
         )
     )]
     #[OA\Response(response: 200, description: 'L\'événement a été divisé, retour des nouvelles données')]
+    #[IsGranted('UPDATE_EVENEMENT', message: 'Vous n\'avez pas la permission de modifier cet événement.')]
     public function divideEvent(int $id, Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
         try {
@@ -631,7 +647,17 @@ class PlanningEvenementController extends AbstractController
     #[OA\Response(response: 201, description: 'Répétition effectuée avec succès')]
     public function repeatEvent(int $id, Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
+        $data = $request->toArray();
         try {
+            $idRessource = $data['IdPlanningRessource'] ?? null;
+            if (!$idRessource) {
+                return $this->json(['error' => 1, 'message' => 'Le champ IdPlanningRessource est obligatoire.'], 400);
+            }
+
+            // 3. On passe la ressource au Voter !
+            $this->denyAccessUnlessGranted('REPEAT_EVENEMENT', $idRessource);
+
+
             $idPlanning = $request->headers->get('X-Planning-Id');
 
             if (!$idPlanning) {
@@ -687,6 +713,25 @@ class PlanningEvenementController extends AbstractController
             }
 
             $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
+
+            $cacheItem = $this->cache->getItem($cacheKey);
+
+            if ($cacheItem->isHit()) {
+                // Le RDV est dans le cache Redis !
+                $ownerId = $cacheItem->get();
+
+                // Est-ce que le propriétaire du verrou est différent de moi ?
+                // (Si ownerId === currentUserId, c'est mon verrou, donc ce n'est pas locked pour moi)
+                if ($ownerId !== $user->getIdPersonnel()) {
+                    return $this->json([
+                        'error' => 409,
+                        'isLocked' => true,
+                        'message' => 'Ce rendez-vous est actuellement en cours d\'édition par un autre utilisateur.'
+                    ]);
+                }
+            }
+
+
             // La fonction delete() supprime instantanément la clé de Redis
             $this->cache->delete($cacheKey);
 
@@ -705,6 +750,7 @@ class PlanningEvenementController extends AbstractController
 
 
     #[Route('/{id}/lock-quick', methods: ['POST'])]
+    #[IsGranted('EVENEMENT_LOCK', message: 'Vous n\'avez pas la permission de lock cet événement.')]
     public function quickLock(int $id, #[CurrentUser] Session $user, LoggerInterface $logger, Request $request): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
