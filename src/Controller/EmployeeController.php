@@ -36,7 +36,7 @@ class EmployeeController extends AbstractController
     #[OA\Parameter(name: 'pageNum', in: 'query', description: 'Numéro de page pour la pagination', schema: new OA\Schema(type: 'integer', default: 1))]
     #[OA\Parameter(name: 'q', in: 'query', description: '', schema: new OA\Schema(type: 'string', default: ''))]
     #[OA\Response(response: 200, description: 'Liste de tous les employés (Salariés et Intérimaires)')]
-    public function list(Request $request, LoggerInterface $logger){
+    public function list(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user){
         $droit = $this->securityRepository->getPermission($user, $logger);
 
         if ($droit != 23) {
