@@ -2,7 +2,9 @@
 
 namespace App\Controller;
 
+use App\Entity\Session;
 use App\Repository\EmployeeRepository;
+use App\Repository\SecurityRepository;
 use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
 use \Symfony\Component\HttpFoundation\Request;
@@ -11,6 +13,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Routing\Attribute\Route;
 use Nelmio\ApiDocBundle\Annotation\Model;
 use OpenApi\Attributes as OA;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 #[Route('/api/employees')]
 #[OA\Tag(name: 'Employés')]
@@ -18,6 +21,7 @@ class EmployeeController extends AbstractController
 {
     public function __construct(
         private EmployeeRepository $employeeRepository,
+        private SecurityRepository $securityRepository
         //private EntityManagerInterface $entityManager,
     ){}
 
@@ -33,6 +37,15 @@ class EmployeeController extends AbstractController
     #[OA\Parameter(name: 'q', in: 'query', description: '', schema: new OA\Schema(type: 'string', default: ''))]
     #[OA\Response(response: 200, description: 'Liste de tous les employés (Salariés et Intérimaires)')]
     public function list(Request $request, LoggerInterface $logger){
+        $droit = $this->securityRepository->getPermission($user, $logger);
+
+        if ($droit != 23) {
+            return $this->json([
+                'error' => 1,
+                'message' => 'Vous n\'avez pas la permission de voir les projets.'
+            ], 403);
+        }
+
         try {
 
             if (empty($request->query->all())) {
@@ -64,26 +77,26 @@ class EmployeeController extends AbstractController
     #[OA\Response(response: 200, description: 'Détails d\'un employé spécifique')]
     #[OA\Response(response: 404, description: 'Employé introuvable')]
     public function getEmployee(int $id, Request $request){
-        /*$type = $request->query->get('type');
+    /*$type = $request->query->get('type');
 
-        if (!in_array($type, ['Salarie', 'Interim'])) {
-            return $this->json(['error' => 1, 'message' => 'Le paramètre ?type=Salarie ou ?type=Interim est obligatoire'], 400);
-        }
-        */
+    if (!in_array($type, ['Salarie', 'Interim'])) {
+        return $this->json(['error' => 1, 'message' => 'Le paramètre ?type=Salarie ou ?type=Interim est obligatoire'], 400);
+    }
+    */
 
-        try {
-            // Appel avec paramètres => La PS renvoie une seule ligne (ou vide)
-            $result = $this->employeeRepository->getEmployeelist($id);
+try {
+    // Appel avec paramètres => La PS renvoie une seule ligne (ou vide)
+$result = $this->employeeRepository->getEmployeelist($id);
 
-            if (empty($result)) {
-                return $this->json(['error' => 1, 'message' => 'Employé non trouvé'], 404);
-            }
+if (empty($result)) {
+return $this->json(['error' => 1, 'message' => 'Employé non trouvé'], 404);
+}
 
-            return $this->json(['error' => 0, 'data' => $result]);
+return $this->json(['error' => 0, 'data' => $result]);
 
-        } catch (\Exception $e) {
-            return $this->json(['error' => 1 , 'message' => $e->getMessage()], 500);
-        }
+} catch (\Exception $e) {
+    return $this->json(['error' => 1 , 'message' => $e->getMessage()], 500);
+}
     }
 
     //PUT /api/employees/équipe/:id- Modifier un employé
@@ -94,7 +107,16 @@ class EmployeeController extends AbstractController
     #[OA\Response(response: 200, description: 'Employé mis à jour avec succès')]
     #[OA\Response(response: 400, description: 'Requête invalide')]
     #[OA\Response(response: 404, description: 'Employé introuvable')]
-    public function update(int $id, Request $request, LoggerInterface $logger){
+    public function update(int $id, Request $request, LoggerInterface $logger, #[CurrentUser] Session $user){
+        $droit = $this->securityRepository->getPermission($user, $logger);
+
+        if ($droit != 23) {
+            return $this->json([
+                'error' => 1,
+                'message' => 'Vous n\'avez pas la permission de voir les projets.'
+            ], 403);
+        }
+
         try{
             $data = $request->toArray();
 
