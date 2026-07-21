@@ -39,10 +39,10 @@ class EmployeeController extends AbstractController
     public function list(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user){
         $droit = $this->securityRepository->getPermission($user, $logger);
 
-        if ($droit != 23) {
+        if (!in_array($droit, [23, 22])) {
             return $this->json([
                 'error' => 1,
-                'message' => 'Vous n\'avez pas la permission de voir les projets.'
+                'message' => 'Vous n\'avez pas la permission de récupérer les employées.'
             ], 403);
         }
 
