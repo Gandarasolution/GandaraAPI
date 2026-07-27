@@ -16,21 +16,17 @@ class VueVoter extends Voter
 
     public const VIEW = 'VUE_VIEW';
     public const EDIT = 'VUE_EDIT';
+    public const LOCK = 'VUE_LOCK';
+
     public const CREATE = 'VUE_CREATE';
 
-    public const LOCK = 'VUE_LOCK';
 
 
     public function __construct(private Connection $connection, private LoggerInterface $logger) {}
 
     protected function supports(string $attribute, mixed $subject): bool
     {
-        if ($attribute === 'VUE_CREATE') {
-            return true;
-        }
-
-        return in_array($attribute, [self::VIEW, self::EDIT, self::LOCK])
-            && $subject instanceof Planningvue; // Vérifie que c'est bien l'entité attendue
+        return true;
     }
 
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token, ?Vote $vote = null): bool
@@ -48,6 +44,8 @@ class VueVoter extends Voter
             return false;
         }
         $level = (int)($planningDroit['IdDroitNiveau'] ?? 21);
+
+        $this->logger->debug(sprintf('VueVoter voteOnAttribute: attribute=%s, userId=%d, level=%d', $attribute, $user->getIdpersonnel(), $level));
 
 
         switch ($attribute) {

@@ -277,22 +277,45 @@ class PlanningVueRepository extends ServiceEntityRepository
                 'isLocked' => false,
             ];
 
-            return ['filtrePerso' => $structuredData, 'planningVue' => $structurePlanningVue];
+            $sql = 'SELECT S.Id, S.Nom
+                    FROM PlanningVueAttribution
+                    LEFT JOIN v_Personnel S ON S.Id = PlanningVueAttribution.IdSession
+                    WHERE IdPlanningVue = :IdPlanningVue
+                    ';
+            $params = [
+                'IdPlanningVue' => $id,
+            ];
+            $utilisateursAutorises = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+            return ['filtrePerso' => $structuredData, 'planningVue' => $structurePlanningVue, 'utilisateursAutorises' => $utilisateursAutorises];
 
         } catch (Exception $e) {
             throw new \Exception('Erreur lors de la récupération de la vue pour l\'ID ' . $id . ': ' . $e->getMessage());
         }
     }
 
-    public function setVue(int $id, array $planningVue, array $filtrePerso, LoggerInterface $logger)
+    public function setVue(int $id, array $planningVue, array $filtrePerso, array $utilisateursAutorises, LoggerInterface $logger)
     {
         $conn = $this->getEntityManager()->getConnection();
 
+        $jsonUsers = json_encode($utilisateursAutorises);
+        $logger->debug('Mise à jour de la vue avec les données: ' . json_encode($planningVue) . ', filtres: ' . json_encode($filtrePerso) . ', utilisateurs: ' . $jsonUsers);
         try {
             $conn->beginTransaction();
 
             // Mise à jour de la vue
-            $sqlSetplanningVue = 'EXEC ps_PlanningVueUpdate @IdPlanningVue = :IdPlanningVue, @DescriptionPlanningVue = :DescriptionPlanningVue, @LibellePlanningVue = :LibellePlanningVue, @ChampsPremierGroupePlanningVue = :ChampsPremierGroupePlanningVue, @ChampsDeuxiemeGroupePlanningVue = :ChampsDeuxiemeGroupePlanningVue, @FiltreChantierPlanningVue = :FiltreChantierPlanningVue, @FiltreSocialPlanningVue = :FiltreSocialPlanningVue, @FiltreAutresPlanningVue = :FiltreAutresPlanningVue, @IdPlanningImage = :IdPlanningImage';
+            $sqlSetplanningVue = '
+                EXEC ps_PlanningVueUpdateInsert
+                @IdPlanningVue = :IdPlanningVue,
+                @DescriptionPlanningVue = :DescriptionPlanningVue,
+                @LibellePlanningVue = :LibellePlanningVue,
+                @ChampsPremierGroupePlanningVue = :ChampsPremierGroupePlanningVue,
+                @ChampsDeuxiemeGroupePlanningVue = :ChampsDeuxiemeGroupePlanningVue,
+                @FiltreChantierPlanningVue = :FiltreChantierPlanningVue,
+                @FiltreSocialPlanningVue = :FiltreSocialPlanningVue,
+                @FiltreAutresPlanningVue = :FiltreAutresPlanningVue,
+                @IdPlanningImage = :IdPlanningImage,
+                @JsonUtilisateurs = :JsonUtilisateurs';
 
             $conn->executeQuery($sqlSetplanningVue, [
                 'IdPlanningVue' => $id,
@@ -304,6 +327,7 @@ class PlanningVueRepository extends ServiceEntityRepository
                 'FiltreSocialPlanningVue' => $planningVue['paieEvenement'] ? 1 : 0,
                 'FiltreAutresPlanningVue' => $planningVue['persoEvenement'] ? 1 : 0,
                 'IdPlanningImage' => $planningVue['IdPlanningImage'] ?? null,
+                'JsonUtilisateurs' => $jsonUsers,
             ]);
 
 
@@ -349,12 +373,13 @@ class PlanningVueRepository extends ServiceEntityRepository
 
     }
 
-    public function createVue(array $planningVue, array $filtrePerso, string $idPlanning, int $idUser, LoggerInterface $logger)
+    public function createVue(array $planningVue, array $filtrePerso, array $utilisateursAutorises, string $idPlanning, int $idUser, LoggerInterface $logger)
     {
         $conn =  $this->getEntityManager()->getConnection();
 
+        $jsonUsers = json_encode($utilisateursAutorises);
         try {
-            $sql = 'EXEC ps_PlanningVueUpdateInsert @IdPlanning = :IdPlanning, @IdSession = :IdSession, @DescriptionPlanningVue = :DescriptionPlanningVue, @LibellePlanningVue = :LibellePlanningVue, @ChampsPremierGroupePlanningVue = :ChampsPremierGroupePlanningVue, @ChampsDeuxiemeGroupePlanningVue = :ChampsDeuxiemeGroupePlanningVue, @FiltreChantierPlanningVue = :FiltreChantierPlanningVue, @FiltreSocialPlanningVue = :FiltreSocialPlanningVue, @FiltreAutresPlanningVue = :FiltreAutresPlanningVue, @IdPlanningImage = :IdPlanningImage';
+            $sql = 'EXEC ps_PlanningVueUpdateInsert @IdPlanning = :IdPlanning, @IdSession = :IdSession, @DescriptionPlanningVue = :DescriptionPlanningVue, @LibellePlanningVue = :LibellePlanningVue, @ChampsPremierGroupePlanningVue = :ChampsPremierGroupePlanningVue, @ChampsDeuxiemeGroupePlanningVue = :ChampsDeuxiemeGroupePlanningVue, @FiltreChantierPlanningVue = :FiltreChantierPlanningVue, @FiltreSocialPlanningVue = :FiltreSocialPlanningVue, @FiltreAutresPlanningVue = :FiltreAutresPlanningVue, @IdPlanningImage = :IdPlanningImage, @JsonUtilisateurs = :JsonUtilisateurs';
 
             $conn->beginTransaction();
 
@@ -369,6 +394,7 @@ class PlanningVueRepository extends ServiceEntityRepository
                 'FiltreSocialPlanningVue' => $planningVue['paieEvenement'] ? 1 : 0,
                 'FiltreAutresPlanningVue' => $planningVue['persoEvenement'] ? 1 : 0,
                 'IdPlanningImage' => $planningVue['IdPlanningImage'] ?? null,
+                'JsonUtilisateurs' => $jsonUsers,
             ];
 
             $result = $conn->executeQuery($sql, $params)->fetchAssociative();
@@ -439,6 +465,23 @@ class PlanningVueRepository extends ServiceEntityRepository
 
         }catch(Exception $e){
             throw new \Exception('Erreur lors de la création de la nouvelle vue: ' . $e->getMessage());
+        }
+    }
+
+    public function getUsers()
+    {
+        $conn = $this->getEntityManager()->getConnection();
+
+        try {
+            $sql = 'SELECT IdPersonnel AS Id, V.Nom
+                    FROM Session
+                    INNER JOIN v_Personnel V ON V.Id = Session.IdPersonnel
+                    WHERE IdPersonnel > 0;';
+            $result = $conn->executeQuery($sql)->fetchAllAssociative();
+
+            return $result;
+        } catch (Exception $e) {
+            throw new \Exception('Erreur lors de la récupération des utilisateurs: ' . $e->getMessage());
         }
     }
 }

@@ -34,6 +34,22 @@ class PlanningVueController extends AbstractController
     )
     {}
 
+    #[Route('/vue/users', name: 'vueUsers', methods: ['GET'])]
+    #[OA\Response(response: 200, description: 'Récupère les utilisateurs')]
+    public function getVueUsers(): JsonResponse
+    {
+        try {
+            $result = $this->planningVueRepository->getUsers();
+            return $this->json(['error' => 0, 'data' => $result]);
+        } catch (\Exception $e) {
+            $this->logger->error('Erreur lors de la récupération des utilisateurs pour la vue {idVue}: {message}', [
+                'message' => $e->getMessage(),
+            ]);
+            return $this->json(['error' => 1, 'message' => 'Une erreur est survenue lors de la récupération des utilisateurs: ' . $e->getMessage()], 500);
+        }
+    }
+
+
     #[Route('/getLastVue', name: 'api_last_config_user', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Récupère la dernière vue d\'un utilisateur pour un planning donné')]
     #[OA\Response(response: 400, description: 'Paramètre idPlanning manquant ou invalide')]
@@ -214,7 +230,9 @@ class PlanningVueController extends AbstractController
                $filtrePerso = [];
             }
 
-            $result = $this->planningVueRepository->createVue($planningVue, $filtrePerso, $idPlanning, $user->getIdpersonnel(),  $this->logger);
+            $utilisateursAutorises = $data['utilisateursAutorises'] ?? [];
+
+            $result = $this->planningVueRepository->createVue($planningVue, $filtrePerso, $utilisateursAutorises, $idPlanning, $user->getIdpersonnel(),  $this->logger);
 
             if ($result['error'] === 1){
                 return $this->json(['error' => 1, 'message' => $result['message']], 500);
@@ -323,11 +341,12 @@ class PlanningVueController extends AbstractController
 
         if (is_null($filtrePerso)){
             return $this->json(['error' => 1, 'message' => 'Données du filtre perso manquantes'], 400);
-
         }
 
+        $utilisateursAutorises = $data['utilisateursAutorises'] ?? [];
+
         try {
-            $result = $this->planningVueRepository->setVue($id, $planningVue, $filtrePerso, $logger);
+            $result = $this->planningVueRepository->setVue($id, $planningVue, $filtrePerso, $utilisateursAutorises, $logger);
 
             if (!$result) {
                 return $this->json(['error' => 1, 'message' => 'La vue n\'a pas pu être mise à jour.'], 500);

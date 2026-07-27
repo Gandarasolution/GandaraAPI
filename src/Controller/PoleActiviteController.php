@@ -22,7 +22,6 @@ class PoleActiviteController extends AbstractController
     )
     {}
 
-    //GET /api/poles- Lister les pôles
     #[Route('', name: 'pole_activite_list', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Liste de tous les pôles d\'activité')]
     public function list(Request $request){
@@ -41,7 +40,6 @@ class PoleActiviteController extends AbstractController
         return $this->json(['error' => 0, 'data' => $result]);
     }
 
-    // POST /api/ poles- Créer un pôle
     #[Route('', name: 'pole_activite_create', methods: ['POST'])]
     #[OA\RequestBody(
         description: 'Les informations pour créer un pôle',
@@ -69,7 +67,6 @@ class PoleActiviteController extends AbstractController
         }
     }
 
-    //PUT /api/poles/:id- Modifier un pôle
     #[Route('/{id}', name: 'pole_activite_update', methods: ['PUT'])]
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID du pôle', schema: new OA\Schema(type: 'integer'))]
     #[OA\RequestBody(
