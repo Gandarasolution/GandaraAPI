@@ -51,6 +51,7 @@ class EvenementVoter extends Voter
         try {
             $planningDroit = $this->connection->fetchAssociative($sql, ['id' => $user->getIdpersonnel()]);
         } catch (Exception $e) {
+            $this->logger->error('Erreur SQL dans le voter : ' . $e->getMessage());
             return false;
         }
         $level = (int)($planningDroit['IdDroitNiveau'] ?? 21);
@@ -112,9 +113,14 @@ class EvenementVoter extends Voter
             // Cas de la création : le contrôleur nous a passé l'ID direct
             $idRessource = (int) $subject;
         } elseif ($subject instanceof Planningevenement) {
-            // Cas de l'édition : le contrôleur nous a passé l'objet complet
-            $idRessource = $subject->getIdplanningressource();
+            $ressourceObj = $subject->getIdplanningressource();
+            if ($ressourceObj) {
+                $idRessource = $ressourceObj->getIdplanningressource();
+            }else{
+                return false;
+            }
         }
+
 
         if (!$idRessource) {
             return false;
@@ -137,8 +143,12 @@ class EvenementVoter extends Voter
         try {
             $type = $this->connection->fetchOne($sqlType, ['idRessource' => $idRessource]);
         } catch (Exception $e) {
+            $this->logger->error('Erreur SQL dans le voter : ' . $e->getMessage());
             return false;
         }
+
+        $this->logger->debug(sprintf('EvenementVoter voteOnAttribute: attribute=%s, userId=%d, level=%d, resourceType=%s', $attribute, $user->getIdpersonnel(), $level, $type));
+
 
         // 4. Vérification des actions SPÉCIFIQUES à un objet
         switch ($attribute) {

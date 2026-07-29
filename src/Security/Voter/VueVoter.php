@@ -26,7 +26,7 @@ class VueVoter extends Voter
 
     protected function supports(string $attribute, mixed $subject): bool
     {
-        return true;
+        return in_array($attribute, [self::VIEW, self::EDIT, self::LOCK, self::CREATE]);
     }
 
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token, ?Vote $vote = null): bool

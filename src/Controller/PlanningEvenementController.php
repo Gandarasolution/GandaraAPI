@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entity\Planningevenement;
 use App\Repository\PlanningEvenementRepository;
 use App\Repository\PlanningRessourceRepository;
 use App\Service\MercureNotificationService;
@@ -750,14 +751,16 @@ class PlanningEvenementController extends AbstractController
 
 
     #[Route('/{id}/lock-quick', methods: ['POST'])]
-    #[IsGranted('EVENEMENT_LOCK', message: 'Vous n\'avez pas la permission de lock cet événement.')]
-    public function quickLock(int $id, #[CurrentUser] Session $user, LoggerInterface $logger, Request $request): JsonResponse
+    #[IsGranted('EVENEMENT_LOCK', subject: 'evenement', message: 'Vous n\'avez pas la permission de lock cet événement.')]
+    public function quickLock(Planningevenement $evenement, #[CurrentUser] Session $user, LoggerInterface $logger, Request $request): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
 
         if (!$idPlanning) {
             return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
         }
+
+        $id = $evenement->getIdplanningevenement();
 
         $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
         $currentUserId = $user->getIdPersonnel();
