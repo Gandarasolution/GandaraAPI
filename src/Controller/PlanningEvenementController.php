@@ -229,7 +229,7 @@ class PlanningEvenementController extends AbstractController
         $data = $request->toArray();
 
         try {
-            $idRessource = $data['idRessource'] ?? null;
+            $idRessource = $data['IdPlanningRessource'] ?? null;
             if (!$idRessource) {
                 return $this->json(['error' => 1, 'message' => 'Le champ IdPlanningRessource est obligatoire.'], 400);
             }
