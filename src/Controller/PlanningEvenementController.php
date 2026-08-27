@@ -52,21 +52,21 @@ class PlanningEvenementController extends AbstractController
         $idPlanning = $request->headers->get('X-Planning-Id');
 
         if (!$idPlanning) {
-            return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
         }
 
         $idPlanningVue = $request->headers->get('X-PlanningVue-Id');
 
         if (!$idPlanningVue) {
-            return $this->json(['error' => 1, 'message' => 'Id de la vue du planning manquante'], 400);
+            return new JsonResponse(['error' => 1, 'message' => 'Id de la vue du planning manquante'], 400);
         }
 
         try{
             $result = $this->planningEvenementRepository->findEventsByDate($dateStart, $dateEnd, $idPlanning, $idPlanningVue);
-            return $this->json(['error' => 0, 'data' => $result]);
+            return new JsonResponse(['error' => 0, 'data' => $result]);
 
         }catch(\Exception $e){
-            return $this->json(['error' => 1, 'message' => $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1, 'message' => $e->getMessage()], 500);
         }
     }
 
@@ -89,13 +89,13 @@ class PlanningEvenementController extends AbstractController
         $idPlanning = $request->headers->get('X-Planning-Id');
 
         if (!$idPlanning) {
-            return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
         }
 
         $idPlanningVue = $request->headers->get('X-PlanningVue-Id');
 
         if (!$idPlanningVue) {
-            return $this->json(['error' => 1, 'message' => 'Id de la vue du planning manquante'], 400);
+            return new JsonResponse(['error' => 1, 'message' => 'Id de la vue du planning manquante'], 400);
         }
 
         $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
@@ -115,7 +115,7 @@ class PlanningEvenementController extends AbstractController
 
             if ($lockOwnerId !== $idUser) {
                 // Le verrou appartient à quelqu'un d'autre ! (ex: $lockOwnerId = 45, et toi = 12)
-                return $this->json([
+                return new JsonResponse([
                     'error' => 409,
                     'isLocked' => true,
                     'message' => 'Ce rendez-vous est actuellement en cours d\'édition.'
@@ -137,15 +137,15 @@ class PlanningEvenementController extends AbstractController
                     $idUser,
                     ['IdPlanningEvenement' => $id]
                 );
-                return $this->json(['error' => 1, 'message' => 'Événement non trouvé'], 404);
+                return new JsonResponse(['error' => 1, 'message' => 'Événement non trouvé'], 404);
             }
 
 
 
-            return $this->json(['error' => 0, 'data' => $result]);
+            return new JsonResponse(['error' => 0, 'data' => $result]);
 
         }catch(\Exception $e){
-            return $this->json(['error' => 1, 'message' => $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1, 'message' => $e->getMessage()], 500);
         }
     }
 
@@ -166,13 +166,13 @@ class PlanningEvenementController extends AbstractController
         $idPlanning = $request->headers->get('X-Planning-Id');
 
         if (!$idPlanning) {
-            return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
         }
 
         $idPlanningVue = $request->headers->get('X-PlanningVue-Id');
 
         if (!$idPlanningVue) {
-            return $this->json(['error' => 1, 'message' => 'Id de la vue du planning manquante'], 400);
+            return new JsonResponse(['error' => 1, 'message' => 'Id de la vue du planning manquante'], 400);
         }
 
         try {
@@ -180,17 +180,17 @@ class PlanningEvenementController extends AbstractController
             $type = $request->query->get('type');
 
             if (!$type || !in_array($type, ['Salarie', 'Interim'])) {
-                return $this->json(['error' => 1, 'message' => 'Le paramètre ?type=Salarie ou ?type=Interim est obligatoire'], 400);
+                return new JsonResponse(['error' => 1, 'message' => 'Le paramètre ?type=Salarie ou ?type=Interim est obligatoire'], 400);
             }
 
             if (!$employeeId) {
-                return $this->json(['error' => 1, 'message' => 'Le paramètre ?employee=:id est obligatoire'], 400);
+                return new JsonResponse(['error' => 1, 'message' => 'Le paramètre ?employee=:id est obligatoire'], 400);
             }
 
             $result = $this->planningEvenementRepository->findEventsByEmployee($employeeId, $type, $idPlanning, $idPlanningVue);
-            return $this->json(['error' => 0, 'data' => $result]);
+            return new JsonResponse(['error' => 0, 'data' => $result]);
         } catch (\Exception $e) {
-            return $this->json(['error' => 1, 'message' => $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1, 'message' => $e->getMessage()], 500);
         }
     }
 
@@ -231,7 +231,7 @@ class PlanningEvenementController extends AbstractController
         try {
             $idRessource = $data['IdPlanningRessource'] ?? null;
             if (!$idRessource) {
-                return $this->json(['error' => 1, 'message' => 'Le champ IdPlanningRessource est obligatoire.'], 400);
+                return new JsonResponse(['error' => 1, 'message' => 'Le champ IdPlanningRessource est obligatoire.'], 400);
             }
 
             // 3. On passe la ressource au Voter !
@@ -240,11 +240,11 @@ class PlanningEvenementController extends AbstractController
             $idPlanning = $request->headers->get('X-Planning-Id');
 
             if (!$idPlanning) {
-                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+                return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
             }
 
             if (!$user) {
-                return $this->json(['error' => 1, 'message' => 'Utilisateur non authentifié.'], 401);
+                return new JsonResponse(['error' => 1, 'message' => 'Utilisateur non authentifié.'], 401);
             }
 
             // Validation des données d'entrée (simplifiée)
@@ -252,7 +252,7 @@ class PlanningEvenementController extends AbstractController
                 empty($data['DebutPlanningEvenement'])
                 || empty($data['FinPlanningEvenement'])
             ) {
-                return $this->json(['error' => 1, 'message' => 'Les champs DebutPlanningEvenement, FinPlanningEvenement sont obligatoires.'], 400);
+                return new JsonResponse(['error' => 1, 'message' => 'Les champs DebutPlanningEvenement, FinPlanningEvenement sont obligatoires.'], 400);
             }
 
             $result = $this->planningEvenementRepository->createEvent($data, $logger, $idPlanning);
@@ -264,10 +264,10 @@ class PlanningEvenementController extends AbstractController
                 $result
             );
 
-            return $this->json(['error' => 0, 'data' => $result], 201);
+            return new JsonResponse(['error' => 0, 'data' => $result], 201);
 
         } catch (\Exception $e) {
-            return $this->json(['error' => 1,'message' => 'Erreur lors de la création de l\'événement: ' . $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1,'message' => 'Erreur lors de la création de l\'événement: ' . $e->getMessage()], 500);
         }
     }
 
@@ -293,13 +293,14 @@ class PlanningEvenementController extends AbstractController
         content: new OA\JsonContent(type: 'object')
     )]
     #[OA\Response(response: 201, description: 'Événement mis à jour avec succès')]
-    #[IsGranted('UPDATE_EVENEMENT', message: 'Vous n\'avez pas la permission de modifier cet événement.')]
-    public function update(int $id, Request $request, #[CurrentUser] Session $user, LoggerInterface $logger): JsonResponse
+    #[IsGranted('UPDATE_EVENEMENT',  subject: 'evenement', message: 'Vous n\'avez pas la permission de modifier cet événement.')]
+    public function update(Planningevenement $evenement, Request $request, #[CurrentUser] Session $user, LoggerInterface $logger): JsonResponse
      {
+         $id = $evenement->getIdplanningevenement();
          $idPlanning = $request->headers->get('X-Planning-Id');
 
          if (!$idPlanning) {
-             return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+             return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
          }
          $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
 
@@ -312,7 +313,7 @@ class PlanningEvenementController extends AbstractController
                  $ownerId = $cacheItem->get();
 
                  if($ownerId !== $idUser) {
-                     return $this->json([
+                     return new JsonResponse([
                          'error' => 409,
                          'isLocked' => true,
                          'message' => 'Ce rendez-vous est actuellement en cours d\'édition.'
@@ -323,7 +324,7 @@ class PlanningEvenementController extends AbstractController
 
              $data = $request->toArray();
              if (($data === null) || $data === []) {
-                 return $this->json(['error' => 'Données JSON invalides.'], 400);
+                 return new JsonResponse(['error' => 'Données JSON invalides.'], 400);
              }
              if($data['PlanningEvenementPriorite'] === null){
                  $data['PlanningEvenementPriorite']= 0;
@@ -336,7 +337,7 @@ class PlanningEvenementController extends AbstractController
              $logger->debug('Résultat de la mise à jour de l\'événement', ['result' => $result]);
              if ($result['LignesModifiees'] === 0) {
                  // Pas d'erreur technique, mais l'ID n'existait pas
-                 return $this->json(['error' => 1, 'message' => 'Événement introuvable.'], 404);
+                 return new JsonResponse(['error' => 1, 'message' => 'Événement introuvable.'], 404);
              }
 
              $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
@@ -353,10 +354,10 @@ class PlanningEvenementController extends AbstractController
                  $result['data']
              );
 
-             return $this->json(['error' => 0, 'message' => 'Événement mis à jour avec succès'], 201);
+             return new JsonResponse(['error' => 0, 'message' => 'Événement mis à jour avec succès'], 201);
 
          } catch (\Exception $e) {
-             return $this->json(['error' => 1, 'message' => 'Erreur lors de la mise à jour de l\'événement: ' . $e->getMessage()], 500);
+             return new JsonResponse(['error' => 1, 'message' => 'Erreur lors de la mise à jour de l\'événement: ' . $e->getMessage()], 500);
          }
      }
 
@@ -371,19 +372,20 @@ class PlanningEvenementController extends AbstractController
     #[Route('/{id}', name: 'api_evenement_delete', methods: ['DELETE'])]
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de l\'événement à supprimer', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Événement supprimé')]
-    #[IsGranted('DELETE_EVENEMENT', message: 'Vous n\'avez pas la permission de supprimer cet événement.')]
-    public function delete(int $id, Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
+    #[IsGranted('DELETE_EVENEMENT', subject: 'evenement',  message: 'Vous n\'avez pas la permission de supprimer cet événement.')]
+    public function delete(Planningevenement $evenement, Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
         try {
+            $id = $evenement->getIdplanningevenement();
             $idPlanning = $request->headers->get('X-Planning-Id');
 
             if (!$idPlanning) {
-                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+                return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
             }
 
             $lignesSupprimees = $this->planningEvenementRepository->deleteEvent($id);
             if ($lignesSupprimees === 0) {
-                return $this->json(['error' => 1 , 'message' => 'Événement introuvable.'], 404);
+                return new JsonResponse(['error' => 1 , 'message' => 'Événement introuvable.'], 404);
             }
 
             $this->notifier->notifyPlanningChange(
@@ -393,10 +395,10 @@ class PlanningEvenementController extends AbstractController
                 ['IdPlanningEvenement' => $id]
             );
 
-            return $this->json(['error' => 0, 'message' => 'Événement supprimé avec succès']);
+            return new JsonResponse(['error' => 0, 'message' => 'Événement supprimé avec succès']);
 
         } catch (\Exception $e) {
-            return $this->json(['error' => 1, 'message' => 'Erreur lors de la suppression de l\'événement: ' . $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1, 'message' => 'Erreur lors de la suppression de l\'événement: ' . $e->getMessage()], 500);
         }
     }
 
@@ -415,19 +417,19 @@ class PlanningEvenementController extends AbstractController
 
             $data = $request->toArray();
             if (!isset($data['ids']) || !is_array($data['ids']) || empty($data['ids'])) {
-                return $this->json(['error' => 1, 'message' => 'Le champ "ids" doit être un tableau d\'identifiants non vide.'], 400);
+                return new JsonResponse(['error' => 1, 'message' => 'Le champ "ids" doit être un tableau d\'identifiants non vide.'], 400);
             }
             $this->denyAccessUnlessGranted('MASS_DELETE_EVENEMENT', $data['ids']);
 
             $idPlanning = $request->headers->get('X-Planning-Id');
 
             if (!$idPlanning) {
-                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+                return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
             }
 
             $lignesSupprimees = $this->planningEvenementRepository->deleteEvents($data);
             if ($lignesSupprimees === 0) {
-                return $this->json(['error' => 1 , 'message' => 'Événement introuvable.'], 404);
+                return new JsonResponse(['error' => 1 , 'message' => 'Événement introuvable.'], 404);
             }
 
             $this->notifier->notifyPlanningChange(
@@ -437,10 +439,10 @@ class PlanningEvenementController extends AbstractController
                 ['deletedIds' => $data['ids']]
             );
 
-            return $this->json(['error' => 0, 'message' => 'Événement supprimé avec succès']);
+            return new JsonResponse(['error' => 0, 'message' => 'Événement supprimé avec succès']);
 
         } catch (\Exception $e) {
-            return $this->json(['error' => 1, 'message' => 'Erreur lors de la suppression de l\'événement: ' . $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1, 'message' => 'Erreur lors de la suppression de l\'événement: ' . $e->getMessage()], 500);
         }
     }
 
@@ -479,20 +481,21 @@ class PlanningEvenementController extends AbstractController
         )
     )]
     #[OA\Response(response: 200, description: 'Événement et ressource mis à jour')]
-    #[IsGranted('UPDATE_EVENEMENT', message: 'Vous n\'avez pas la permission de modifier cet événement.')]
-    public function updateWithProcedure(int $id, Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
+    #[IsGranted('UPDATE_EVENEMENT', subject: 'evenement', message: 'Vous n\'avez pas la permission de modifier cet événement.')]
+    public function updateWithProcedure(Planningevenement $evenement, Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
+        $id = $evenement->getIdplanningevenement();
         try {
             $idPlanning = $request->headers->get('X-Planning-Id');
 
             if (!$idPlanning) {
-                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+                return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
             }
 
             $data = $request->toArray();
 
             if (($data === null) || $data === []) {
-                return $this->json(['error' => 1, 'message' => 'Données JSON invalides.'], 400);
+                return new JsonResponse(['error' => 1, 'message' => 'Données JSON invalides.'], 400);
             }
 
             // Normalisation des timestamps envoyés en millisecondes -> int
@@ -518,7 +521,7 @@ class PlanningEvenementController extends AbstractController
             $logger->debug('Résultat de la mise à jour de l\'événement via PS', ['result' => $result]);
 
             if ($result['LignesModifiees'] === 0) {
-                return $this->json(['error' => 1, 'message' => 'Événement introuvable ou aucune modification effectuée.'], 404);
+                return new JsonResponse(['error' => 1, 'message' => 'Événement introuvable ou aucune modification effectuée.'], 404);
             }
 
             $returnData['appointment'] = $result['data'];
@@ -529,7 +532,7 @@ class PlanningEvenementController extends AbstractController
                 $result = $this->planningRessourceRepository->updateRessource((int)$ressourceId, $data['Ressource'], $logger);
 
                 if ($result['LignesModifiees'] === 0){
-                    return $this->json(['error' => 1, 'message' => 'Ressource introuvable ou aucune modification effectuée.'], 404);
+                    return new JsonResponse(['error' => 1, 'message' => 'Ressource introuvable ou aucune modification effectuée.'], 404);
                 }
             }
             $logger->debug('Résultat de la mise à jour de la ressource via PS', ['result' => $result]);
@@ -546,16 +549,16 @@ class PlanningEvenementController extends AbstractController
                 $returnData
             );
 
-            return $this->json([
+            return new JsonResponse([
                 'error' => 0,
                 'message' => 'Événement mis à jour avec succès',
             ]);
 
         } catch (\Exception $e) {
 
-            return $this->json(['error' => 1, 'message' => 'Erreur lors de la mise à jour via PS: ' . $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1, 'message' => 'Erreur lors de la mise à jour via PS: ' . $e->getMessage()], 500);
         } catch (InvalidArgumentException $e) {
-            return $this->json(['error' => 1, 'message' => 'Erreur de cache: ' . $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1, 'message' => 'Erreur de cache: ' . $e->getMessage()], 500);
         }
     }
 
@@ -584,20 +587,21 @@ class PlanningEvenementController extends AbstractController
         )
     )]
     #[OA\Response(response: 200, description: 'L\'événement a été divisé, retour des nouvelles données')]
-    #[IsGranted('UPDATE_EVENEMENT', message: 'Vous n\'avez pas la permission de modifier cet événement.')]
-    public function divideEvent(int $id, Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
+    #[IsGranted('UPDATE_EVENEMENT',  subject: 'evenement', message: 'Vous n\'avez pas la permission de modifier cet événement.')]
+    public function divideEvent(Planningevenement $evenement, Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
         try {
+            $id = $evenement->getIdplanningevenement();
             $idPlanning = $request->headers->get('X-Planning-Id');
 
             if (!$idPlanning) {
-                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+                return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
             }
 
             $data = $request->toArray();
 
             if (($data === null) || $data === []) {
-                return $this->json(['error' => 1, 'message' => 'Données JSON invalides.'], 400);
+                return new JsonResponse(['error' => 1, 'message' => 'Données JSON invalides.'], 400);
             }
 
             // Normalisation des timestamps envoyés en millisecondes -> int
@@ -621,12 +625,12 @@ class PlanningEvenementController extends AbstractController
                 ]
             );
 
-            return $this->json(['error' => 0, 'data' => ['NouvelIdEvenement' => $result['IdPlanningEvenement']]], 200);
+            return new JsonResponse(['error' => 0, 'data' => ['NouvelIdEvenement' => $result['IdPlanningEvenement']]], 200);
 
         } catch (\Exception $e) {
-            return $this->json(['error' => 1, 'message' => 'Erreur lors de la division de l\'événement: ' . $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1, 'message' => 'Erreur lors de la division de l\'événement: ' . $e->getMessage()], 500);
         } catch (InvalidArgumentException $e) {
-            return $this->json(['error' => 1, 'message' => 'Erreur de cache: ' . $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1, 'message' => 'Erreur de cache: ' . $e->getMessage()], 500);
         }
     }
 
@@ -650,9 +654,9 @@ class PlanningEvenementController extends AbstractController
     {
         $data = $request->toArray();
         try {
-            $idRessource = $data['IdPlanningRessource'] ?? null;
+            $idRessource = (int)$data['IdPlanningRessource'] ?? null;
             if (!$idRessource) {
-                return $this->json(['error' => 1, 'message' => 'Le champ IdPlanningRessource est obligatoire.'], 400);
+                return new JsonResponse(['error' => 1, 'message' => 'Le champ IdPlanningRessource est obligatoire.'], 400);
             }
 
             // 3. On passe la ressource au Voter !
@@ -662,7 +666,7 @@ class PlanningEvenementController extends AbstractController
             $idPlanning = $request->headers->get('X-Planning-Id');
 
             if (!$idPlanning) {
-                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+                return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
             }
 
             $data = $request->toArray();
@@ -688,12 +692,12 @@ class PlanningEvenementController extends AbstractController
 
             );
 
-            return $this->json(['error' => 0, 'data' => $result['ids']], 201);
+            return new JsonResponse(['error' => 0, 'data' => $result['ids']], 201);
 
         } catch (\Exception $e) {
-            return $this->json(['error' => 1, 'message' => 'Erreur lors de la répétition de l\'événement: ' . $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1, 'message' => 'Erreur lors de la répétition de l\'événement: ' . $e->getMessage()], 500);
         } catch (InvalidArgumentException $e) {
-            return $this->json(['error' => 1, 'message' => 'Erreur de cache: ' . $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1, 'message' => 'Erreur de cache: ' . $e->getMessage()], 500);
         }
     }
 
@@ -710,7 +714,7 @@ class PlanningEvenementController extends AbstractController
             $idPlanning = $request->headers->get('X-Planning-Id');
 
             if (!$idPlanning) {
-                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+                return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
             }
 
             $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
@@ -724,7 +728,7 @@ class PlanningEvenementController extends AbstractController
                 // Est-ce que le propriétaire du verrou est différent de moi ?
                 // (Si ownerId === currentUserId, c'est mon verrou, donc ce n'est pas locked pour moi)
                 if ($ownerId !== $user->getIdPersonnel()) {
-                    return $this->json([
+                    return new JsonResponse([
                         'error' => 409,
                         'isLocked' => true,
                         'message' => 'Ce rendez-vous est actuellement en cours d\'édition par un autre utilisateur.'
@@ -744,9 +748,9 @@ class PlanningEvenementController extends AbstractController
             );
 
         } catch (\Exception $e) {
-            return $this->json(['error' => 1, 'message' => 'Erreur lors du déverrouillage du rendez-vous: ' . $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1, 'message' => 'Erreur lors du déverrouillage du rendez-vous: ' . $e->getMessage()], 500);
         }
-        return $this->json(['success' => true]);
+        return new JsonResponse(['success' => true]);
     }
 
 
@@ -757,7 +761,7 @@ class PlanningEvenementController extends AbstractController
         $idPlanning = $request->headers->get('X-Planning-Id');
 
         if (!$idPlanning) {
-            return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
         }
 
         $id = $evenement->getIdplanningevenement();
@@ -773,11 +777,11 @@ class PlanningEvenementController extends AbstractController
             });
         } catch (InvalidArgumentException $e) {
             $logger->debug('Erreur lors de la récupération du verrou pour l\'événement ' . $id, ['exception' => $e]);
-            return $this->json(['error' => 1, 'message' => 'Erreur'], 500);
+            return new JsonResponse(['error' => 1, 'message' => 'Erreur'], 500);
         }
 
         if ($ownerId !== $currentUserId) {
-            return $this->json(['error' => 409, 'message' => 'Ce rendez-vous est actuellement en cours d\'édition.'], 409);
+            return new JsonResponse(['error' => 409, 'message' => 'Ce rendez-vous est actuellement en cours d\'édition.'], 409);
         }
 
         $this->notifier->notifyPlanningChange(
@@ -787,7 +791,7 @@ class PlanningEvenementController extends AbstractController
             ['IdPlanningEvenement' => $id]
         );
 
-        return $this->json(['error' => 0]);
+        return new JsonResponse(['error' => 0]);
     }
 
 }

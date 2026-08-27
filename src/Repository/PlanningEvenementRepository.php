@@ -10,6 +10,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Lock\LockFactory;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Contracts\Cache\CacheInterface;
 
@@ -18,7 +19,7 @@ use Symfony\Contracts\Cache\CacheInterface;
  */
 class PlanningEvenementRepository extends ServiceEntityRepository
 {
-    public function __construct(ManagerRegistry $registry, private CacheInterface $cache, private Security $security,)
+    public function __construct(ManagerRegistry $registry, private CacheInterface $cache, private Security $security, private UrlGeneratorInterface $router)
     {
         parent::__construct($registry, Planningevenement::class);
     }
@@ -36,22 +37,27 @@ class PlanningEvenementRepository extends ServiceEntityRepository
         $currentUser = $this->security->getUser();
         $currentUserId = $currentUser ? $currentUser->getUserIdentifier() : null;
 
+        $cacheKeys = [];
+        foreach ($data as $row) {
+            $cacheKeys[] = 'edit_rdv_' . $idPlanning . '_' . (int)$row['IdPlanningEvenement'];
+        }
+
+        $cacheItems = $this->cache->getItems($cacheKeys);
+
+        $locks = [];
+        foreach ($cacheItems as $cacheItem) {
+            if ($cacheItem->isHit()) {
+                $locks[$cacheItem->getKey()] = $cacheItem->get();
+            }
+        }
+
         foreach($data as $row){
             $idRdv = (int)$row['IdPlanningEvenement'];
             $isLocked = false;
             $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $idRdv;
 
-            $cacheItem = $this->cache->getItem($cacheKey);
-
-            if ($cacheItem->isHit()) {
-                // Le RDV est dans le cache Redis !
-                $ownerId = $cacheItem->get();
-
-                // Est-ce que le propriétaire du verrou est différent de moi ?
-                // (Si ownerId === currentUserId, c'est mon verrou, donc ce n'est pas locked pour moi)
-                if ($ownerId !== $currentUserId) {
-                    $isLocked = true;
-                }
+            if (isset($locks[$cacheKey]) && $locks[$cacheKey] !== $currentUserId) {
+                $isLocked = true;
             }
 
             $appointments[]= [
@@ -72,13 +78,20 @@ class PlanningEvenementRepository extends ServiceEntityRepository
 
             $idRessource = (int)$row['IdPlanningRessource'];
 
+            $image = null;
+            if (!empty($row['IdPlanningImage'])) {
+                $image = ['image' => $this->router->generate('api_serve_image_file', [
+                    'id' => $row['IdPlanningImage']
+                ], UrlGeneratorInterface::ABSOLUTE_URL), 'id' => $row['IdPlanningImage']];
+            }
+
             if (!isset($ressources[$idRessource])) {
                 $ressources[$idRessource] = [
                     'IdPlanningRessource'             => $idRessource,
                     'LibellePlanningRessource'        => $row['Libelle'],
                     'CodePlanningRessource'           => $row['Code'],
                     'ChargeAffaire'                   => $row['ChargeAffaire'],
-                    'IdImage'                         => $row['IdImage'] ? (int)$row['IdImage'] : null,
+                    'Image'                           => $image,
                     'CouleurBordurePlanningRessource' => $row['CouleurBordurePlanningRessource'],
                     'CouleurFondPlanningRessource'    => $row['CouleurFondPlanningRessource'],
                     'CouleurTextePlanningRessource'   => $row['CouleurTextePlanningRessource'],

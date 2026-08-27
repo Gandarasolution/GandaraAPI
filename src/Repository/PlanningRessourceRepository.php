@@ -8,11 +8,12 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\DBAL\Exception;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 
 class PlanningRessourceRepository extends ServiceEntityRepository
 {
-    public function __construct(ManagerRegistry $registry)
+    public function __construct(ManagerRegistry $registry, private UrlGeneratorInterface $router)
     {
         parent::__construct($registry, Planningressource::class);
     }
@@ -151,10 +152,18 @@ class PlanningRessourceRepository extends ServiceEntityRepository
 
             $structuredData = [];
             foreach($result as $row) {
+                $image = null;
+                if (!empty($row['IdPlanningImage'])) {
+                    $image = [
+                        'image' => $this->router->generate('api_serve_image_file', [
+                            'id' => $row['IdPlanningImage']
+                        ], UrlGeneratorInterface::ABSOLUTE_URL),
+                        'id' => $row['IdPlanningImage']];
+                }
                 $structuredData[] = [
                     'IdPlanningRessource' => $row['IdPlanningRessource'],
                     'LibellePlanningRessource' => $row['LibellePlanningRessource'],
-                    'IdImage' => $row['IdImage'],
+                    'Image' => $image,
                     'Actif' => (int)$row['Actif'] === 1,
                     'CouleurFondPlanningRessource' => $row['CouleurFondPlanningRessource'],
                     'CouleurBordurePlanningRessource' => $row['CouleurBordurePlanningRessource'],
@@ -209,13 +218,23 @@ class PlanningRessourceRepository extends ServiceEntityRepository
 
             $structuredData = [];
             foreach($result as $row) {
+                $image = null;
+                if (!empty($row['IdPlanningImage'])) {
+                    $image = [
+                        'image' => $this->router->generate('api_serve_image_file', [
+                            'id' => $row['IdPlanningImage']
+                        ], UrlGeneratorInterface::ABSOLUTE_URL),
+                        'id' => $row['IdPlanningImage']];
+                }
+
                 $structuredData[] = [
+
                     'IdPlanningRessource' => $row['IdSocialRubriquePaie'],
                     'LibellePlanningRessource' => $row['LibellePlanningRessource'],
                     'CouleurFondPlanningRessource' => $row['CouleurFondPlanningRessource'],
                     'CouleurBordurePlanningRessource' => $row['CouleurBordurePlanningRessource'],
                     'CouleurTextePlanningRessource' => $row['CouleurTextePlanningRessource'],
-                    'Image' => $row['IdPlanningImage'],
+                    'Image' => $image,
                     'Type' => 'Paie',
                     'Actif' => (int)$row['Actif'] === 1,
                     'CodePlanningRessource' => $row['CodePlanningRessource'],
@@ -253,13 +272,23 @@ class PlanningRessourceRepository extends ServiceEntityRepository
 
             $structuredData = [];
             foreach($result as $row) {
+                $image = null;
+                if (!empty($row['IdPlanningImage'])) {
+                    $image = [
+                        'image' => $this->router->generate('api_serve_image_file', [
+                            'id' => $row['IdPlanningImage']
+                        ], UrlGeneratorInterface::ABSOLUTE_URL),
+                        'id' => $row['IdPlanningImage']];
+                }
+
+
                 $structuredData[] = [
                     'IdPlanningRessource' => $row['IdPlanningRessource'],
                     'LibellePlanningRessource' => $row['LibellePlanningRessource'],
                     'CouleurFondPlanningRessource' => $row['CouleurFondPlanningRessource'],
                     'CouleurBordurePlanningRessource' => $row['CouleurBordurePlanningRessource'],
                     'CouleurTextePlanningRessource' => $row['CouleurTextePlanningRessource'],
-                    'Image' => $row['IdPlanningImage'],
+                    'Image' => $image,
                     'Actif' => (int)$row['Actif'] === 1,
                     'CodePlanningRessource' => $row['CodePlanningRessource'],
                     'Verrou' => (int)$row['Verrou'] === 1,

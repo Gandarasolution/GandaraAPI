@@ -9,11 +9,12 @@ use Lexik\Bundle\JWTAuthenticationBundle\Events;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Doctrine\DBAL\Connection;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 class JwtEventSubscriber implements EventSubscriberInterface
 {
 
-    public function __construct(private Connection $connection, private LoggerInterface $logger)
+    public function __construct(private Connection $connection, private LoggerInterface $logger, private UrlGeneratorInterface $router)
     {
     }
 
@@ -81,10 +82,20 @@ class JwtEventSubscriber implements EventSubscriberInterface
             $data['permissions'] = (int)$planningDroit['IdDroitNiveau'] ?: 21; // Valeur par défaut si la requête ne retourne rien
 
             $data['planning'] = array_map(function($row) {
+                // Default the image URL to null
+                $imageUrl = null;
+
+                // Only generate the URL if an image ID actually exists
+                if (!empty($row['IdPlanningImage'])) {
+                    $imageUrl = $this->router->generate('api_serve_image_file', [
+                        'id' => $row['IdPlanningImage']
+                    ], UrlGeneratorInterface::ABSOLUTE_URL);
+                }
+
                 return [
-                    'IdPlanning'  => $row['IdPlanning'],
-                    'NomPlanning' => $row['NomPlanning'],
-                    'IdPlanningImage' => $row['IdPlanningImage']
+                    'IdPlanning'    => $row['IdPlanning'],
+                    'NomPlanning'   => $row['NomPlanning'],
+                    'PlanningImage' => ['id' => $row['IdPlanningImage'], 'image' => $imageUrl ]// Will be the absolute URL, or null if no image exists
                 ];
             }, $planningAffectation);
 

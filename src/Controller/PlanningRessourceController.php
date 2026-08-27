@@ -336,6 +336,7 @@ class PlanningRessourceController extends abstractController
 
             $data = json_decode($request->getContent(), true);
 
+            $logger->debug(sprintf('Mise à jour de la ressource ID %d avec les données: %s', $id, json_encode($data)));
             // Appel à la méthode de mise à jour dans le repository
             $result = $this->planningRessourceRepository->updateRessource($id, $data, $logger);
 

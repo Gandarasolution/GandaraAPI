@@ -42,6 +42,7 @@ class EvenementVoter extends Voter
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token, ?Vote $vote = null): bool
     {
         $user = $token->getUser();
+        $this->logger->debug(sprintf('EvenementVoter voteOnAttribute: attribute=%s, subject=%s, user=%s', $attribute, is_object($subject) ? get_class($subject) : gettype($subject), is_object($user) ? get_class($user) : gettype($user)));
         if (!$user instanceof Session) {
             return false;
         }
@@ -55,6 +56,8 @@ class EvenementVoter extends Voter
             return false;
         }
         $level = (int)($planningDroit['IdDroitNiveau'] ?? 21);
+
+        $this->logger->debug(sprintf('EvenementVoter voteOnAttribute: attribute=%s, userId=%d, level=%d', $attribute, $user->getIdpersonnel(), $level));
 
         // 2. Vérification des actions GLOBALES (Pas besoin d'une ressource existante)
         if ($attribute === self::VIEW_ALL) {
@@ -150,12 +153,14 @@ class EvenementVoter extends Voter
         $this->logger->debug(sprintf('EvenementVoter voteOnAttribute: attribute=%s, userId=%d, level=%d, resourceType=%s', $attribute, $user->getIdpersonnel(), $level, $type));
 
 
+
         // 4. Vérification des actions SPÉCIFIQUES à un objet
         switch ($attribute) {
             case self::CREATE:
             case self::UPDATE:
             case self::DELETE:
             case self::LOCK:
+            case self::REPEAT:
                 if ($type === 'Projet') return $level === 22 || $level === 23;
                 if ($type === 'Paie' || $type === 'Rubrique Perso') return $level === 23;
                 return false;

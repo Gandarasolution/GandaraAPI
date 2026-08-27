@@ -34,23 +34,8 @@ class Planningressource
     #[ORM\Column(name: 'CouleurTextePlanningRessource', type: 'string', nullable: true, length: 255)]
     private ?string $couleurtexteplanningressource = null;
 
-    #[ORM\Column(name: 'IdDocument', type: 'bigint', nullable: true)]
-    private ?int $iddocument = null;
 
-    #[ORM\Column(name: 'IdTypeDocument', type: 'bigint', nullable: true)]
-    private ?int $idtypedocument = null;
 
-    #[ORM\OneToOne(targetEntity: Projet::class)]
-    #[ORM\JoinColumn(name: 'IdProjet', referencedColumnName: 'IdProjet')]
-    private ?Projet $idprojet  = null;
-
-    #[ORM\OneToOne(targetEntity: Socialrubriquepaie::class)]
-    #[ORM\JoinColumn(name: 'IdRubrique', referencedColumnName: 'IdSocialRubriquePaie')]
-    private ?Socialrubriquepaie $idRubrique  = null;
-
-    #[ORM\OneToOne(targetEntity: Planningrubriquepersonnalise::class)]
-    #[ORM\JoinColumn(name: 'IdRubriquePersonnalise', referencedColumnName: 'IdPlanningRubriquePersonnalise')]
-    private ?Planningrubriquepersonnalise $idRubriquePersonnalise  = null;
 
 
     public function getIdplanningressource(): int
@@ -108,49 +93,7 @@ class Planningressource
         return $this;
     }
 
-    public function getIddocument(): ?int
-    {
-        return $this->iddocument;
-    }
 
-    public function setIddocument(?int $iddocument): static
-    {
-        $this->iddocument = $iddocument;
-        return $this;
-    }
 
-    public function getIdtypedocument(): ?int
-    {
-        return $this->idtypedocument;
-    }
 
-    public function setIdtypedocument(?int $idtypedocument): static
-    {
-        $this->idtypedocument = $idtypedocument;
-        return $this;
-    }
-
-    /**
-     * @return Projet|null
-     */
-    public function getIdprojet(): ?Projet
-    {
-        return $this->idprojet;
-    }
-
-    /**
-     * @return Socialrubriquepaie|null
-     */
-    public function getIdRubrique(): ?Socialrubriquepaie
-    {
-        return $this->idRubrique;
-    }
-
-    /**
-     * @return Planningrubriquepersonnalise|null
-     */
-    public function getIdRubriquePersonnalise(): ?Planningrubriquepersonnalise
-    {
-        return $this->idRubriquePersonnalise;
-    }
 }
