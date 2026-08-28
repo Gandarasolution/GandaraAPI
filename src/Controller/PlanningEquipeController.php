@@ -9,8 +9,10 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+use OpenApi\Attributes as OA;
 
 #[Route('/api/equipes')]
+#[OA\Tag(name: 'Équipes/Ressources')]
 class PlanningEquipeController extends AbstractController
 {
 
@@ -24,25 +26,48 @@ class PlanningEquipeController extends AbstractController
 
     //GET /api/equipes- Lister toutes les équipes
     #[Route('', name: 'equipe_planning_list', methods: ['GET'])]
-    public function list(EquipeRepository $equipeRepository): JsonResponse
+    #[OA\Response(response: 200, description: 'Liste de toutes les équipes')]
+    public function list(Request $request): JsonResponse
     {
-        $equipes = $equipeRepository->findAll();
-        return $this->json($equipes);
+        $idPlanningVue = $request->headers->get('X-PlanningVue-Id');
+
+        if (!$idPlanningVue) {
+            return $this->json(['error' => 1, 'message' => 'Id de la vue du planning manquante'], 400);
+        }
+
+        try {
+            $equipes = $this->repository->getAllEquipes((int)$idPlanningVue);
+        }catch (\Exception $e){
+            return $this->json(['error' => 1, 'message' => $e->getMessage()], 400);
+        }
+
+        return $this->json(['error' => 0, 'data' => $equipes]);
 
     }
 
-    //POST /api/ equipes- Créer une équipe
+    //POST /api/equipes - Créer une équipe
     #[Route('', name: 'equipe_planning_create', methods: ['POST'])]
+    #[OA\RequestBody(
+        description: 'Les informations pour créer une équipe',
+        required: true,
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'Name', type: 'string', description: 'Le nom de l\'équipe')
+            ],
+            type: 'object'
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Équipe créée avec succès')]
     public function create(Request $request): JsonResponse
     {
         try {
-            // Logique de création d'une équipe à partir des données de la requête
-            $data = json_decode($request->getContent(), true);
-            $equipe = new Equipe();
-            $equipe->setDesignationequipe($data['Name']);
-
-            $this->entityManager->persist($equipe);
-            $this->entityManager->flush();
+//            // Logique de création d'une équipe à partir des données de la requête
+//            $data = json_decode($request->getContent(), true);
+//            $equipe = new Equipe();
+//            $equipe->setDesignationequipe($data['Name']);
+//
+//            $this->entityManager->persist($equipe);
+//            $this->entityManager->flush();
 
             return $this->json(['message' => 'Équipe créée avec succès']);
         }catch (\Exception $e) {
@@ -53,19 +78,32 @@ class PlanningEquipeController extends AbstractController
 
     //PUT /api/equipes/:id- Modifier une équipe
     #[Route('/{id}', name: 'equipe_planning_update', methods: ['PUT'])]
+    #[OA\Parameter(name: 'id', in: 'path', description: 'ID de l\'équipe', schema: new OA\Schema(type: 'integer'))]
+    #[OA\RequestBody(
+        description: 'Les nouvelles informations de l\'équipe',
+        required: true,
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'Name', type: 'string', description: 'Le nouveau nom de l\'équipe')
+            ],
+            type: 'object'
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Équipe modifiée avec succès')]
+    #[OA\Response(response: 404, description: 'Équipe non trouvée')]
     public function update(Request $request, int $id): JsonResponse
     {
-        if (!$this->repository->find($id)) {
-            return $this->json(['error' => 'Équipe non trouvée'], 404);
-        }
+//        if (!$this->repository->find($id)) {
+//            return $this->json(['error' => 'Équipe non trouvée'], 404);
+//        }
         try {
             // Logique de mise à jour d'une équipe à partir des données de la requête
-            $data = json_decode($request->getContent(), true);
-            $equipe = $this->repository->find($id);
-            $equipe->setDesignationequipe($data['Name']);
-
-            $this->entityManager->persist($equipe);
-            $this->entityManager->flush();
+//            $data = json_decode($request->getContent(), true);
+//            $equipe = $this->repository->find($id);
+//            $equipe->setDesignationequipe($data['Name']);
+//
+//            $this->entityManager->persist($equipe);
+//            $this->entityManager->flush();
 
             return $this->json(['message' => 'Équipe mise à jour avec succès']);
         }
