@@ -59,8 +59,6 @@ class ImageRepository extends ServiceEntityRepository
             $conn = $this->getEntityManager()->getConnection();
             $images = $conn->fetchAllAssociative($sql, $parameters);
 
-
-            $struredData = [];
             $struredData = array_map(function($row) use ($router) {
                 return [
                     'id' => $row['IdPlanningImage'],

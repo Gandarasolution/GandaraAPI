@@ -8,7 +8,7 @@ use Symfony\Component\Mercure\Update;
 
 class MercureNotificationService
 {
-    private const BASE_TOPIC = "https://gandara.com/planning/";
+    private const BASE_TOPIC = "https://gandara.com/planning/update";
 
     public function __construct(private HubInterface $hub, private LoggerInterface $logger) {}
 
@@ -21,7 +21,7 @@ class MercureNotificationService
      */
     public function notifyPlanningChange(int $idPlanning, string $action, int $updatedBy, array $data = []): void
     {
-        $topic = self::BASE_TOPIC . $idPlanning;
+        $topic = self::BASE_TOPIC /*. $idPlanning*/;
 
         $this->logger->debug("Envoi d'une notification Mercure", [
             'topic' => $topic,

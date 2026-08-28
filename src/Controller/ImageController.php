@@ -32,7 +32,6 @@ class ImageController extends AbstractController
         try {
             $image = $this->imageRepository->getImageById($id);
 
-            $this->logger->debug($image);
             if (!$image) {
                 return new JsonResponse(['error' => 'Image introuvable'], 404);
             }

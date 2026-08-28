@@ -1,24 +1,27 @@
-
+# compose.override.yaml
 services:
-###> doctrine/doctrine-bundle ###
-##  database:
-##    ports:
-##      - "5432"
-####< doctrine/doctrine-bundle ###
-#
-####> symfony/mailer ###
-#  mailer:
-#    image: axllent/mailpit
-#    ports:
-#      - "1025"
-#      - "8025"
-#    environment:
-#      MP_SMTP_AUTH_ACCEPT_ANY: 1
-#      MP_SMTP_AUTH_ALLOW_INSECURE: 1
-###< symfony/mailer ###
+  api:
+    build:
+      target: dev # Surcharge : utilise l'étape DEV du Dockerfile
+    volumes:
+      - ./:/var/www/html # Branche le code de votre ordinateur en direct
+      - api_var_cache:/var/www/html/var/cache
+    environment:
+      - APP_ENV=dev
+    extra_hosts:
+      - "VM-TEST:172.16.25.3"
 
-###> symfony/mercure-bundle ###
-  mercure:
+  nginx:
     ports:
-      - "80"
-###< symfony/mercure-bundle ###
+      - "8000:80" # En dev, on accède via localhost:8080
+    volumes:
+      - ./:/var/www/html:ro
+
+  mercure:
+    environment:
+      MERCURE_EXTRA_DIRECTIVES: |
+        cors_origins http://localhost:3001
+    command: /usr/bin/caddy run --config /etc/caddy/dev.Caddyfile
+
+volumes:
+    api_var_cache:

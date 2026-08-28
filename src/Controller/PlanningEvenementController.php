@@ -30,8 +30,9 @@ class PlanningEvenementController extends AbstractController
         private readonly MercureNotificationService $notifier,
         private readonly PlanningEvenementRepository         $planningEvenementRepository,
         private readonly PlanningRessourceRepository         $planningRessourceRepository,
-        private readonly CacheInterface                      $cache
+        private readonly CacheInterface                      $cache,
         //private EntityManagerInterface $entityManager,
+        private readonly LoggerInterface $logger
     ){}
 
     /**
@@ -49,6 +50,8 @@ class PlanningEvenementController extends AbstractController
     #[IsGranted('VIEW_ALL', message: 'Vous n\'avez pas la permission de récupérer tous les événements.')]
     public function index(\DateTimeInterface $dateStart, \DateTimeInterface $dateEnd, Request $request): JsonResponse
     {
+        $startTime = microtime(true);
+
         $idPlanning = $request->headers->get('X-Planning-Id');
 
         if (!$idPlanning) {
@@ -63,6 +66,15 @@ class PlanningEvenementController extends AbstractController
 
         try{
             $result = $this->planningEvenementRepository->findEventsByDate($dateStart, $dateEnd, $idPlanning, $idPlanningVue);
+
+            $endTime = microtime(true);
+
+            // 3. On calcule la différence
+            $executionTime = $endTime - $startTime;
+
+            // 4. On log le résultat (en secondes avec les millisecondes après la virgule)
+            $this->logger->info(sprintf('Temps de traitement de la route : %.4f secondes', $executionTime));
+
             return new JsonResponse(['error' => 0, 'data' => $result]);
 
         }catch(\Exception $e){

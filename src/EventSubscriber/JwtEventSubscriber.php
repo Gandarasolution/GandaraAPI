@@ -7,14 +7,23 @@ use Doctrine\DBAL\Exception;
 use Lexik\Bundle\JWTAuthenticationBundle\Event\AuthenticationSuccessEvent;
 use Lexik\Bundle\JWTAuthenticationBundle\Events;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Doctrine\DBAL\Connection;
+use Symfony\Component\HttpFoundation\Cookie;
+use Symfony\Component\Mercure\Jwt\TokenFactoryInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 class JwtEventSubscriber implements EventSubscriberInterface
 {
 
-    public function __construct(private Connection $connection, private LoggerInterface $logger, private UrlGeneratorInterface $router)
+    public function __construct(
+        private Connection $connection,
+        private LoggerInterface $logger,
+        private UrlGeneratorInterface $router,
+        #[Autowire(service: 'mercure.hub.default.jwt.factory')]
+        private TokenFactoryInterface $mercureTokenFactory
+    )
     {
     }
 
@@ -98,6 +107,22 @@ class JwtEventSubscriber implements EventSubscriberInterface
                     'PlanningImage' => ['id' => $row['IdPlanningImage'], 'image' => $imageUrl ]// Will be the absolute URL, or null if no image exists
                 ];
             }, $planningAffectation);
+
+
+
+            $mercureToken = $this->mercureTokenFactory->create([
+                'https://gandara.com/planning/update', // Topic public
+                sprintf('http://gandara.com/user/%s', $user->getUserIdentifier()) // Topic privé exclusif à cet utilisateur
+            ]);
+
+            $cookie = Cookie::create('mercureAuthorization')
+                ->withValue($mercureToken)
+                ->withHttpOnly(true)
+                ->withSecure(true)
+                ->withSameSite(Cookie::SAMESITE_NONE)
+                ->withPath('/');
+
+            $event->getResponse()->headers->setCookie($cookie);
 
             $data['error'] = 0;
 

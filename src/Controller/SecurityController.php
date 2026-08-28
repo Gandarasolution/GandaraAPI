@@ -7,8 +7,11 @@ use App\Repository\SecurityRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mercure\Jwt\TokenFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Nelmio\ApiDocBundle\Annotation\Model;
@@ -21,7 +24,8 @@ class SecurityController extends AbstractController
 {
     public function __construct(
         private SecurityRepository $repository,
-        private EntityManagerInterface $entityManager
+        #[Autowire(service: 'mercure.hub.default.jwt.factory')]
+        private TokenFactoryInterface $mercureTokenFactory
     ){}
 
     #[Route('/login', name: 'api_login', methods: ['POST'])]
@@ -67,7 +71,24 @@ class SecurityController extends AbstractController
                 return $this->json(['message' => $result['message'], 'error' => 1], 500);
             }
 
-            return $this->json($result, 200);
+            $mercureToken = $this->mercureTokenFactory->create([
+                'https://gandara.com/planning/update', // Topic public
+                sprintf('https://gandara.com/user/%s', $user->getUserIdentifier()) // Topic privé exclusif à cet utilisateur
+            ]);
+
+            $cookie = Cookie::create('mercureAuthorization')
+                ->withValue($mercureToken)
+                ->withHttpOnly(true)
+                ->withSecure(true)
+                ->withSameSite(Cookie::SAMESITE_NONE)
+                ->withPath('/');
+
+
+            $response = new JsonResponse(json_encode($result), 200, [], true);
+            $response->headers->setCookie($cookie);
+
+
+            return $response;
         }catch (\Exception $exception){
             return $this->json(['message' => $exception->getMessage(), 'error' => 1], 500);
         }
