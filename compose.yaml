@@ -9,7 +9,9 @@ services:
       - .env
 
   nginx:
-    image: nginx:alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
     restart: always
     ports:
       - "80:80"
