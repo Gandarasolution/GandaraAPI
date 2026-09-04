@@ -8,6 +8,8 @@ RUN apt-get update && apt-get install -y \
     curl \
     libicu-dev \
     unixodbc-dev \
+    unzip \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # 1.2 Ajout du dépôt officiel Microsoft (Debian 12 - Bookworm)
@@ -22,7 +24,8 @@ RUN apt-get update \
 # 1.4 Installation des extensions PHP
 RUN docker-php-ext-install intl opcache \
     && pecl install redis sqlsrv pdo_sqlsrv \
-    && docker-php-ext-enable redis sqlsrv pdo_sqlsrv
+    && docker-php-ext-enable redis sqlsrv pdo_sqlsrv \
+    && rm -rf /tmp/pear
 
 # 1.5 Installation de Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -37,6 +40,31 @@ CMD sh -c "[ ! -d vendor ] && composer install --no-interaction; php-fpm"
 # --- 3. PRODUCTION (Défaut) ---
 FROM base AS prod
 ENV APP_ENV=prod
+# Copier uniquement les fichiers Composer pour utiliser le cache Docker
+COPY composer.json composer.lock symfony.lock .env ./
+COPY bin/ bin/
+COPY config/ config/
+COPY public/ public/
+RUN composer install --no-dev --no-scripts --no-autoloader --no-interaction
+
+# Copier le reste du projet
 COPY . .
+
+
+# Activer le php.ini de production
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+
+# Configurer OPcache pour des performances maximales
+RUN echo "opcache.enable=1\n\
+opcache.enable_cli=1\n\
+opcache.memory_consumption=256\n\
+opcache.interned_strings_buffer=16\n\
+opcache.max_accelerated_files=20000\n\
+opcache.validate_timestamps=0\n\
+opcache.jit_buffer_size=100M\n\
+opcache.jit=tracing" > $PHP_INI_DIR/conf.d/docker-php-ext-opcache.ini
+
+
+# Générer l'autoloader optimisé et exécuter les scripts
 RUN composer install --no-dev --optimize-autoloader --classmap-authoritative --no-interaction
 RUN chown -R www-data:www-data var/

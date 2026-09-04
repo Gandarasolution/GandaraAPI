@@ -46,11 +46,12 @@ class PlanningEvenementController extends AbstractController
     #[Route('/{dateStart}/{dateEnd}', name: 'api_evenements_index', methods: ['GET'])]
     #[OA\Parameter(name: 'dateStart', in: 'path', description: 'Date de début (ex: 2024-01-01)', schema: new OA\Schema(type: 'string', format: 'date'))]
     #[OA\Parameter(name: 'dateEnd', in: 'path', description: 'Date de fin (ex: 2024-12-31)', schema: new OA\Schema(type: 'string', format: 'date'))]
+    #[OA\Parameter(name: 'idEmployee', in: 'query', description: 'Id de l\'employée', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Liste des événements correspondants')]
     #[IsGranted('VIEW_ALL', message: 'Vous n\'avez pas la permission de récupérer tous les événements.')]
     public function index(\DateTimeInterface $dateStart, \DateTimeInterface $dateEnd, Request $request): JsonResponse
     {
-        $startTime = microtime(true);
+        //$startTime = microtime(true);
 
         $idPlanning = $request->headers->get('X-Planning-Id');
 
@@ -58,22 +59,19 @@ class PlanningEvenementController extends AbstractController
             return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
         }
 
-        $idPlanningVue = $request->headers->get('X-PlanningVue-Id');
+        $idPlanningVue = $request->headers->get('X-PlanningVue-Id', null);
 
-        if (!$idPlanningVue) {
-            return new JsonResponse(['error' => 1, 'message' => 'Id de la vue du planning manquante'], 400);
-        }
+
+        $idEmployee = $request->query->get('idEmployee');
 
         try{
-            $result = $this->planningEvenementRepository->findEventsByDate($dateStart, $dateEnd, $idPlanning, $idPlanningVue);
+            $result = $this->planningEvenementRepository->findEventsByDate($dateStart, $dateEnd, $idPlanning, $idPlanningVue, $idEmployee);
 
-            $endTime = microtime(true);
+            //$endTime = microtime(true);
 
-            // 3. On calcule la différence
-            $executionTime = $endTime - $startTime;
+            //$executionTime = $endTime - $startTime;
 
-            // 4. On log le résultat (en secondes avec les millisecondes après la virgule)
-            $this->logger->info(sprintf('Temps de traitement de la route : %.4f secondes', $executionTime));
+            //$this->logger->info(sprintf('Temps de traitement de la route : %.4f secondes', $executionTime));
 
             return new JsonResponse(['error' => 0, 'data' => $result]);
 

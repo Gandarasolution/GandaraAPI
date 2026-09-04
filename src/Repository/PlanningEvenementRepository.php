@@ -51,6 +51,9 @@ class PlanningEvenementRepository extends ServiceEntityRepository
             }
         }
 
+        $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
+
         foreach($data as $row){
             $idRdv = (int)$row['IdPlanningEvenement'];
             $isLocked = false;
@@ -60,43 +63,50 @@ class PlanningEvenementRepository extends ServiceEntityRepository
                 $isLocked = true;
             }
 
+            $idRdv = (int)$row['IdPlanningEvenement'];
+            $idRessource = (int)$row['IdPlanningRessource'];
+            $typeEvenement = $row['Type'] ?? 'Inconnu';
+
             $appointments[]= [
                 'IdPlanningEvenement' => $idRdv,
                 'isLocked' => $isLocked,
+                'isReadOnly' => ($typeEvenement === 'Congés'),
+                'Type' => $typeEvenement,
+                'EtapeValidation' => $row['EtapeValidation'] ?? null,
                 'DebutPlanningEvenement' => (int)$row['DebutPlanningEvenement'],
                 'FinPlanningEvenement' => (int)$row['FinPlanningEvenement'],
                 'AnnotationPlanningEvenement' => $row['AnnotationPlanningEvenement'],
                 'Etiquette' => [
                     'IdPlanningEtiquette' => $row['IdPlanningEtiquette'] ?? null,
-                    'LibelleLongPlanningEtiquette' => $row['LibelleLongPlanningEtiquette'],
-                    'LibelleCourtPlanningEtiquette' => $row['LibelleCourtPlanningEtiquette']
+                    'LibelleLongPlanningEtiquette' => $row['LibelleLongPlanningEtiquette'] ?? null,
+                    'LibelleCourtPlanningEtiquette' => $row['LibelleCourtPlanningEtiquette'] ?? null
                 ],
-                'IdPlanningRessource' => (int)$row['IdPlanningRessource'],
+                'IdPlanningRessource' => $idRessource,
                 'IdEmploye' => (int)$row['IdEmployee'],
-                'PlanningEvenementPriorite' => (int)$row['PlanningEvenementPriorite']
+                'PlanningEvenementPriorite' => (int)($row['PlanningEvenementPriorite'] ?? 0)
             ];
-
-            $idRessource = (int)$row['IdPlanningRessource'];
 
             $image = null;
             if (!empty($row['IdPlanningImage'])) {
-                $image = ['image' => $this->router->generate('api_serve_image_file', [
+                $image = [
+                    'image' => $baseImageUrl . $row['IdPlanningImage'],
                     'id' => $row['IdPlanningImage']
-                ], UrlGeneratorInterface::ABSOLUTE_URL), 'id' => $row['IdPlanningImage']];
+                ];
             }
 
+            // Construction de la ressource (inclut la ressource virtuelle "0" pour les congés)
             if (!isset($ressources[$idRessource])) {
                 $ressources[$idRessource] = [
                     'IdPlanningRessource'             => $idRessource,
-                    'LibellePlanningRessource'        => $row['Libelle'],
-                    'CodePlanningRessource'           => $row['Code'],
-                    'ChargeAffaire'                   => $row['ChargeAffaire'],
+                    'LibellePlanningRessource'        => $row['Libelle'] ?? 'Congés / Indisponibilité',
+                    'CodePlanningRessource'           => $row['Code'] ?? null,
+                    'ChargeAffaire'                   => $row['ChargeAffaire'] ?? null,
                     'Image'                           => $image,
-                    'CouleurBordurePlanningRessource' => $row['CouleurBordurePlanningRessource'],
-                    'CouleurFondPlanningRessource'    => $row['CouleurFondPlanningRessource'],
-                    'CouleurTextePlanningRessource'   => $row['CouleurTextePlanningRessource'],
-                    'Actif'                           => (int)$row['Actif'] === 1,
-                    'Type'                            => $row['Type'],
+                    'CouleurBordurePlanningRessource' => $row['CouleurBordurePlanningRessource'] ?? '#dc3545',
+                    'CouleurFondPlanningRessource'    => $row['CouleurFondPlanningRessource'] ?? '#f8d7da',
+                    'CouleurTextePlanningRessource'   => $row['CouleurTextePlanningRessource'] ?? '#721c24',
+                    'Actif'                           => isset($row['Actif']) ? (int)$row['Actif'] === 1 : true,
+                    'Type'                            => $typeEvenement,
                 ];
             }
         }
@@ -115,7 +125,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
     /**
      * @return PlanningEvenement[] Returns an array of PlanningEvenement objects
      */
-    public function findEventsByDate(\DateTimeInterface $dateStart, \DateTimeInterface $dateEnd, int $idPlanning, int $idPlanningVue): array
+    public function findEventsByDate(\DateTimeInterface $dateStart, \DateTimeInterface $dateEnd, int $idPlanning, ?int $idPlanningVue, ?int $idEmploye): array
     {
 
 
@@ -124,11 +134,12 @@ class PlanningEvenementRepository extends ServiceEntityRepository
             $endOfDay = (clone $dateEnd)->setTime(23, 59, 59);
 
             $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningEvenementSelect @StartDate = :StartDate, @EndDate = :EndDate, @IdPlanningVue = :IdPlanningVue';
+            $sql = 'EXEC ps_PlanningEvenementSelect @StartDate = :StartDate, @EndDate = :EndDate, @IdPlanningVue = :IdPlanningVue, @IdEmploye = :IdEmploye';
             $params = [
                 'StartDate' => $startOfDay->format('Y-m-d\TH:i:s'),
                 'EndDate'   => $endOfDay->format('Y-m-d\TH:i:s'),
-                'IdPlanningVue' => $idPlanningVue
+                'IdPlanningVue' => $idPlanningVue,
+                'IdEmploye' => $idEmploye
             ];
 
              $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();

@@ -43,7 +43,13 @@ Vérifiez également `APP_SECRET`, `JWT_PASSPHRASE` et `MERCURE_JWT_SECRET`. Ne 
 
 ### 3. Construire et démarrer Docker
 
-Depuis la racine du projet, le fichier `compose.override.yaml` est chargé automatiquement en développement :
+**Attention à l'environnement cible (Développement vs Production) :**
+
+- En développement : Conservez le fichier compose.override.yaml. Docker le charge automatiquement pour activer les outils de debug, surcharger l'environnement en dev et monter vos volumes locaux.
+
+- En production : Supprimez le fichier compose.override.yaml avant le démarrage. Docker se basera uniquement sur le compose.yaml principal pour démarrer l'API avec les paramètres optimisés (mode prod, cache optimisé, pas de montage de fichiers locaux).
+
+Depuis la racine du projet, lancez la construction et le démarrage :
 
 ```bash
 docker compose up -d --build
@@ -69,13 +75,7 @@ docker compose exec api composer install
 Testez ensuite la connexion SQL Server :
 
 ```bash
-docker compose exec api php bin/console doctrine:query:sql "SELECT 1"
-```
-
-Le projet utilise une base SQL Server existante ; aucune base SQL Server n'est créée par Compose. Les migrations présentes dans `migrations/` sont à exécuter uniquement si votre schéma doit être mis à jour :
-
-```bash
-docker compose exec api php bin/console doctrine:migrations:migrate --no-interaction
+docker compose exec api php bin/console dbal:run-sql "SELECT 1"
 ```
 
 ### 5. Initialiser les clés JWT
