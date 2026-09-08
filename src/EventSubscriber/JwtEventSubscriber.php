@@ -17,14 +17,17 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 class JwtEventSubscriber implements EventSubscriberInterface
 {
 
+    private int $jwtTtl;
     public function __construct(
         private Connection $connection,
         private LoggerInterface $logger,
         private UrlGeneratorInterface $router,
         #[Autowire(service: 'mercure.hub.default.jwt.factory')]
-        private TokenFactoryInterface $mercureTokenFactory
+        private TokenFactoryInterface $mercureTokenFactory,
+        int $jwtTtl
     )
     {
+        $this->jwtTtl = $jwtTtl;
     }
 
     public static function getSubscribedEvents(): array
@@ -121,6 +124,17 @@ class JwtEventSubscriber implements EventSubscriberInterface
                 ->withSecure(true)
                 ->withSameSite(Cookie::SAMESITE_NONE)
                 ->withPath('/');
+
+            $event->getResponse()->headers->setCookie($cookie);
+
+
+            $cookie = Cookie::create('is_logged_in')
+                ->withValue('true')
+                ->withHttpOnly(false)
+                ->withSecure(true)
+                ->withSameSite(Cookie::SAMESITE_NONE)
+                ->withPath('/')
+                ->withExpires((new \DateTime())->add(new \DateInterval('PT' . $this->jwtTtl . 'S')));
 
             $event->getResponse()->headers->setCookie($cookie);
 

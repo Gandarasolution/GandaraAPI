@@ -484,4 +484,36 @@ class PlanningVueRepository extends ServiceEntityRepository
             throw new \Exception('Erreur lors de la récupération des utilisateurs: ' . $e->getMessage());
         }
     }
+
+    public function getAffichageMobile(int $idPersonnel, LoggerInterface $logger)
+    {
+        $conn = $this->getEntityManager()->getConnection();
+
+        try {
+            $sql = 'EXEC ps_PlanningAffichageMobileConfigSelect @IdPersonnel = :IdPersonnel';
+            $params = [
+                'IdPersonnel' => $idPersonnel
+            ];
+            $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+            $logger->debug('Résultat de la requête pour l\'affichage mobile de l\'utilisateur ' . $idPersonnel . ': ' . json_encode($result));
+
+            $formattedData = [
+                'primaryFields' => [],
+                'secondaryFields' => []
+            ];
+
+            foreach ($result as $row) {
+                if ($row['ZoneAffichage'] === 'primary') {
+                    $formattedData['primaryFields'][] = $row['CodeChamp'];
+                } elseif ($row['ZoneAffichage'] === 'secondary') {
+                    $formattedData['secondaryFields'][] = $row['CodeChamp'];
+                }
+            }
+
+            return $formattedData;
+        } catch (Exception $e) {
+            throw new \Exception('Erreur lors de la récupération des affichages mobiles: ' . $e->getMessage());
+        }
+    }
 }

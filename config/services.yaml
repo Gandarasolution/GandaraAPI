@@ -19,5 +19,14 @@ services:
     App\:
         resource: '../src/'
 
+    App\EventSubscriber\JWTRefreshSubscriber:
+        arguments:
+            $cookieName: '%env(string:JWT_NAME)%'
+            $jwtTtl: '%env(int:JWT_TTL)%'
+
+    App\EventSubscriber\JwtEventSubscriber:
+        arguments:
+            $jwtTtl: '%env(int:JWT_TTL)%'
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

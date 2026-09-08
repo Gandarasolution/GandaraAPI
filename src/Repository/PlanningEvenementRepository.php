@@ -107,6 +107,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
                     'CouleurTextePlanningRessource'   => $row['CouleurTextePlanningRessource'] ?? '#721c24',
                     'Actif'                           => isset($row['Actif']) ? (int)$row['Actif'] === 1 : true,
                     'Type'                            => $typeEvenement,
+                    'Adresse'                         => $row['Adresse'] ?? null,
                 ];
             }
         }

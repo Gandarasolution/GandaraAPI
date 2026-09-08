@@ -396,4 +396,22 @@ class PlanningVueController extends AbstractController
                 return $this->json(['error' => 1, 'message' => 'Une erreur est survenue lors de la suppression de la vue: ' . $e->getMessage()], 500);
         }
     }
+
+    #[Route('/mobile', name: 'api_mobile_get', methods: ['GET'])]
+    public function getAffichageMobile(#[CurrentUser] Session $user) :JsonResponse{
+        try {
+            $idPersonnel = $user->getIdpersonnel();
+
+            $result = $this->planningVueRepository->getAffichageMobile($idPersonnel, $this->logger);
+
+            return $this->json(['error' => 0, 'data' => $result]);
+        }catch (\Exception $e){
+            $this->logger->error('Erreur lors de la récupération de l\'affichage mobile: {message}', [
+                'message' => $e->getMessage(),
+            ]);
+            return $this->json(['error' => 1, 'message' => 'Une erreur est survenue lors de la récupération de l\'affichage mobile: ' . $e->getMessage()], 500);
+        }
+    }
+
+
 }
