@@ -237,8 +237,8 @@ class PlanningEvenementRepository extends ServiceEntityRepository
     {
         try{
 
-            $debutObj = new \DateTime()->setTimestamp((int)($data['DebutPlanningEvenement'] / 1000));
-            $finObj   = new \DateTime()->setTimestamp((int)($data['FinPlanningEvenement'] / 1000));
+            $debutObj = new \DateTime()->setTimestamp((int)($data['DebutPlanningEvenement'] / 1000))->setTimezone(new \DateTimeZone('Europe/Paris'));
+            $finObj   = new \DateTime()->setTimestamp((int)($data['FinPlanningEvenement'] / 1000))->setTimezone(new \DateTimeZone('Europe/Paris'));
 
 
             $conn = $this->getEntityManager()->getConnection();

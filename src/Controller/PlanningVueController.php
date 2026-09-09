@@ -40,12 +40,12 @@ class PlanningVueController extends AbstractController
     {
         try {
             $result = $this->planningVueRepository->getUsers();
-            return $this->json(['error' => 0, 'data' => $result]);
+            return new JsonResponse(['error' => 0, 'data' => $result]);
         } catch (\Exception $e) {
             $this->logger->error('Erreur lors de la récupération des utilisateurs pour la vue {idVue}: {message}', [
                 'message' => $e->getMessage(),
             ]);
-            return $this->json(['error' => 1, 'message' => 'Une erreur est survenue lors de la récupération des utilisateurs: ' . $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1, 'message' => 'Une erreur est survenue lors de la récupération des utilisateurs: ' . $e->getMessage()], 500);
         }
     }
 
@@ -61,18 +61,18 @@ class PlanningVueController extends AbstractController
             $this->logger->debug('Le paramètre idPlanning doit être un entier positif. Valeur reçue: {idPlanning}', [
                 'idPlanning' => $idPlanning,
             ]);
-            return $this->json(['error' => 1, 'message' => 'Le paramètre idPlanning doit être un entier positif.'], 400);
+            return new JsonResponse(['error' => 1, 'message' => 'Le paramètre idPlanning doit être un entier positif.'], 400);
         }
 
         try {
             $result = $this->planningVueRepository->getLastVue($user, $idPlanning);
-            return $this->json(['error' => 0, 'data' => $result]);
+            return new JsonResponse(['error' => 0, 'data' => $result]);
         }catch (Exception $e) {
             $this->logger->error('Erreur lors de la récupération de la dernière vue pour l\'utilisateur {userId}: {message}', [
                 'userId' => $user->getIdpersonnel(),
                 'message' => $e->getMessage(),
             ]);
-            return $this->json(['error' => 1, 'message' => 'Une erreur est survenue lors de la récupération de la dernière vue: ' . $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1, 'message' => 'Une erreur est survenue lors de la récupération de la dernière vue: ' . $e->getMessage()], 500);
         }
     }
 
@@ -86,13 +86,13 @@ class PlanningVueController extends AbstractController
         try {
             $result = $this->planningVueRepository->getVue($id, $this->logger);
 
-            return $this->json(['error' => 0, 'data' => $result]);
+            return new JsonResponse(['error' => 0, 'data' => $result]);
         }catch(\Exception $e){
             $this->logger->debug('Erreur lors de la récupération de la vue {id}: {message}', [
                 'id' => $id,
                 'message' => $e->getMessage(),
             ]);
-            return $this->json(['error' => 1, 'message' => $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1, 'message' => $e->getMessage()], 500);
         }
     }
 
@@ -108,17 +108,17 @@ class PlanningVueController extends AbstractController
             $IdPlanning = $request->query->get('idPlanning');
 
             if ($IdPlanning !== null && !is_numeric($IdPlanning) || $IdPlanning < 0) {
-                return $this->json(['error' => 1, 'message' => 'Le paramètre idPlanning doit être un entier positif.'], 400);
+                return new JsonResponse(['error' => 1, 'message' => 'Le paramètre idPlanning doit être un entier positif.'], 400);
             }
 
             $configs = $this->planningVueRepository->getConfigUser($userId, $IdPlanning);
-            return $this->json(['error' => 0, 'data' => $configs]);
+            return new JsonResponse(['error' => 0, 'data' => $configs]);
         } catch (\Exception $e) {
             $this->logger->error('Erreur lors de la récupération des configs pour l\'utilisateur {userId}: {message}', [
                 'userId' => $userId,
                 'message' => $e->getMessage(),
             ]);
-            return $this->json(['error' => 1, 'message' => 'Une erreur est survenue lors de la récupération des configurations:' . $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1, 'message' => 'Une erreur est survenue lors de la récupération des configurations:' . $e->getMessage()], 500);
         }
     }
 
@@ -134,18 +134,82 @@ class PlanningVueController extends AbstractController
                 $this->logger->debug('Le paramètre idPlanning doit être un entier positif. Valeur reçue: {idPlanning}', [
                     'idPlanning' => $idPlanning,
                 ]);
-                return $this->json(['error' => 1, 'message' => 'Le paramètre idPlanning doit être un entier positif.'], 400);
+                return new JsonResponse(['error' => 1, 'message' => 'Le paramètre idPlanning doit être un entier positif.'], 400);
             }
 
             $result = $this->planningVueRepository->getNonWorkingDates($idPlanning);
 
-            return $this->json(['error' => 0, 'data' => $result]);
+            return new JsonResponse(['error' => 0, 'data' => $result]);
         } catch (\Exception $e) {
             $this->logger->error('Erreur lors de la récupération des jours non travaillés pour le planning {idPlanning}: {message}', [
                 'idPlanning' => $idPlanning,
                 'message' => $e->getMessage(),
             ]);
-            return $this->json(['error' => 1, 'message' => 'Une erreur est survenue lors de la récupération des jours non travaillés: ' . $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1, 'message' => 'Une erreur est survenue lors de la récupération des jours non travaillés: ' . $e->getMessage()], 500);
+        }
+    }
+
+    #[Route('/mobile/display', name: 'api_mobile_get', methods: ['GET'])]
+    #[OA\Response(response: 200, description: 'Affichage des évenement sur mobile')]
+    public function getAffichageMobile(#[CurrentUser] Session $user) :JsonResponse{
+        try {
+            $idPersonnel = $user->getIdpersonnel();
+
+            $result = $this->planningVueRepository->getAffichageMobile($idPersonnel, $this->logger);
+
+            return new JsonResponse(['error' => 0, 'data' => $result]);
+        }catch (\Exception $e){
+            $this->logger->error('Erreur lors de la récupération de l\'affichage mobile: {message}', [
+                'message' => $e->getMessage(),
+            ]);
+            return new JsonResponse(['error' => 1, 'message' => 'Une erreur est survenue lors de la récupération de l\'affichage mobile: ' . $e->getMessage()], 500);
+        }
+    }
+
+
+    #[Route('/mobile/settings', name: 'api_mobile_settings_get', methods: ['GET'])]
+    #[OA\Response(response: 200, description: 'Affichage des évenement sur mobile')]
+    public function getAffichageSettingsMobileSettings(#[CurrentUser] Session $user) :JsonResponse{
+        try {
+            $idPersonnel = $user->getIdpersonnel();
+
+            $result = $this->planningVueRepository->getAffichageSettingsMobile($idPersonnel, $this->logger);
+
+            return new JsonResponse(['error' => 0, 'data' => $result]);
+        }catch (\Exception $e){
+            $this->logger->error('Erreur lors de la récupération de l\'affichage mobile: {message}', [
+                'message' => $e->getMessage(),
+            ]);
+            return new JsonResponse(['error' => 1, 'message' => 'Une erreur est survenue lors de la récupération de l\'affichage mobile: ' . $e->getMessage()], 500);
+        }
+    }
+
+
+    #[Route('/mobile/save', name: 'api_mobile_settings_post', methods: ['POST'])]
+    public function getAffichageSettingsMobileSettingsSave(#[CurrentUser] Session $user, Request $request): JsonResponse
+    {
+        try {
+            $idPersonnel = $user->getIdpersonnel();
+            $jsonPayload = $request->getContent();
+
+            $this->logger->info('Requête API de sauvegarde de l\'affichage mobile reçue', [
+                'idPersonnel' => $idPersonnel,
+                'payload'     => $jsonPayload
+            ]);
+
+            $result = $this->planningVueRepository->getAffichageSettingsMobileSave($idPersonnel, $jsonPayload, $this->logger);
+
+            return new JsonResponse(['error' => 0, 'data' => $result]);
+
+        } catch (\Exception $e) {
+            $this->logger->error('Échec de la requête de sauvegarde de l\'affichage mobile : {message}', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return new JsonResponse([
+                'error'   => 1,
+                'message' => 'Une erreur est survenue lors de la sauvegarde de l\'affichage mobile : ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -161,17 +225,17 @@ class PlanningVueController extends AbstractController
             $this->logger->debug('Le paramètre idVue doit être un entier positif. Valeur reçue: {idVue}', [
                 'idVue' => $data['idVue'],
             ]);
-            return $this->json(['error' => 1, 'message' => 'Le paramètre idVue doit être un entier positif.'], 400);
+            return new JsonResponse(['error' => 1, 'message' => 'Le paramètre idVue doit être un entier positif.'], 400);
         }
         try {
             $this->planningVueRepository->setLastVue($user, $data['idVue']);
-            return $this->json(['error' => 0]);
+            return new JsonResponse(['error' => 0]);
         }catch (\Exception $e) {
             $this->logger->error('Erreur lors de la récupération de la dernière vue pour l\'utilisateur {userId}: {message}', [
                 'userId' => $user->getIdpersonnel(),
                 'message' => $e->getMessage(),
             ]);
-            return $this->json(['error' => 1, 'message' => 'Une erreur est survenue lors de la récupération de la dernière vue: ' . $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1, 'message' => 'Une erreur est survenue lors de la récupération de la dernière vue: ' . $e->getMessage()], 500);
         }
     }
 
@@ -185,7 +249,7 @@ class PlanningVueController extends AbstractController
             $idPlanning = $request->headers->get('X-Planning-Id');
 
             if (!$idPlanning) {
-                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+                return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
             }
 
             $data = $request->toArray();
@@ -199,9 +263,9 @@ class PlanningVueController extends AbstractController
                 ['date' => $data['nonWorkingDate'], 'id' => $result]
             );
 
-            return $this->json(['error' => 0, 'message' => 'Jours non travaillés ajoutés avec succès.', 'data' => $result]);
+            return new JsonResponse(['error' => 0, 'message' => 'Jours non travaillés ajoutés avec succès.', 'data' => $result]);
         } catch (\Exception $e) {
-            return $this->json(['error' => 1, 'message' =>  $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1, 'message' =>  $e->getMessage()], 500);
         }
     }
 
@@ -214,7 +278,7 @@ class PlanningVueController extends AbstractController
             $idPlanning = $request->headers->get('X-Planning-Id');
 
             if (!$idPlanning) {
-                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+                return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
             }
 
             $data = $request->toArray();
@@ -222,7 +286,7 @@ class PlanningVueController extends AbstractController
             $planningVue = $data['planningVue'];
 
             if (!$planningVue){
-                return $this->json(['error' => 1, 'message' => 'Données de la vue manquantes'], 400);
+                return new JsonResponse(['error' => 1, 'message' => 'Données de la vue manquantes'], 400);
             }
 
             $filtrePerso = $data['filtrePerso'];
@@ -235,7 +299,7 @@ class PlanningVueController extends AbstractController
             $result = $this->planningVueRepository->createVue($planningVue, $filtrePerso, $utilisateursAutorises, $idPlanning, $user->getIdpersonnel(),  $this->logger);
 
             if ($result['error'] === 1){
-                return $this->json(['error' => 1, 'message' => $result['message']], 500);
+                return new JsonResponse(['error' => 1, 'message' => $result['message']], 500);
             }
             $this->notifier->notifyPlanningChange(
                 $idPlanning,
@@ -244,9 +308,9 @@ class PlanningVueController extends AbstractController
                 ['vue' => $result['data']]
             );
 
-            return $this->json($result);
+            return new JsonResponse($result);
         } catch (\Exception $e) {
-            return $this->json(['error' => 1, 'message' =>  $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1, 'message' =>  $e->getMessage()], 500);
         }
     }
 
@@ -258,7 +322,7 @@ class PlanningVueController extends AbstractController
             $idPlanning = $request->headers->get('X-Planning-Id');
 
             if (!$idPlanning) {
-                return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+                return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
             }
 
             $result = $this->planningVueRepository->deleteNonWorkingDates($idDate);
@@ -270,12 +334,12 @@ class PlanningVueController extends AbstractController
                 ['date' => $result['date']]
             );
 
-            return $this->json(['error' => 0, 'message' => 'Jours non travaillé supprimé avec succès.']);
+            return new JsonResponse(['error' => 0, 'message' => 'Jours non travaillé supprimé avec succès.']);
         } catch (\Exception $e) {
             $this->logger->error('Erreur lors de la suppression d\'un jour non travaillé: {message}', [
                 'message' => $e->getMessage(),
             ]);
-            return $this->json(['error' => 1, 'message' =>  $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1, 'message' =>  $e->getMessage()], 500);
         }
     }
 
@@ -286,7 +350,7 @@ class PlanningVueController extends AbstractController
         $idPlanning = $request->headers->get('X-Planning-Id');
 
         if (!$idPlanning) {
-            return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
         }
 
         $cacheKey = 'edit_config_' . $idPlanning . '_' . $id;
@@ -299,11 +363,11 @@ class PlanningVueController extends AbstractController
             });
         } catch (InvalidArgumentException $e) {
             $logger->debug('Erreur lors de la récupération du verrou pour la configuration ' . $id, ['exception' => $e]);
-            return $this->json(['error' => 1, 'message' => 'Erreur'], 500);
+            return new JsonResponse(['error' => 1, 'message' => 'Erreur'], 500);
         }
 
         if ($ownerId !== $currentUserId) {
-            return $this->json(['error' => 409, 'message' => 'Cette configuration est actuellement en cours d\'édition.'], 409);
+            return new JsonResponse(['error' => 409, 'message' => 'Cette configuration est actuellement en cours d\'édition.'], 409);
         }
 
         $this->notifier->notifyPlanningChange(
@@ -313,7 +377,7 @@ class PlanningVueController extends AbstractController
             ['IdPlanningVue' => $id]
         );
 
-        return $this->json(['error' => 0]);
+        return new JsonResponse(['error' => 0]);
     }
 
     #[Route('/vue/{id}', name: 'api_vue', methods: ['PUT'])]
@@ -321,7 +385,7 @@ class PlanningVueController extends AbstractController
     public function setvue(int $id, LoggerInterface $logger, Request $request): JsonResponse{
         $idPlanning = $request->headers->get('X-Planning-Id');
         if (!$idPlanning) {
-            return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
         }
 
         $data = $request->toArray();
@@ -334,13 +398,13 @@ class PlanningVueController extends AbstractController
         $planningVue = $data['planningVue'];
 
         if (!$planningVue)
-            return $this->json(['error' => 1, 'message' => 'Données de la vue manquantes'], 400);{
+            return new JsonResponse(['error' => 1, 'message' => 'Données de la vue manquantes'], 400);{
         }
 
         $filtrePerso = $data['filtrePerso'];
 
         if (is_null($filtrePerso)){
-            return $this->json(['error' => 1, 'message' => 'Données du filtre perso manquantes'], 400);
+            return new JsonResponse(['error' => 1, 'message' => 'Données du filtre perso manquantes'], 400);
         }
 
         $utilisateursAutorises = $data['utilisateursAutorises'] ?? [];
@@ -349,17 +413,17 @@ class PlanningVueController extends AbstractController
             $result = $this->planningVueRepository->setVue($id, $planningVue, $filtrePerso, $utilisateursAutorises, $logger);
 
             if (!$result) {
-                return $this->json(['error' => 1, 'message' => 'La vue n\'a pas pu être mise à jour.'], 500);
+                return new JsonResponse(['error' => 1, 'message' => 'La vue n\'a pas pu être mise à jour.'], 500);
             }
 
-            return $this->json(['error' => 0, 'message' => 'Vue mise à jour avec succès.', 'data' => $result]);
+            return new JsonResponse(['error' => 0, 'message' => 'Vue mise à jour avec succès.', 'data' => $result]);
         }
         catch (\Exception $e) {
             $logger->error('Erreur lors de la mise à jour de la vue {id}: {message}', [
                 'id' => $id,
                 'message' => $e->getMessage(),
             ]);
-            return $this->json(['error' => 1, 'message' => 'Une erreur est survenue lors de la mise à jour de la vue: ' . $e->getMessage()], 500);
+            return new JsonResponse(['error' => 1, 'message' => 'Une erreur est survenue lors de la mise à jour de la vue: ' . $e->getMessage()], 500);
         }
     }
 
@@ -368,7 +432,7 @@ class PlanningVueController extends AbstractController
     public function deleteVue(int $id, LoggerInterface $logger, Request $request,  #[CurrentUser] Session $user): JsonResponse{
         $idPlanning = $request->headers->get('X-Planning-Id');
         if (!$idPlanning) {
-            return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
         }
 
 
@@ -376,7 +440,7 @@ class PlanningVueController extends AbstractController
             $result = $this->planningVueRepository->deleteVue($id, $logger);
 
             if ($result['error'] === 1 ) {
-                return $this->json(['error' => 1, 'message' => "La vue n'a pas pus être supprimé"], 500);
+                return new JsonResponse(['error' => 1, 'message' => "La vue n'a pas pus être supprimé"], 500);
             }
 
             $this->notifier->notifyPlanningChange(
@@ -386,32 +450,18 @@ class PlanningVueController extends AbstractController
                 ['IdPlanningVue' => $id]
             );
 
-            return $this->json($result);
+            return new JsonResponse($result);
         }
         catch (\Exception $e) {
                 $logger->error('Erreur lors de la mise à jour de la vue {id}: {message}', [
                     'id' => $id,
                     'message' => $e->getMessage(),
                 ]);
-                return $this->json(['error' => 1, 'message' => 'Une erreur est survenue lors de la suppression de la vue: ' . $e->getMessage()], 500);
+                return new JsonResponse(['error' => 1, 'message' => 'Une erreur est survenue lors de la suppression de la vue: ' . $e->getMessage()], 500);
         }
     }
 
-    #[Route('/mobile', name: 'api_mobile_get', methods: ['GET'])]
-    public function getAffichageMobile(#[CurrentUser] Session $user) :JsonResponse{
-        try {
-            $idPersonnel = $user->getIdpersonnel();
 
-            $result = $this->planningVueRepository->getAffichageMobile($idPersonnel, $this->logger);
-
-            return $this->json(['error' => 0, 'data' => $result]);
-        }catch (\Exception $e){
-            $this->logger->error('Erreur lors de la récupération de l\'affichage mobile: {message}', [
-                'message' => $e->getMessage(),
-            ]);
-            return $this->json(['error' => 1, 'message' => 'Une erreur est survenue lors de la récupération de l\'affichage mobile: ' . $e->getMessage()], 500);
-        }
-    }
 
 
 }

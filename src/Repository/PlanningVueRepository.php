@@ -504,9 +504,10 @@ class PlanningVueRepository extends ServiceEntityRepository
             ];
 
             foreach ($result as $row) {
-                if ($row['ZoneAffichage'] === 'primary') {
+                $logger->debug('result' .  json_encode($result));
+                if ($row['ZoneAffichage'] === 'primaire') {
                     $formattedData['primaryFields'][] = $row['CodeChamp'];
-                } elseif ($row['ZoneAffichage'] === 'secondary') {
+                } elseif ($row['ZoneAffichage'] === 'secondaire') {
                     $formattedData['secondaryFields'][] = $row['CodeChamp'];
                 }
             }
@@ -514,6 +515,91 @@ class PlanningVueRepository extends ServiceEntityRepository
             return $formattedData;
         } catch (Exception $e) {
             throw new \Exception('Erreur lors de la récupération des affichages mobiles: ' . $e->getMessage());
+        }
+    }
+
+    public function getAffichageSettingsMobile(int $idPersonnel, LoggerInterface $logger)
+    {
+        $conn = $this->getEntityManager()->getConnection();
+
+        try {
+            $sql = 'EXEC ps_PlanningAffichageMobileConfigSelect @IdPersonnel = :IdPersonnel';
+            $params = ['IdPersonnel' => $idPersonnel];
+            $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+            $fieldsMap = [];
+            $primaryConfigRaw = [];
+            $secondaryConfigRaw = [];
+
+            foreach ($result as $row) {
+                $fieldValue = $row['CodeChamp'];
+
+                // 1. Construction de la liste des champs disponibles (utilisation de la clé pour éviter les doublons)
+                if (!isset($fieldsMap[$fieldValue])) {
+                    $fieldsMap[$fieldValue] = [
+                        'CodeChamp' => $fieldValue,
+                        'Libelle' => $row['Libelle'],
+                        'Ordre' => (int) $row['Ordre']
+                    ];
+                }
+
+                // 2. Répartition dans les zones de configuration si le champ y est affecté
+                if ($row['ZoneAffichage'] === 'primaire') {
+                    $primaryConfigRaw[] = ['CodeChamp' => $fieldValue, 'Position' => (int) $row['Position']];
+                } elseif ($row['ZoneAffichage'] === 'secondaire') {
+                    $secondaryConfigRaw[] = ['CodeChamp' => $fieldValue, 'Position' => (int) $row['Position']];
+                }
+            }
+
+            // 3. Tri des configurations selon l'ordre de positionnement défini en base
+            usort($primaryConfigRaw, fn($a, $b) => $a['Position'] <=> $b['Position']);
+            usort($secondaryConfigRaw, fn($a, $b) => $a['Position'] <=> $b['Position']);
+
+            // 4. Assemblage final au format JSON attendu par le front-end
+            $formattedOutput = [
+                'fields' => array_values($fieldsMap),
+                'config' => [
+                    'primaryFields' => array_column($primaryConfigRaw, 'CodeChamp'),
+                    'secondaryFields' => array_column($secondaryConfigRaw, 'CodeChamp')
+                ]
+            ];
+
+            return $formattedOutput;
+
+        } catch (Exception $e) {
+            throw new \Exception('Erreur lors de la récupération de l\'affichage mobile pour les paramètres: ' . $e->getMessage());
+        }
+    }
+
+    public function getAffichageSettingsMobileSave(int $idPersonnel, string $jsonPayload, LoggerInterface $logger): int
+    {
+        $logger->info('Début de la sauvegarde de la configuration mobile', [
+            'idPersonnel' => $idPersonnel
+        ]);
+
+        $conn = $this->getEntityManager()->getConnection();
+
+        try {
+            $sql = 'EXEC ps_PlanningAffichageMobileConfigUpdateInsert @IdPersonnel = :IdPersonnel, @JsonPayload = :JsonPayload';
+            $params = [
+                'IdPersonnel' => $idPersonnel,
+                'JsonPayload' => $jsonPayload
+            ];
+
+            $conn->executeStatement($sql, $params);
+
+            $logger->info('Sauvegarde de la configuration mobile réussie', [
+                'idPersonnel' => $idPersonnel
+            ]);
+
+            return 0;
+        } catch (\Exception $e) {
+            $logger->error('Erreur SQL lors de la sauvegarde de la configuration mobile', [
+                'idPersonnel' => $idPersonnel,
+                'error'       => $e->getMessage()
+            ]);
+
+            throw new \Exception('Erreur lors de la sauvegarde des paramètres d\'affichage mobile pour l\'utilisateur ' . $idPersonnel . ' : ' . $e->getMessage());
         }
     }
 }
