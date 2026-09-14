@@ -112,9 +112,9 @@ class SecurityRepository extends ServiceEntityRepository
         $permission = [];
 
         foreach ($employeeData as $row) {
-            if (!isset($employees[$row['IdSalarie']])) {
-                $employees[$row['IdSalarie']] = [
-                    'IdPersonnel' => (int)$row['IdSalarie'],
+            if (!isset($employees[$row['Id']])) {
+                $employees[$row['Id']] = [
+                    'IdPersonnel' => (int)$row['Id'],
                     'NomPersonnel' => $row['NomPersonnel'],
                     'PrenomPersonnel' => $row['PrenomPersonnel'],
                     'IdDroit' => (int)$row['IdDroitNiveau'],

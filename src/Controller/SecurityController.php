@@ -22,6 +22,7 @@ use OpenApi\Attributes as OA;
 #[OA\Tag(name: 'Sécurité et Authentification')]
 class SecurityController extends AbstractController
 {
+    use ApiResponseTrait;
     public function __construct(
         private SecurityRepository $repository,
         #[Autowire(service: 'mercure.hub.default.jwt.factory')]
@@ -40,12 +41,16 @@ class SecurityController extends AbstractController
             type: 'object'
         )
     )]
-    #[OA\Response(response: 200, description: 'Connexion réussie et retourne l\'utilisateur ou le token de session')]
+    #[OA\Response(response: 200, description: 'Connexion réussie et retourne l\'utilisateur connecté')]
     #[OA\Response(response: 401, description: 'Identifiants invalides')]
     public function login(#[CurrentUser] ?Session $user, LoggerInterface $logger): JsonResponse
     {
-        $logger->debug('Tentative de connexion', ['user' => $user]);
-        return $this->json(['error'=>0, $user]);
+        $logger->debug('Tentative de connexion', [
+            'authenticated' => $user !== null,
+            'userId' => $user?->getIdpersonnel(),
+        ]);
+
+        return $this->json(['error' => 0, 'data' => $user]);
     }
 
     #[Route('/logout', name: 'api_logout', methods: ['GET'])]
@@ -58,6 +63,9 @@ class SecurityController extends AbstractController
 
 
     #[Route('/me', name: 'api_me', methods: ['GET'])]
+    #[OA\Response(response: 200, description: 'Informations de l\'utilisateur connecté')]
+    #[OA\Response(response: 401, description: 'Utilisateur non authentifié')]
+    #[OA\Response(response: 500, description: 'Erreur interne lors de la récupération du profil')]
     public function me(#[CurrentUser] ?Session $user, LoggerInterface $logger): JsonResponse
     {
         try {

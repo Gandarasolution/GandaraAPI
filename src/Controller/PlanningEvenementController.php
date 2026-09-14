@@ -25,6 +25,7 @@ use Symfony\Contracts\Cache\ItemInterface;
 #[OA\Tag(name: 'Planning Événements')]
 class PlanningEvenementController extends AbstractController
 {
+    use ApiResponseTrait;
 
     public function __construct(
         private readonly MercureNotificationService $notifier,

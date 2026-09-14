@@ -140,6 +140,40 @@ Vous pouvez y accéder via l'URL suivante une fois le serveur lancé :
 
 **URL de la documentation web** : `http://127.0.0.1:8000/api/doc`
 
+### Contrat des réponses JSON
+
+Les routes `/api` renvoient un format homogène :
+
+```json
+{
+  "error": 0,
+  "data": {}
+}
+```
+
+En cas d'erreur, le code HTTP est la source de vérité et le corps contient :
+
+```json
+{
+  "error": 1,
+  "message": "Le paramètre idPlanning est obligatoire.",
+  "status": 400
+}
+```
+
+Les statuts courants sont `400` (requête invalide), `401` (authentification requise),
+`403` (permission insuffisante), `404` (ressource absente), `409` (conflit) et `500`
+(erreur interne). Les détails techniques des exceptions ne sont jamais renvoyés au client
+pour une erreur `500` ; ils sont disponibles dans les logs avec la route, la méthode et le statut.
+
+Pour diagnostiquer une erreur, consultez les logs du service API :
+
+```bash
+docker compose logs -f api
+```
+
+La documentation Swagger décrit les paramètres et les réponses de chaque endpoint sur `/api/doc`.
+
 # Documentation des Routes de l'API
 
 ## Routes disponibles (Planning Evenement)

@@ -1,9 +1,41 @@
 nelmio_api_doc:
     documentation:
         info:
-            title: My App
-            description: This is an awesome app!
+            title: Scheduler API
+            description: |
+                API de gestion des plannings, des vues, des ressources et des événements.
+                Toutes les réponses JSON suivent le contrat documenté dans ApiSuccess et ApiError.
             version: 1.0.0
+        components:
+            schemas:
+                ApiError:
+                    type: object
+                    required: [error, message, status]
+                    properties:
+                        error:
+                            type: integer
+                            enum: [1]
+                            description: Indique qu'une erreur s'est produite.
+                        message:
+                            type: string
+                            description: Message exploitable par le client.
+                        status:
+                            type: integer
+                            description: Code HTTP retourné par l'API.
+                        details:
+                            nullable: true
+                            description: Détails de validation éventuels. Jamais renseigné pour une erreur serveur.
+                ApiSuccess:
+                    type: object
+                    required: [error]
+                    properties:
+                        error:
+                            type: integer
+                            enum: [0]
+                        message:
+                            type: string
+                        data:
+                            description: Données retournées par l'opération.
     areas: # to filter documented areas
         path_patterns:
             - ^/api(?!/doc$) # Accepts routes under /api except /api/doc

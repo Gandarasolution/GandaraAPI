@@ -17,6 +17,7 @@ use OpenApi\Attributes as OA;
 #[OA\Tag(name: 'Étiquettes')]
 class PlanningEtiquetteController extends AbstractController
 {
+    use ApiResponseTrait;
     public function __construct(
         private EtiquetteRepository $repository,
         private EntityManagerInterface $entityManager

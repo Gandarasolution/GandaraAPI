@@ -19,6 +19,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 #[OA\Tag(name: 'Employés')]
 class EmployeeController extends AbstractController
 {
+    use ApiResponseTrait;
     public function __construct(
         private EmployeeRepository $employeeRepository,
         private SecurityRepository $securityRepository

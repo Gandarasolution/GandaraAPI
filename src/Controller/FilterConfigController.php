@@ -14,6 +14,7 @@ use OpenApi\Attributes as OA;
 #[OA\Tag(name: 'Filtres dynamiques')]
 class FilterConfigController extends AbstractController
 {
+    use ApiResponseTrait;
 
     public function __construct(
         private FilterConfigRepository $filterConfigRepository,

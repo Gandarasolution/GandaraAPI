@@ -15,6 +15,7 @@ use OpenApi\Attributes as OA;
 #[OA\Tag(name: 'Pôles d\'activité')]
 class PoleActiviteController extends AbstractController
 {
+    use ApiResponseTrait;
 
     public function __construct(
         private PoleActiviteRepository $poleActiviteRepository,

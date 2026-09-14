@@ -15,6 +15,7 @@ use OpenApi\Attributes as OA;
 #[OA\Tag(name: 'Équipes/Ressources')]
 class PlanningEquipeController extends AbstractController
 {
+    use ApiResponseTrait;
 
     /**
      * @param EquipeRepository $repository

@@ -17,6 +17,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[OA\Tag(name: 'Permissions')]
 class PermissionController extends AbstractController
 {
+    use ApiResponseTrait;
 
     public function __construct(
         private readonly SecurityRepository $securityRepository,

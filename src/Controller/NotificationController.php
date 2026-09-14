@@ -17,6 +17,7 @@ use OpenApi\Attributes as OA;
 #[OA\Tag(name: 'Notifications')]
 class NotificationController extends AbstractController
 {
+    use ApiResponseTrait;
     public function __construct(
         private PlanningNotificationRepository $planningNotificationRepository,
         private EntityManagerInterface $entityManager

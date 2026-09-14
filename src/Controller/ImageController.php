@@ -18,6 +18,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 #[OA\Tag(name: 'Images')]
 class ImageController extends AbstractController
 {
+    use ApiResponseTrait;
     public function __construct(
         private ImageRepository $imageRepository,
         private LoggerInterface $logger,

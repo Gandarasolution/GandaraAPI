@@ -24,6 +24,7 @@ use Symfony\Contracts\Cache\ItemInterface;
 #[OA\Tag(name: 'Configurations/Vues')]
 class PlanningVueController extends AbstractController
 {
+    use ApiResponseTrait;
 
     public function __construct(
         private readonly LoggerInterface $logger,

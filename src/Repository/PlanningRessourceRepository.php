@@ -229,7 +229,7 @@ class PlanningRessourceRepository extends ServiceEntityRepository
 
                 $structuredData[] = [
 
-                    'IdPlanningRessource' => $row['IdSocialRubriquePaie'],
+                    'IdPlanningRessource' => $row['IdPlanningRessource'],
                     'LibellePlanningRessource' => $row['LibellePlanningRessource'],
                     'CouleurFondPlanningRessource' => $row['CouleurFondPlanningRessource'],
                     'CouleurBordurePlanningRessource' => $row['CouleurBordurePlanningRessource'],

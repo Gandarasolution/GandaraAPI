@@ -22,6 +22,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[OA\Tag(name: 'Ressources')]
 class PlanningRessourceController extends abstractController
 {
+    use ApiResponseTrait;
 
     public function __construct(
         private MercureNotificationService $notifier,
@@ -326,9 +327,10 @@ class PlanningRessourceController extends abstractController
     )]
     #[OA\Response(response: 200, description: 'Ressource mise à jour avec succès')]
     #[IsGranted('RESOURCE_EDIT', subject: 'resource',  message: 'Vous n\'avez pas la permission de modifier cette ressource.')]
-    public function updatePlaningRessource(int $id, Request $request, LoggerInterface $logger, #[CurrentUser] Session $user, Planningressource $resource){
+    public function updatePlaningRessource(Planningressource $resource, Request $request, LoggerInterface $logger, #[CurrentUser] Session $user){
         try {
             $idPlanning = $request->headers->get('X-Planning-Id');
+            $id = $resource->getIdplanningressource();
 
             if (!$idPlanning) {
                 return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
