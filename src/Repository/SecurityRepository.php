@@ -7,11 +7,12 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\Exception;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 class SecurityRepository extends ServiceEntityRepository
 {
 
-    public function __construct(ManagerRegistry $registry)
+    public function __construct(ManagerRegistry $registry, private UrlGeneratorInterface $router)
     {
         parent::__construct($registry, Session::class);
     }
@@ -21,15 +22,7 @@ class SecurityRepository extends ServiceEntityRepository
         try {
             $conn = $this->getEntityManager()->getConnection();
 
-            $sqlEmploye = '
-                SELECT
-                    COALESCE(S.NomSalarie, I.NomInterim) as NomEmploye,
-                    COALESCE(S.PrenomSalarie, I.PrenomInterim) as PrenomEmployee
-                FROM SESSION
-                LEFT JOIN Salarie S ON S.IdSalarie = IdPersonnel
-                LEFT JOIN Interim I ON I.IdInterim = IdPersonnel
-                WHERE IdPersonnel = :id
-            ';
+            $sqlEmploye = 'EXEC ps_PlanningSessionInfoSelect @Id = :id';
             $employeInfos = $conn->fetchAssociative($sqlEmploye, ['id' => $user->getIdpersonnel()]);
 
             $sqlDroit = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id';
@@ -43,11 +36,15 @@ class SecurityRepository extends ServiceEntityRepository
             ';
             $planningAffectation = $conn->fetchAllAssociative($sqlPlannings, ['id' => $user->getIdpersonnel()]);
 
+            $baseImageUrl = $this->router->generate('api_serve_image_file_user', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+            $baseImageUrl = str_replace('999999', '', $baseImageUrl);
+
             return [
                 'user' => [
                     'IdPersonnel' => $user->getIdpersonnel(),
                     'Nom'         => $employeInfos ? $employeInfos['NomEmploye'] : null,
                     'Prenom'      => $employeInfos ? $employeInfos['PrenomEmployee'] : null,
+                    'Image'       => $employeInfos['Trombinoscope'] === 1 ? $baseImageUrl . $user->getIdpersonnel() : null,
                 ],
                 'permissions' => $planningDroit ? (int)$planningDroit['IdDroitNiveau'] : 21,
                 'planning'    => array_map(function($row) {
@@ -148,10 +145,9 @@ class SecurityRepository extends ServiceEntityRepository
         try {
             $conn->beginTransaction();
 
-            // Requête appelant ta procédure stockée (Modifie le nom de la PS si nécessaire)
+            // Requête appelant ta procédure stockée
             $sql = 'EXEC ps_PlanningDroitUpdate @IdPersonnel = ?, @IdDroitNiveau = ?';
 
-            // On prépare la requête une seule fois pour de meilleures performances
             $stmt = $conn->prepare($sql);
 
             foreach ($updates as $update) {

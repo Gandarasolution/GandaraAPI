@@ -77,27 +77,21 @@ class EmployeeController extends AbstractController
    # #[OA\Parameter(name: 'type', in: 'query', description: 'Salarie ou Interim', schema: new OA\Schema(type: 'string', enum: ['Salarie', 'Interim']))]
     #[OA\Response(response: 200, description: 'Détails d\'un employé spécifique')]
     #[OA\Response(response: 404, description: 'Employé introuvable')]
-    public function getEmployee(int $id, Request $request){
-    /*$type = $request->query->get('type');
+    public function getEmployee(int $id, Request $request)
+    {
+        try {
+            // Appel avec paramètres => La PS renvoie une seule ligne (ou vide)
+        $result = $this->employeeRepository->getEmployeelist($id);
 
-    if (!in_array($type, ['Salarie', 'Interim'])) {
-        return $this->json(['error' => 1, 'message' => 'Le paramètre ?type=Salarie ou ?type=Interim est obligatoire'], 400);
-    }
-    */
+        if (empty($result)) {
+        return $this->json(['error' => 1, 'message' => 'Employé non trouvé'], 404);
+        }
 
-try {
-    // Appel avec paramètres => La PS renvoie une seule ligne (ou vide)
-$result = $this->employeeRepository->getEmployeelist($id);
+        return $this->json(['error' => 0, 'data' => $result]);
 
-if (empty($result)) {
-return $this->json(['error' => 1, 'message' => 'Employé non trouvé'], 404);
-}
-
-return $this->json(['error' => 0, 'data' => $result]);
-
-} catch (\Exception $e) {
-    return $this->json(['error' => 1 , 'message' => $e->getMessage()], 500);
-}
+        } catch (\Exception $e) {
+            return $this->json(['error' => 1 , 'message' => $e->getMessage()], 500);
+        }
     }
 
     //PUT /api/employees/équipe/:id- Modifier un employé

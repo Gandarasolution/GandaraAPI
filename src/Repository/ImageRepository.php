@@ -8,6 +8,7 @@ use Doctrine\DBAL\ParameterType;
 use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\DBAL\Exception;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 
@@ -71,7 +72,7 @@ class ImageRepository extends ServiceEntityRepository
 
             return ['image' => $struredData, 'totalLignes' => $images[0]['TotalLignes'] ?? 0];
         }catch (Exception $e) {
-            throw new \Exception('An error occurred while retrieving images: ' . $e->getMessage());
+            throw new \Exception('Erreur lors de la récupération des images : ' . $e->getMessage(), 0, $e);
         }
     }
 
@@ -89,14 +90,34 @@ class ImageRepository extends ServiceEntityRepository
 
             // 2. Gestion de l'erreur si l'image n'existe pas
             if (!$result || empty($result['DataPlanningImage'])) {
-                throw $this->createNotFoundException('Image introuvable');
+                return null;
             }
 
 
             return $result['DataPlanningImage'];
 
         }catch (Exception $e) {
-            throw new \Exception('An error occurred while retrieving the image: ' . $e->getMessage());
+            throw new \Exception('Erreur lors de la récupération de l\'image : ' . $e->getMessage(), 0, $e);
+        }
+    }
+
+    public function getImageByIdUser(int $id)
+    {
+        try {
+            $conn = $this->getEntityManager()->getConnection();
+            $sql = 'EXEC ps_PlanningImageTrombinoscopeSelect  @IdPersonnel = :id';
+
+            $result = $conn->executeQuery($sql, ['id' => $id])->fetchAssociative();
+
+            // 2. Gestion de l'erreur si l'image n'existe pas
+            if (!$result || empty($result['DataPlanningImage'])) {
+                return null;
+            }
+
+            return $result['DataPlanningImage'];
+
+        }catch (Exception $e) {
+            throw new \Exception('Une erreur est survenue lors de la récupération de l\'image pour l\'utilisateur avec l\'ID ' . $id . ': ' . $e->getMessage());
         }
     }
 }

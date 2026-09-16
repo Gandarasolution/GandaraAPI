@@ -7,11 +7,12 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\Exception;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 class EmployeeRepository extends ServiceEntityRepository
 {
 
-    public function __construct(ManagerRegistry $registry)
+    public function __construct(ManagerRegistry $registry, private UrlGeneratorInterface $router)
     {
         parent::__construct($registry, PlanningEvenement::class);
     }
@@ -20,19 +21,20 @@ class EmployeeRepository extends ServiceEntityRepository
     /**
      * @throws Exception
      */
-    public function getEmployeelist(?int $id = null, ?string $type = null)
+    public function getEmployeelist(?int $id = null)
     {
         try {
             $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningEmployeeSelect @Id = :Id'; //, @Type = :Type
+            $sql = 'EXEC ps_PlanningEmployeeSelect @Id = :Id';
             $params = [
                 'Id' => $id,
-                #'Type' => $type
             ];
 
             $resultSet = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
             $structuredData = [];
+            $baseImageUrl = $this->router->generate('api_serve_image_file_user', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+            $baseImageUrl = str_replace('999999', '', $baseImageUrl);
 
             foreach ($resultSet as $row) {
                 $structuredData[] = [
@@ -43,6 +45,7 @@ class EmployeeRepository extends ServiceEntityRepository
                     'Type' => $row['Type'],
                     'PoleActivite' => $row['IdPoleActivite'],
                     'Equipe' => $row['IdEquipe'],
+                    'Image' => $baseImageUrl . $row['Id'],
                 ];
             }
             return $structuredData;

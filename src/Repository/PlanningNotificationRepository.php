@@ -73,9 +73,30 @@ class PlanningNotificationRepository extends ServiceEntityRepository
             $sql = 'EXEC ps_PlanningNotificationsSelectBySession @IdPersonnel = :IdPersonnel';
             $params = ['IdPersonnel' => $id];
 
-            return $conn->executeQuery($sql, $params)->fetchAllAssociative();
+            $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+            foreach ($result as &$row) {
+                $row['IsRead'] = $row['IsRead'] === 1;
+            }
+            unset($row);
+
+            return $result;
+
         } catch (Exception $e) {
             throw new \Exception("Erreur lors de la récupération des notifications : " . $e->getMessage());
+        }
+    }
+
+    public function markNotificationsAsRead(mixed $notificationIds)
+    {
+        try {
+            $conn = $this->getEntityManager()->getConnection();
+            $sql = 'EXEC ps_PlanningNotificationsUpdateRead @NotificationIds = :NotificationIds';
+            $params = ['NotificationIds' => implode(',', $notificationIds)];
+
+            return $conn->executeQuery($sql, $params)->fetchOne();
+        } catch (Exception $e) {
+            throw new \Exception("Erreur lors de la mise à jour des notifications : " . $e->getMessage());
         }
     }
 }

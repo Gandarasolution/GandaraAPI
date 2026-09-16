@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\PlanningNotification;
+use App\Entity\Session;
 use App\Repository\PlanningNotificationRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -12,6 +13,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Nelmio\ApiDocBundle\Annotation\Model;
 use OpenApi\Attributes as OA;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 #[Route('/api/notifications', name: 'api_notifications_')]
 #[OA\Tag(name: 'Notifications')]
@@ -23,18 +25,19 @@ class NotificationController extends AbstractController
         private EntityManagerInterface $entityManager
     ){}
 
-    #[Route('/{id}', name: 'list', methods: ['GET'])]
+    #[Route('', name: 'list', methods: ['GET'])]
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de l\'employé pour lequel lister les notifications', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Liste des notifications de l\'employé')]
-    public function index(int $id): JsonResponse
+    public function index(#[CurrentUser] Session $user): JsonResponse
     {
+        $id = $user->getIdpersonnel();
         try {
             $notifications = $this->planningNotificationRepository->getNotification($id);
 
-            return $this->json($notifications);
+            return $this->json(['error' => 0, 'data' => $notifications]);
 
         }catch (\Exception $e){
-            return $this->json(['error' => $e->getMessage()], 500);
+            return $this->json(['error' => 1, 'message' => $e->getMessage()], 500);
         }
     }
 
@@ -60,10 +63,9 @@ class NotificationController extends AbstractController
             $newNotificationId = $this->planningNotificationRepository->createNotification($data);
 
 
-            return $this->json(['message' => 'Événement créé avec succès', 'IdPlanningNotification' => $newNotificationId], 201);
+            return $this->json(['error' => 0, 'message' => 'Événement créé avec succès', 'IdPlanningNotification' => $newNotificationId], 201);
         }catch(\Exception $e){
-            return $this->json(['error' => $e->getMessage()], 500);
-        }
+            return $this->json(['error' => 1 , 'message' => $e->getMessage()], 500);        }
     }
 
     #[Route('/{id}', name: 'update', methods: ['PUT'])]
@@ -83,14 +85,14 @@ class NotificationController extends AbstractController
             $lignesModifiees = $this->planningNotificationRepository->updateNotification($id, $data, $logger);
 
             if ($lignesModifiees === 0 || $lignesModifiees === null) {
-                return $this->json(['error' => 'Notification non trouvée ou aucune modification apportée'], 404);
+                return $this->json(['error' => 1 , 'message' => 'Notification non trouvée ou aucune modification apportée'], 404);
             }
 
             $logger->debug("Notification mise à jour - ID: $id, Lignes modifiées: $lignesModifiees");
 
-            return $this->json(['message' => 'Notification mis à jour avec succès'], 201);
+            return $this->json(['error' => 0, 'message' => 'Notification mis à jour avec succès'], 201);
         }catch (\Exception $e){
-            return $this->json(['error' => $e->getMessage()], 500);
+            return $this->json(['error' => 1 , 'message' => $e->getMessage()], 500);
         }
     }
 
@@ -102,6 +104,35 @@ class NotificationController extends AbstractController
         $this->entityManager->remove($notification);
         $this->entityManager->flush();
 
-        return $this->json(null, 204);
+        return $this->json(['error' => 0], 204);
+    }
+
+
+    #[Route('/read', name: 'read', methods: ['PATCH'])]
+    #[OA\RequestBody(
+        description: 'Les informations pour marquer les notifications comme lues',
+        required: true,
+        content: new OA\JsonContent(type: 'object')
+    )]
+    #[OA\Response(response: 204, description: 'Notifications marquées comme lues avec succès')]
+    #[OA\Response(response: 400, description: 'Requête invalide')]
+    #[OA\Response(response: 500, description: 'Erreur lors de la mise à jour des notifications')]
+    public function markAsRead(Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+        $notificationIds = $data['notificationIds'] ?? [];
+
+        if (empty($notificationIds)) {
+            return $this->json(['error' => 0 , 'message' => 'Aucun ID de notification fourni'], 400);
+        }
+
+        try {
+            $this->planningNotificationRepository->markNotificationsAsRead($notificationIds);
+
+        }catch (\Exception $e){
+            return $this->json(['error' => 1 , 'message' => $e->getMessage()], 500);
+        }
+
+        return $this->json([]);
     }
 }

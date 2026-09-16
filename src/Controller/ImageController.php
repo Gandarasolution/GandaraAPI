@@ -66,4 +66,30 @@ class ImageController extends AbstractController
             return new JsonResponse(['error' => 1, 'message' => 'An error occurred while retrieving images: ' . $e->getMessage()], 500);
         }
     }
+
+    #[Route('/{id}', name: 'api_serve_image_file_user', methods: ['GET'])]
+    #[OA\Parameter(name: 'id', in: 'path', description: 'ID du salarie/intérimaire', schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'L\'image demandée')]
+    #[OA\Response(response: 404, description: 'Image non trouvée')]
+    public function getImageUser(int $id)
+    {
+        try {
+            $image = $this->imageRepository->getImageByIdUser($id);
+
+            if (!$image) {
+                return new JsonResponse(['error' => 'Image introuvable'], 404);
+            }
+
+            $response = new Response($image);
+
+            $response->headers->set('Content-Type', 'image/png');
+
+            $response->headers->set('Cache-Control', 'public, max-age=31536000');
+
+            return $response;
+        }catch (\Exception $e) {
+            return new JsonResponse(['error'=> 1, 'message' => 'Une erreur s\'est produite lors de la récupération: ' .$e->getMessage()], 500);
+        }
+    }
+
 }
