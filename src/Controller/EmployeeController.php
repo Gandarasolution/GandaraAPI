@@ -19,7 +19,6 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 #[OA\Tag(name: 'Employés')]
 class EmployeeController extends AbstractController
 {
-    use ApiResponseTrait;
     public function __construct(
         private EmployeeRepository $employeeRepository,
         private SecurityRepository $securityRepository
@@ -42,33 +41,37 @@ class EmployeeController extends AbstractController
 
         if (!in_array($droit, [23, 22])) {
             return $this->json([
-                'error' => 1,
                 'message' => 'Vous n\'avez pas la permission de récupérer les employées.'
             ], 403);
         }
 
-        try {
 
-            if (empty($request->query->all())) {
-                $logger->debug("Récupération de TOUS les employés (sans filtres/pagination)");
-                $employees = $this->employeeRepository->getEmployeelist();
-                return $this->json(['error' => 0, 'data' => $employees]);
+        if (empty($request->query->all())) {
+
+            $idPlanningVue = $request->headers->get('X-PlanningVue-Id', null);
+            if (empty($idPlanningVue)) {
+                return $this->json([
+                    'message' => 'L\'en-tête X-PlanningVue-Id est requis.'
+                ], 400);
             }
-            else{
-                $limit = $request->query->get('limit', 20);
-                $pageNumber = $request->query->get('pageNum', 1);
-                $q = $request->query->get('q', '');
-                $codes = $request->query->get('code', '');
 
-                $logger->debug("Récupération de la liste des employés", ['limit' => $limit, 'pageNum' => $pageNumber, 'q' => $q, 'codes' => $codes]);
-
-                $result = $this->employeeRepository->getEmployeePagination($limit, $pageNumber, $q, $codes, $logger);
-
-                return $this->json(['error' => 0, 'data' => $result['data'], 'TotalLignes' => $result['TotalLignes']]);
-            }
-        } catch (\Exception $e) {
-            return $this->json(['error' => 1, 'message' => 'Erreur lors de la récupération des employés: ' . $e->getMessage()], 500);
+            $logger->debug("Récupération de TOUS les employés (sans filtres/pagination)");
+            $employees = $this->employeeRepository->getEmployeelist($idPlanningVue);
+            return $this->json(['data' => $employees]);
         }
+        else{
+            $limit = $request->query->get('limit', 20);
+            $pageNumber = $request->query->get('pageNum', 1);
+            $q = $request->query->get('q', '');
+            $codes = $request->query->get('code', '');
+
+            $logger->debug("Récupération de la liste des employés", ['limit' => $limit, 'pageNum' => $pageNumber, 'q' => $q, 'codes' => $codes]);
+
+            $result = $this->employeeRepository->getEmployeePagination($limit, $pageNumber, $q, $codes, $logger);
+
+            return $this->json(['data' => $result['data'], 'TotalLignes' => $result['TotalLignes']]);
+        }
+
     }
 
     //GET /api/employees/:id- Récupérer un employé
@@ -79,19 +82,14 @@ class EmployeeController extends AbstractController
     #[OA\Response(response: 404, description: 'Employé introuvable')]
     public function getEmployee(int $id, Request $request)
     {
-        try {
-            // Appel avec paramètres => La PS renvoie une seule ligne (ou vide)
+        // Appel avec paramètres => La PS renvoie une seule ligne (ou vide)
         $result = $this->employeeRepository->getEmployeelist($id);
 
         if (empty($result)) {
-        return $this->json(['error' => 1, 'message' => 'Employé non trouvé'], 404);
+        return $this->json(['message' => 'Employé non trouvé'], 404);
         }
 
-        return $this->json(['error' => 0, 'data' => $result]);
-
-        } catch (\Exception $e) {
-            return $this->json(['error' => 1 , 'message' => $e->getMessage()], 500);
-        }
+        return $this->json(['data' => $result]);
     }
 
     //PUT /api/employees/équipe/:id- Modifier un employé
@@ -107,29 +105,24 @@ class EmployeeController extends AbstractController
 
         if ($droit != 23) {
             return $this->json([
-                'error' => 1,
                 'message' => 'Vous n\'avez pas la permission de voir les projets.'
             ], 403);
         }
 
-        try{
-            $data = $request->toArray();
 
-            $type = $data['Type'] ?? null;
-            if (!$type || !in_array($type, ['SALARIE', 'INTERIM'])) {
-                return $this->json(['error' => 1, 'message' => 'Le champ "type" (SALARIE ou INTERIM) est obligatoire dans le body.'], 400);
-            }
-            $lignesModifiees = $this->employeeRepository->setEquipeEmployee($id, $data, $logger);
+        $data = $request->toArray();
 
-            if ($lignesModifiees === 0) {
-                return $this->json(['error' => 1, 'message' => 'Employé introuvable.'], 404);
-            }
-
-            return $this->json(['error' => 0, 'message' => 'Employé mis à jour avec succès']);
-
-        } catch (\Exception $e) {
-            return $this->json(['error' => 1, 'message' => $e->getMessage()], 500);
+        $type = $data['Type'] ?? null;
+        if (!$type || !in_array($type, ['SALARIE', 'INTERIM'])) {
+            return $this->json(['message' => 'Le champ "type" (SALARIE ou INTERIM) est obligatoire dans le body.'], 400);
         }
+        $lignesModifiees = $this->employeeRepository->setEquipeEmployee($id, $data, $logger);
+
+        if ($lignesModifiees === 0) {
+            return $this->json([ 'message' => 'Employé introuvable.'], 404);
+        }
+
+        return $this->json(['message' => 'Employé mis à jour avec succès']);
     }
 
 

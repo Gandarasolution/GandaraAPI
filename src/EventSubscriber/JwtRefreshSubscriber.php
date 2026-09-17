@@ -11,7 +11,7 @@ use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 
-class JWTRefreshSubscriber implements EventSubscriberInterface
+final class JwtRefreshSubscriber implements EventSubscriberInterface
 {
     private JWTTokenManagerInterface $jwtManager;
     private TokenStorageInterface $tokenStorage;

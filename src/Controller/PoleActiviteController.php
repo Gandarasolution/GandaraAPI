@@ -15,7 +15,6 @@ use OpenApi\Attributes as OA;
 #[OA\Tag(name: 'Pôles d\'activité')]
 class PoleActiviteController extends AbstractController
 {
-    use ApiResponseTrait;
 
     public function __construct(
         private PoleActiviteRepository $poleActiviteRepository,
@@ -29,16 +28,13 @@ class PoleActiviteController extends AbstractController
         $idPlanningVue = $request->headers->get('X-PlanningVue-Id');
 
         if (!$idPlanningVue) {
-            return $this->json(['error' => 1, 'message' => 'Id de la vue du planning manquante'], 400);
+            return $this->json(['message' => 'Id de la vue du planning manquante'], 400);
         }
 
-        try {
-            $result = $this->poleActiviteRepository->getPoles((int)$idPlanningVue);
-        }catch (\Exception $e){
-            return $this->json(['error' => 1, 'message' => $e->getMessage()], 400);
-        }
+        $result = $this->poleActiviteRepository->getPoles((int)$idPlanningVue);
 
-        return $this->json(['error' => 0, 'data' => $result]);
+
+        return $this->json(['data' => $result]);
     }
 
     #[Route('', name: 'pole_activite_create', methods: ['POST'])]
@@ -54,18 +50,15 @@ class PoleActiviteController extends AbstractController
     )]
     #[OA\Response(response: 200, description: 'Pôle créé avec succès')]
     public function create(Request $request){
-        try {
-            $data = json_decode($request->getContent(), true);
-            $poleActivite = new PoleActivite();
-            $poleActivite->setDesignationPoleActivite($data['name']);
+        $data = json_decode($request->getContent(), true);
+        $poleActivite = new PoleActivite();
+        $poleActivite->setDesignationPoleActivite($data['name']);
 
-            $this->entityManager->persist($poleActivite);
-            $this->entityManager->flush();
+        $this->entityManager->persist($poleActivite);
+        $this->entityManager->flush();
 
-            return $this->json(['message' => 'Pôle d\'activité créé avec succès']);
-        }catch (\Exception $e) {
-            return $this->json(['error' => 'Erreur lors de la création du pôle d\'activité: ' . $e->getMessage()], 500);
-        }
+        return $this->json(['message' => 'Pôle d\'activité créé avec succès']);
+
     }
 
     #[Route('/{id}', name: 'pole_activite_update', methods: ['PUT'])]
@@ -83,24 +76,21 @@ class PoleActiviteController extends AbstractController
     #[OA\Response(response: 200, description: 'Pôle modifié avec succès')]
     #[OA\Response(response: 404, description: 'Pôle non trouvé')]
     public function update(Request $request, int $id){
-        try {
-            $poleActivite = $this->poleActiviteRepository->find($id);
+        $poleActivite = $this->poleActiviteRepository->find($id);
 
-            if (!$poleActivite) {
-                return $this->json(['error' => 'Pôle d\'activité non trouvé'], 404);
-            }
-
-            $data = json_decode($request->getContent(), true);
-            $poleActivite->setDesignationPoleActivite($data['name']);
-            // A compléter en fonction des champs à modifier
-            $this->entityManager->persist($poleActivite);
-            $this->entityManager->flush();
-
-            return $this->json(['message' => 'Pôle d\'activité modifié avec succès']);
-
-        }catch (\Exception $e) {
-            return $this->json(['error' => 'Erreur lors de la modification du pôle d\'activité: ' . $e->getMessage()], 500);
+        if (!$poleActivite) {
+            return $this->json(['error' => 'Pôle d\'activité non trouvé'], 404);
         }
+
+        $data = json_decode($request->getContent(), true);
+        $poleActivite->setDesignationPoleActivite($data['name']);
+        // A compléter en fonction des champs à modifier
+        $this->entityManager->persist($poleActivite);
+        $this->entityManager->flush();
+
+        return $this->json(['message' => 'Pôle d\'activité modifié avec succès']);
+
+
     }
 
 }

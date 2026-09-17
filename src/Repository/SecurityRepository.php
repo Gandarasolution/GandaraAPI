@@ -19,73 +19,66 @@ class SecurityRepository extends ServiceEntityRepository
 
     public function me(Session $user,LoggerInterface $logger): array
     {
-        try {
-            $conn = $this->getEntityManager()->getConnection();
+        $conn = $this->getEntityManager()->getConnection();
 
-            $sqlEmploye = 'EXEC ps_PlanningSessionInfoSelect @Id = :id';
-            $employeInfos = $conn->fetchAssociative($sqlEmploye, ['id' => $user->getIdpersonnel()]);
+        $sqlEmploye = 'EXEC ps_PlanningSessionInfoSelect @Id = :id';
+        $employeInfos = $conn->fetchAssociative($sqlEmploye, ['id' => $user->getIdpersonnel()]);
 
-            $sqlDroit = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id';
-            $planningDroit = $conn->fetchAssociative($sqlDroit, ['id' => $user->getIdpersonnel()]);
+        $sqlDroit = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id';
+        $planningDroit = $conn->fetchAssociative($sqlDroit, ['id' => $user->getIdpersonnel()]);
 
-            $sqlPlannings = '
-                SELECT P.IdPlanning, NomPlanning, IdPlanningImage
-                FROM Planning P
-                LEFT JOIN PlanningAffectation PA ON P.IdPlanning = PA.IdPlanning
-                WHERE IdPersonnel = :id
-            ';
-            $planningAffectation = $conn->fetchAllAssociative($sqlPlannings, ['id' => $user->getIdpersonnel()]);
+        $sqlPlannings = '
+            SELECT P.IdPlanning, NomPlanning, IdPlanningImage
+            FROM Planning P
+            LEFT JOIN PlanningAffectation PA ON P.IdPlanning = PA.IdPlanning
+            WHERE IdPersonnel = :id
+        ';
+        $planningAffectation = $conn->fetchAllAssociative($sqlPlannings, ['id' => $user->getIdpersonnel()]);
 
-            $baseImageUrl = $this->router->generate('api_serve_image_file_user', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
-            $baseImageUrl = str_replace('999999', '', $baseImageUrl);
+        $baseImageUrl = $this->router->generate('api_serve_image_file_user', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
 
-            return [
-                'user' => [
-                    'IdPersonnel' => $user->getIdpersonnel(),
-                    'Nom'         => $employeInfos ? $employeInfos['NomEmploye'] : null,
-                    'Prenom'      => $employeInfos ? $employeInfos['PrenomEmployee'] : null,
-                    'Image'       => $employeInfos['Trombinoscope'] === 1 ? $baseImageUrl . $user->getIdpersonnel() : null,
-                ],
-                'permissions' => $planningDroit ? (int)$planningDroit['IdDroitNiveau'] : 21,
-                'planning'    => array_map(function($row) {
-                    return [
-                        'IdPlanning'  => $row['IdPlanning'],
-                        'NomPlanning' => $row['NomPlanning'],
-                        'IdPlanningImage' => $row['IdPlanningImage']
-                    ];
-                }, $planningAffectation),
-                'error'       => 0
-            ];
-        }catch (\Exception $e) {
-            $logger->error('Erreur lors de la récupération des informations de l\'utilisateur : ' . $e->getMessage(), [
-                'exception' => $e,
-                'userId' => $user->getIdpersonnel()
-            ]);
-            return [
-                'error' => 1,
-                'message' => 'Erreur lors de la récupération des informations de l\'utilisateur'
-            ];
-        }
+        return [
+            'user' => [
+                'IdPersonnel' => $user->getIdpersonnel(),
+                'Nom'         => $employeInfos ? $employeInfos['NomEmploye'] : null,
+                'Prenom'      => $employeInfos ? $employeInfos['PrenomEmployee'] : null,
+                'Image'       => $employeInfos['Trombinoscope'] === 1 ? $baseImageUrl . $user->getIdpersonnel() : null,
+            ],
+            'permissions' => $planningDroit ? (int)$planningDroit['IdDroitNiveau'] : 21,
+            'planning'    => array_map(function($row) {
+                return [
+                    'IdPlanning'  => $row['IdPlanning'],
+                    'NomPlanning' => $row['NomPlanning'],
+                    'IdPlanningImage' => $row['IdPlanningImage']
+                ];
+            }, $planningAffectation),
+        ];
+
     }
 
 
-    public function getPermission(Session $user,LoggerInterface $logger): int
+    /**
+     * @throws Exception
+     */
+    public function getPermission(Session $user, LoggerInterface $logger): int
     {
         $conn = $this->getEntityManager()->getConnection();
         $sql = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id';
 
-        try {
-            $planningDroit = $conn->fetchAssociative($sql, [
-                'id' => $user->getIdpersonnel()
-            ]);
-        } catch (Exception $e) {
-            $logger->error($e->getMessage());
-        }
 
-        return $level = (int)$planningDroit['IdDroitNiveau'] ?: 21;
+        $planningDroit = $conn->fetchAssociative($sql, [
+            'id' => $user->getIdpersonnel()
+        ]);
+
+
+        return $level = (int)$planningDroit['IdDroitNiveau'] ?? 21;
 
     }
 
+    /**
+     * @throws Exception
+     */
     public function getPermissions(LoggerInterface $logger){
         $conn = $this->getEntityManager()->getConnection();
         $sqlEmployeeDroit = 'EXEC ps_PlanningDroitSelect';
@@ -97,13 +90,9 @@ class SecurityRepository extends ServiceEntityRepository
             WHERE IdDroitNiveau IN (21, 22, 23)
         ';
 
-        try {
-            $employeeData = $conn->fetchAllAssociative($sqlEmployeeDroit);
-            $allPermissions = $conn->fetchAllAssociative($sqlListDroit);
-        } catch (Exception $e) {
-            $logger->error($e->getMessage());
-            throw new \Exception('Erreur lors de l\'exécution des requêtes SQL: ' . $e->getMessage());
-        }
+        $employeeData = $conn->fetchAllAssociative($sqlEmployeeDroit);
+        $allPermissions = $conn->fetchAllAssociative($sqlListDroit);
+
 
         $employees = [];
         $permission = [];
@@ -138,40 +127,25 @@ class SecurityRepository extends ServiceEntityRepository
     /**
      * @throws Exception
      */
-    public function bulkUpdatePermissions(mixed $updates, LoggerInterface $logger): bool
+    public function bulkUpdatePermissions(mixed $updates, LoggerInterface $logger): void
     {
         $conn = $this->getEntityManager()->getConnection();
 
-        try {
-            $conn->beginTransaction();
+        $conn->transactional(function ($conn) use ($updates) {
 
-            // Requête appelant ta procédure stockée
             $sql = 'EXEC ps_PlanningDroitUpdate @IdPersonnel = ?, @IdDroitNiveau = ?';
-
             $stmt = $conn->prepare($sql);
 
             foreach ($updates as $update) {
-                // Vérification de sécurité anti-triche
                 if (!isset($update['IdPersonnel']) || !isset($update['IdDroit'])) {
-                    throw new \Exception("Structure des données invalide.");
+                    throw new \InvalidArgumentException("Structure des données invalide.");
                 }
 
-                $stmt->bindValue(1, (int) $update['IdPersonnel']);
-                $stmt->bindValue(2, (int) $update['IdDroit']);
-
+                $stmt->bindValue(1, (int)$update['IdPersonnel']);
+                $stmt->bindValue(2, (int)$update['IdDroit']);
                 $stmt->executeStatement();
             }
-
-            // Si on arrive ici sans erreur, on valide TOUTES les modifications d'un coup
-            $conn->commit();
-            return true;
-
-        } catch (Exception $e) {
-            // Si une seule erreur survient, on ANNULE tout ce qui a été fait dans la boucle
-            $conn->rollBack();
-            $logger->error('Erreur SQL dans bulkUpdatePermissions : ' . $e->getMessage());
-
-            return false;
-        }
+        });
     }
 }
+

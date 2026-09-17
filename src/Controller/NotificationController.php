@@ -19,7 +19,6 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 #[OA\Tag(name: 'Notifications')]
 class NotificationController extends AbstractController
 {
-    use ApiResponseTrait;
     public function __construct(
         private PlanningNotificationRepository $planningNotificationRepository,
         private EntityManagerInterface $entityManager
@@ -31,16 +30,14 @@ class NotificationController extends AbstractController
     public function index(#[CurrentUser] Session $user): JsonResponse
     {
         $id = $user->getIdpersonnel();
-        try {
-            $notifications = $this->planningNotificationRepository->getNotification($id);
+        $notifications = $this->planningNotificationRepository->getNotification($id);
 
-            return $this->json(['error' => 0, 'data' => $notifications]);
-
-        }catch (\Exception $e){
-            return $this->json(['error' => 1, 'message' => $e->getMessage()], 500);
-        }
+        return $this->json(['data' => $notifications]);
     }
 
+    /**
+     * @throws \Exception
+     */
     #[Route('', name: 'create', methods: ['POST'])]
     #[OA\RequestBody(
         description: 'Les informations pour créer une notification',
@@ -57,17 +54,18 @@ class NotificationController extends AbstractController
     #[OA\Response(response: 201, description: 'Notification créée avec succès')]
     public function create(Request $request): JsonResponse
     {
-        try {
-            $data = json_decode($request->getContent(), true);
+        $data = json_decode($request->getContent(), true);
 
-            $newNotificationId = $this->planningNotificationRepository->createNotification($data);
+        $newNotificationId = $this->planningNotificationRepository->createNotification($data);
 
 
-            return $this->json(['error' => 0, 'message' => 'Événement créé avec succès', 'IdPlanningNotification' => $newNotificationId], 201);
-        }catch(\Exception $e){
-            return $this->json(['error' => 1 , 'message' => $e->getMessage()], 500);        }
+        return $this->json(['message' => 'Événement créé avec succès', 'IdPlanningNotification' => $newNotificationId], 201);
+
     }
 
+    /**
+     * @throws \Exception
+     */
     #[Route('/{id}', name: 'update', methods: ['PUT'])]
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la notification à modifier', schema: new OA\Schema(type: 'integer'))]
     #[OA\RequestBody(
@@ -79,21 +77,19 @@ class NotificationController extends AbstractController
     #[OA\Response(response: 404, description: 'Notification non trouvée')]
     public function update(int $id, Request $request, LoggerInterface $logger): JsonResponse
     {
-        try {
-            $data = json_decode($request->getContent(), true);
 
-            $lignesModifiees = $this->planningNotificationRepository->updateNotification($id, $data, $logger);
+        $data = json_decode($request->getContent(), true);
 
-            if ($lignesModifiees === 0 || $lignesModifiees === null) {
-                return $this->json(['error' => 1 , 'message' => 'Notification non trouvée ou aucune modification apportée'], 404);
-            }
+        $lignesModifiees = $this->planningNotificationRepository->updateNotification($id, $data, $logger);
 
-            $logger->debug("Notification mise à jour - ID: $id, Lignes modifiées: $lignesModifiees");
-
-            return $this->json(['error' => 0, 'message' => 'Notification mis à jour avec succès'], 201);
-        }catch (\Exception $e){
-            return $this->json(['error' => 1 , 'message' => $e->getMessage()], 500);
+        if ($lignesModifiees === 0 || $lignesModifiees === null) {
+            return $this->json(['message' => 'Notification non trouvée ou aucune modification apportée'], 404);
         }
+
+        $logger->debug("Notification mise à jour - ID: $id, Lignes modifiées: $lignesModifiees");
+
+        return $this->json(['message' => 'Notification mis à jour avec succès'], 201);
+
     }
 
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
@@ -104,10 +100,13 @@ class NotificationController extends AbstractController
         $this->entityManager->remove($notification);
         $this->entityManager->flush();
 
-        return $this->json(['error' => 0], 204);
+        return $this->json([], 204);
     }
 
 
+    /**
+     * @throws \Exception
+     */
     #[Route('/read', name: 'read', methods: ['PATCH'])]
     #[OA\RequestBody(
         description: 'Les informations pour marquer les notifications comme lues',
@@ -123,15 +122,10 @@ class NotificationController extends AbstractController
         $notificationIds = $data['notificationIds'] ?? [];
 
         if (empty($notificationIds)) {
-            return $this->json(['error' => 0 , 'message' => 'Aucun ID de notification fourni'], 400);
+            return $this->json(['message' => 'Aucun ID de notification fourni'], 400);
         }
 
-        try {
-            $this->planningNotificationRepository->markNotificationsAsRead($notificationIds);
-
-        }catch (\Exception $e){
-            return $this->json(['error' => 1 , 'message' => $e->getMessage()], 500);
-        }
+        $this->planningNotificationRepository->markNotificationsAsRead($notificationIds);
 
         return $this->json([]);
     }

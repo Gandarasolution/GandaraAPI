@@ -377,11 +377,12 @@ class PlanningVueRepository extends ServiceEntityRepository
     {
         $conn =  $this->getEntityManager()->getConnection();
 
-        $jsonUsers = json_encode($utilisateursAutorises);
-        try {
+        $logger->debug('Mise à jour de la vue avec les données: ' . json_encode($planningVue) . ', filtres: ' . json_encode($filtrePerso) . ', utilisateurs: ' . json_encode($utilisateursAutorises));
+
+        return $conn->transactional(function ($conn) use ($planningVue, $filtrePerso, $utilisateursAutorises, $idPlanning, $idUser, $logger) {
             $sql = 'EXEC ps_PlanningVueUpdateInsert @IdPlanning = :IdPlanning, @IdSession = :IdSession, @DescriptionPlanningVue = :DescriptionPlanningVue, @LibellePlanningVue = :LibellePlanningVue, @ChampsPremierGroupePlanningVue = :ChampsPremierGroupePlanningVue, @ChampsDeuxiemeGroupePlanningVue = :ChampsDeuxiemeGroupePlanningVue, @FiltreChantierPlanningVue = :FiltreChantierPlanningVue, @FiltreSocialPlanningVue = :FiltreSocialPlanningVue, @FiltreAutresPlanningVue = :FiltreAutresPlanningVue, @IdPlanningImage = :IdPlanningImage, @JsonUtilisateurs = :JsonUtilisateurs';
 
-            $conn->beginTransaction();
+            $jsonUsers = json_encode($utilisateursAutorises);
 
             $params = [
                 'IdPlanning' => $idPlanning,
@@ -401,8 +402,7 @@ class PlanningVueRepository extends ServiceEntityRepository
             $logger->debug('Résultat de la création de la vue: ' . json_encode($result));
 
             if ($result === false) {
-                // Si tu arrives ici sans que le THROW n'ait déclenché d'Exception
-                return['error' => 1, 'message' => 'Échec de la création en base de données.'];
+                throw new \RuntimeException("La création de la vue a échoué (aucun retour de la procédure).");
             }
 
             $newId = $result['IdPlanningVue'];
@@ -411,7 +411,7 @@ class PlanningVueRepository extends ServiceEntityRepository
                 'IdPlanningVue' => (int)$newId,
                 'DescriptionPlanningVue' => $result['DescriptionPlanningVue'],
                 'LibellePlanningVue' => $result['LibellePlanningVue'],
-                'Group' =>[
+                'Group' => [
                     'ChampsPremierGroupePlanningVue' => $result['ChampsPremierGroupePlanningVue'],
                     'ChampsDeuxiemeGroupePlanningVue' => $result['ChampsDeuxiemeGroupePlanningVue']
                 ],
@@ -420,22 +420,25 @@ class PlanningVueRepository extends ServiceEntityRepository
             ];
 
             foreach ($filtrePerso as $filtre) {
+                $valeursFormatees = array_map(function ($val) {
+                    return "'" . $val . "'";
+                }, $filtre['Valeurs']);
+                $valeurFiltre = implode(', ', $valeursFormatees);
+
                 $logger->debug('Mise à jour du filtre: ' . json_encode($filtre));
                 $sqlSetFilterPerso = 'EXEC ps_PlanningVueFiltreInsertUpdateDelete @IdPlanningVue = :IdPlanningVue, @IdFiltre = :IdFiltre, @EstFiltreGandara = :EstFiltreGandara, @ValeurFiltre = :ValeurFiltre';
                 $conn->executeQuery($sqlSetFilterPerso, [
                     'IdPlanningVue' => $newId,
                     'IdFiltre' => $filtre['IdFiltre'],
                     'EstFiltreGandara' => $filtre['EstFiltreGandara'],
-                    'ValeurFiltre' => $filtre['Valeurs'] ? implode(', ', $filtre['Valeurs']) : null
+                    'ValeurFiltre' => $valeurFiltre
                 ]);
             }
+            return $result;
 
-            $conn->commit();
-            return ['error' => 0, 'message' => 'Nouvelle vue créée avec succès.', 'data' => $result];
-        } catch (Exception $e) {
-            $conn->rollBack();
-            throw new \Exception('Erreur lors de la création de la nouvelle vue: ' . $e->getMessage());
-        }
+        });
+
+
     }
 
     public function deleteVue(int $id, LoggerInterface $logger)

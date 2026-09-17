@@ -22,7 +22,6 @@ use OpenApi\Attributes as OA;
 #[OA\Tag(name: 'Sécurité et Authentification')]
 class SecurityController extends AbstractController
 {
-    use ApiResponseTrait;
     public function __construct(
         private SecurityRepository $repository,
         #[Autowire(service: 'mercure.hub.default.jwt.factory')]
@@ -50,7 +49,7 @@ class SecurityController extends AbstractController
             'userId' => $user?->getIdpersonnel(),
         ]);
 
-        return $this->json(['error' => 0, 'data' => $user]);
+        return $this->json(['data' => $user]);
     }
 
     #[Route('/logout', name: 'api_logout', methods: ['GET'])]
@@ -68,39 +67,29 @@ class SecurityController extends AbstractController
     #[OA\Response(response: 500, description: 'Erreur interne lors de la récupération du profil')]
     public function me(#[CurrentUser] ?Session $user, LoggerInterface $logger): JsonResponse
     {
-        try {
-            if (!$user) {
-                return $this->json(['message' => 'Non authentifié'], 401);
-            }
-
-            $result = $this->repository->me($user, $logger);
-
-            if (isset($result['error']) && $result['error'] === 1) {
-                return $this->json(['message' => $result['message'], 'error' => 1], 500);
-            }
-
-            $mercureToken = $this->mercureTokenFactory->create([
-                'https://gandara.com/planning/update', // Topic public
-                sprintf('https://gandara.com/user/%s', $user->getUserIdentifier()) // Topic privé exclusif à cet utilisateur
-            ]);
-
-            $cookie = Cookie::create('mercureAuthorization')
-                ->withValue($mercureToken)
-                ->withHttpOnly(true)
-                ->withSecure(true)
-                ->withSameSite(Cookie::SAMESITE_NONE)
-                ->withPath('/');
-
-
-            $response = new JsonResponse(json_encode($result), 200, [], true);
-            $response->headers->setCookie($cookie);
-
-
-            return $response;
-        }catch (\Exception $exception){
-            return $this->json(['message' => $exception->getMessage(), 'error' => 1], 500);
+        if (!$user) {
+            return $this->json(['message' => 'Non authentifié'], 401);
         }
 
+        $result = $this->repository->me($user, $logger);
 
+
+        $mercureToken = $this->mercureTokenFactory->create([
+            'https://gandara.com/planning/update', // Topic public
+            sprintf('https://gandara.com/user/%s', $user->getUserIdentifier()) // Topic privé exclusif à cet utilisateur
+        ]);
+
+        $cookie = Cookie::create('mercureAuthorization')
+            ->withValue($mercureToken)
+            ->withHttpOnly(true)
+            ->withSecure(true)
+            ->withSameSite(Cookie::SAMESITE_NONE)
+            ->withPath('/');
+
+
+        $response = new JsonResponse(json_encode($result), 200, [], true);
+        $response->headers->setCookie($cookie);
+
+        return $response;
     }
 }

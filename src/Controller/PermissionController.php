@@ -17,7 +17,6 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[OA\Tag(name: 'Permissions')]
 class PermissionController extends AbstractController
 {
-    use ApiResponseTrait;
 
     public function __construct(
         private readonly SecurityRepository $securityRepository,
@@ -26,24 +25,22 @@ class PermissionController extends AbstractController
     {
     }
 
+    /**
+     * @throws Exception
+     */
     #[Route('/', name: 'app_permissions', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Liste des permissions pour utilisateur')]
     public function getPermissions(){
-        try {
-            $result = $this->securityRepository->getPermissions($this->logger);
+        $result = $this->securityRepository->getPermissions($this->logger);
 
-            return $this->json([
-                'error' => 0,
-                'data' => $result
-            ]);
-        }catch (\Exception $e) {
-            return $this->json([
-                'error' => 1,
-                'message' => $e->getMessage()
-            ], 500);
-        }
+        return $this->json([
+            'data' => $result
+        ]);
     }
 
+    /**
+     * @throws Exception
+     */
     #[Route('/', name: 'app_permissions_set', methods: ['PUT'])]
     #[IsGranted('MANAGE_PERMISSIONS',  message: 'Vous n\'avez pas la permission de modifier les droits.')]
     public function updatePermissions(Request $request) {
@@ -54,34 +51,15 @@ class PermissionController extends AbstractController
         // 1. Vérification que la payload est valide
         if (!isset($data) || !is_array($data) || empty($data)) {
             return $this->json([
-                'error' => 1,
                 'message' => 'Aucune donnée de permission fournie.'
             ], 400);
         }
 
-        try {
-            // 2. Appel au Repository
-            $success = $this->securityRepository->bulkUpdatePermissions($data, $this->logger);
+        $this->securityRepository->bulkUpdatePermissions($data, $this->logger);
 
-            if ($success) {
-                return $this->json([
-                    'error' => 0,
-                    'message' => 'Permissions mises à jour avec succès.'
-                ]);
-            }
-
-            return $this->json([
-                'error' => 1,
-                'message' => 'Erreur lors de la sauvegarde en base de données.'
-            ], 500);
-
-        } catch (Exception $e) {
-            $this->logger->error('Exception critique dans updatePermissions : ' . $e->getMessage());
-            return $this->json([
-                'error' => 1,
-                'message' => 'Une erreur interne est survenue.'
-            ], 500);
-        }
+        return $this->json([
+            'message' => 'Permissions mises à jour avec succès.'
+        ]);
     }
 
 }

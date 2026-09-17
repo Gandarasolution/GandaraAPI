@@ -25,7 +25,6 @@ use Symfony\Contracts\Cache\ItemInterface;
 #[OA\Tag(name: 'Planning Événements')]
 class PlanningEvenementController extends AbstractController
 {
-    use ApiResponseTrait;
 
     public function __construct(
         private readonly MercureNotificationService $notifier,
@@ -52,12 +51,10 @@ class PlanningEvenementController extends AbstractController
     #[IsGranted('VIEW_ALL', message: 'Vous n\'avez pas la permission de récupérer tous les événements.')]
     public function index(\DateTimeInterface $dateStart, \DateTimeInterface $dateEnd, Request $request): JsonResponse
     {
-        //$startTime = microtime(true);
-
         $idPlanning = $request->headers->get('X-Planning-Id');
 
         if (!$idPlanning) {
-            return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            return $this->json(['message' => 'Id du planning manquant'], 400);
         }
 
         $idPlanningVue = $request->headers->get('X-PlanningVue-Id', null);
@@ -65,20 +62,11 @@ class PlanningEvenementController extends AbstractController
 
         $idEmployee = $request->query->get('idEmployee');
 
-        try{
-            $result = $this->planningEvenementRepository->findEventsByDate($dateStart, $dateEnd, $idPlanning, $idPlanningVue, $idEmployee);
+        $result = $this->planningEvenementRepository->findEventsByDate($dateStart, $dateEnd, $idPlanning, $idPlanningVue, $idEmployee);
 
-            //$endTime = microtime(true);
 
-            //$executionTime = $endTime - $startTime;
 
-            //$this->logger->info(sprintf('Temps de traitement de la route : %.4f secondes', $executionTime));
-
-            return new JsonResponse(['error' => 0, 'data' => $result]);
-
-        }catch(\Exception $e){
-            return new JsonResponse(['error' => 1, 'message' => $e->getMessage()], 500);
-        }
+        return $this->json([ 'data' => $result]);
     }
 
     /**
@@ -100,64 +88,59 @@ class PlanningEvenementController extends AbstractController
         $idPlanning = $request->headers->get('X-Planning-Id');
 
         if (!$idPlanning) {
-            return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            return $this->json(['error' => 1, 'message' => 'Id du planning manquant'], 400);
         }
 
         $idPlanningVue = $request->headers->get('X-PlanningVue-Id');
 
         if (!$idPlanningVue) {
-            return new JsonResponse(['error' => 1, 'message' => 'Id de la vue du planning manquante'], 400);
+            return $this->json(['error' => 1, 'message' => 'Id de la vue du planning manquante'], 400);
         }
 
         $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
         $idUser = $user->getIdpersonnel();
 
-        try{
 
-            $lockOwnerId = $this->cache->get($cacheKey, function (ItemInterface $item) use ($idUser) {
-                // Si la clé n'existait pas (RDV libre), ce bloc s'exécute.
-                // On fixe la durée de vie du verrou (ex: 2 minutes)
-                $item->expiresAfter(120);
+        $lockOwnerId = $this->cache->get($cacheKey, function (ItemInterface $item) use ($idUser) {
+            // Si la clé n'existait pas (RDV libre), ce bloc s'exécute.
+            // On fixe la durée de vie du verrou (ex: 2 minutes)
+            $item->expiresAfter(120);
 
-                // On retourne l'ID de l'utilisateur actuel.
-                // C'est cette valeur qui sera sauvegardée dans Redis !
-                return $idUser;
-            });
+            // On retourne l'ID de l'utilisateur actuel.
+            // C'est cette valeur qui sera sauvegardée dans Redis !
+            return $idUser;
+        });
 
-            if ($lockOwnerId !== $idUser) {
-                // Le verrou appartient à quelqu'un d'autre ! (ex: $lockOwnerId = 45, et toi = 12)
-                return new JsonResponse([
-                    'error' => 409,
-                    'isLocked' => true,
-                    'message' => 'Ce rendez-vous est actuellement en cours d\'édition.'
-                ]);
-            }
+        if ($lockOwnerId !== $idUser) {
+            return $this->json([
+                'isLocked' => true,
+                'message' => 'Ce rendez-vous est actuellement en cours d\'édition.'
+            ], 409);
+        }
 
+        $this->notifier->notifyPlanningChange(
+            $idPlanning,
+            'APPOINTMENT_LOCKED',
+            $idUser,
+            ['IdPlanningEvenement' => $id]
+        );
+
+        $result = $this->planningEvenementRepository->findEventById($id, $logger, $idPlanning, $idPlanningVue);
+        if (!$result) {
             $this->notifier->notifyPlanningChange(
                 $idPlanning,
-                'APPOINTMENT_LOCKED',
+                'APPOINTMENT_UNLOCKED',
                 $idUser,
                 ['IdPlanningEvenement' => $id]
             );
-
-            $result = $this->planningEvenementRepository->findEventById($id, $logger, $idPlanning, $idPlanningVue);
-            if (!$result) {
-                $this->notifier->notifyPlanningChange(
-                    $idPlanning,
-                    'APPOINTMENT_UNLOCKED',
-                    $idUser,
-                    ['IdPlanningEvenement' => $id]
-                );
-                return new JsonResponse(['error' => 1, 'message' => 'Événement non trouvé'], 404);
-            }
-
-
-
-            return new JsonResponse(['error' => 0, 'data' => $result]);
-
-        }catch(\Exception $e){
-            return new JsonResponse(['error' => 1, 'message' => $e->getMessage()], 500);
+            return $this->json(['message' => 'Événement non trouvé'], 404);
         }
+
+
+
+        return $this->json(['data' => $result]);
+
+
     }
 
     /**
@@ -177,32 +160,30 @@ class PlanningEvenementController extends AbstractController
         $idPlanning = $request->headers->get('X-Planning-Id');
 
         if (!$idPlanning) {
-            return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            return $this->json(['message' => 'Id du planning manquant'], 400);
         }
 
         $idPlanningVue = $request->headers->get('X-PlanningVue-Id');
 
         if (!$idPlanningVue) {
-            return new JsonResponse(['error' => 1, 'message' => 'Id de la vue du planning manquante'], 400);
+            return $this->json(['message' => 'Id de la vue du planning manquante'], 400);
         }
 
-        try {
-            $employeeId =$request->query->get('employee');
-            $type = $request->query->get('type');
 
-            if (!$type || !in_array($type, ['Salarie', 'Interim'])) {
-                return new JsonResponse(['error' => 1, 'message' => 'Le paramètre ?type=Salarie ou ?type=Interim est obligatoire'], 400);
-            }
+        $employeeId =$request->query->get('employee');
+        $type = $request->query->get('type');
 
-            if (!$employeeId) {
-                return new JsonResponse(['error' => 1, 'message' => 'Le paramètre ?employee=:id est obligatoire'], 400);
-            }
-
-            $result = $this->planningEvenementRepository->findEventsByEmployee($employeeId, $type, $idPlanning, $idPlanningVue);
-            return new JsonResponse(['error' => 0, 'data' => $result]);
-        } catch (\Exception $e) {
-            return new JsonResponse(['error' => 1, 'message' => $e->getMessage()], 500);
+        if (!$type || !in_array($type, ['Salarie', 'Interim'])) {
+            return $this->json(['message' => 'Le paramètre ?type=Salarie ou ?type=Interim est obligatoire'], 400);
         }
+
+        if (!$employeeId) {
+            return $this->json(['message' => 'Le paramètre ?employee=:id est obligatoire'], 400);
+        }
+
+        $result = $this->planningEvenementRepository->findEventsByEmployee($employeeId, $type, $idPlanning, $idPlanningVue);
+        return $this->json(['data' => $result]);
+
     }
 
 
@@ -219,6 +200,7 @@ class PlanningEvenementController extends AbstractController
      * @param Request $request
      * @param LoggerInterface $logger
      * @return JsonResponse JSON contenant le résultat de la création: { "error": 0, "data": {...} }
+     * @throws \Exception
      */
     //POST /api/event- Créer un RDV
     #[Route('', name: 'api_evenements_create', methods: ['POST'])]
@@ -239,47 +221,44 @@ class PlanningEvenementController extends AbstractController
     {
         $data = $request->toArray();
 
-        try {
-            $idRessource = $data['IdPlanningRessource'] ?? null;
-            if (!$idRessource) {
-                return new JsonResponse(['error' => 1, 'message' => 'Le champ IdPlanningRessource est obligatoire.'], 400);
-            }
-
-            // 3. On passe la ressource au Voter !
-            $this->denyAccessUnlessGranted('CREATE_EVENEMENT', $idRessource);
-
-            $idPlanning = $request->headers->get('X-Planning-Id');
-
-            if (!$idPlanning) {
-                return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
-            }
-
-            if (!$user) {
-                return new JsonResponse(['error' => 1, 'message' => 'Utilisateur non authentifié.'], 401);
-            }
-
-            // Validation des données d'entrée (simplifiée)
-            if (
-                empty($data['DebutPlanningEvenement'])
-                || empty($data['FinPlanningEvenement'])
-            ) {
-                return new JsonResponse(['error' => 1, 'message' => 'Les champs DebutPlanningEvenement, FinPlanningEvenement sont obligatoires.'], 400);
-            }
-
-            $result = $this->planningEvenementRepository->createEvent($data, $logger, $idPlanning);
-
-            $this->notifier->notifyPlanningChange(
-                $idPlanning,
-                'APPOINTMENT_CREATED',
-                $user->getIdPersonnel(),
-                $result
-            );
-
-            return new JsonResponse(['error' => 0, 'data' => $result], 201);
-
-        } catch (\Exception $e) {
-            return new JsonResponse(['error' => 1,'message' => 'Erreur lors de la création de l\'événement: ' . $e->getMessage()], 500);
+        $idRessource = $data['IdPlanningRessource'] ?? null;
+        if (!$idRessource) {
+            return $this->json(['message' => 'Le champ IdPlanningRessource est obligatoire.'], 400);
         }
+
+        // 3. On passe la ressource au Voter !
+        $this->denyAccessUnlessGranted('CREATE_EVENEMENT', $idRessource);
+
+        $idPlanning = $request->headers->get('X-Planning-Id');
+
+        if (!$idPlanning) {
+            return $this->json(['message' => 'Id du planning manquant'], 400);
+        }
+
+        if (!$user) {
+            return $this->json(['message' => 'Utilisateur non authentifié.'], 401);
+        }
+
+        // Validation des données d'entrée (simplifiée)
+        if (
+            empty($data['DebutPlanningEvenement'])
+            || empty($data['FinPlanningEvenement'])
+        ) {
+            return $this->json(['message' => 'Les champs DebutPlanningEvenement, FinPlanningEvenement sont obligatoires.'], 400);
+        }
+
+        $result = $this->planningEvenementRepository->createEvent($data, $logger, $idPlanning);
+
+        $this->notifier->notifyPlanningChange(
+            $idPlanning,
+            'APPOINTMENT_CREATED',
+            $user->getIdPersonnel(),
+            $result
+        );
+
+        return $this->json(['data' => $result], 201);
+
+
     }
 
     /**
@@ -294,6 +273,7 @@ class PlanningEvenementController extends AbstractController
      * @param Request $request
      * @return JsonResponse JSON indiquant le succès de l'opération: { "error": 0, "message": "..." } ou erreur
      * @throws InvalidArgumentException
+     * @throws \Exception
      */
     //PUT /api/event/:id- Modifier un RDV
     #[Route('/{id}', name: 'api_evenements_update', methods: ['PUT'])]
@@ -311,65 +291,59 @@ class PlanningEvenementController extends AbstractController
          $idPlanning = $request->headers->get('X-Planning-Id');
 
          if (!$idPlanning) {
-             return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+             return $this->json(['message' => 'Id du planning manquant'], 400);
          }
          $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
 
          $idUser = $user->getIdpersonnel();
 
-         try {
-             $cacheItem = $this->cache->getItem($cacheKey);
+         $cacheItem = $this->cache->getItem($cacheKey);
 
-             if ($cacheItem->isHit()) {
-                 $ownerId = $cacheItem->get();
+         if ($cacheItem->isHit()) {
+             $ownerId = $cacheItem->get();
 
-                 if($ownerId !== $idUser) {
-                     return new JsonResponse([
-                         'error' => 409,
-                         'isLocked' => true,
-                         'message' => 'Ce rendez-vous est actuellement en cours d\'édition.'
-                     ]);
-                 }
+             if($ownerId !== $idUser) {
+                 return $this->json([
+                     'isLocked' => true,
+                     'message' => 'Ce rendez-vous est actuellement en cours d\'édition.'
+                 ], 409);
              }
-
-
-             $data = $request->toArray();
-             if (($data === null) || $data === []) {
-                 return new JsonResponse(['error' => 'Données JSON invalides.'], 400);
-             }
-             if($data['PlanningEvenementPriorite'] === null){
-                 $data['PlanningEvenementPriorite']= 0;
-             }
-
-             $logger->debug('Appel de la mise à jour de l\'événement', ['payload' => $data]);
-
-             $result = $this->planningEvenementRepository->updateEvent($id, $data);
-
-             $logger->debug('Résultat de la mise à jour de l\'événement', ['result' => $result]);
-             if ($result['LignesModifiees'] === 0) {
-                 // Pas d'erreur technique, mais l'ID n'existait pas
-                 return new JsonResponse(['error' => 1, 'message' => 'Événement introuvable.'], 404);
-             }
-
-             $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
-
-             // La fonction delete() supprime instantanément la clé de Redis
-             $this->cache->delete($cacheKey);
-
-             $result['data']['isLocked'] = false;
-
-             $this->notifier->notifyPlanningChange(
-                 $idPlanning,
-                 'APPOINTMENT_UPDATED',
-                 $user->getIdPersonnel(),
-                 $result['data']
-             );
-
-             return new JsonResponse(['error' => 0, 'message' => 'Événement mis à jour avec succès'], 201);
-
-         } catch (\Exception $e) {
-             return new JsonResponse(['error' => 1, 'message' => 'Erreur lors de la mise à jour de l\'événement: ' . $e->getMessage()], 500);
          }
+
+
+         $data = $request->toArray();
+         if (($data === null) || $data === []) {
+             return $this->json(['message' => 'Données JSON invalides.'], 400);
+         }
+         if($data['PlanningEvenementPriorite'] === null){
+             $data['PlanningEvenementPriorite']= 0;
+         }
+
+         $logger->debug('Appel de la mise à jour de l\'événement', ['payload' => $data]);
+
+         $result = $this->planningEvenementRepository->updateEvent($id, $data);
+
+         $logger->debug('Résultat de la mise à jour de l\'événement', ['result' => $result]);
+         if ($result['LignesModifiees'] === 0) {
+             // Pas d'erreur technique, mais l'ID n'existait pas
+             return $this->json(['message' => 'Événement introuvable.'], 404);
+         }
+
+         $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
+
+         // La fonction delete() supprime instantanément la clé de Redis
+         $this->cache->delete($cacheKey);
+
+         $result['data']['isLocked'] = false;
+
+         $this->notifier->notifyPlanningChange(
+             $idPlanning,
+             'APPOINTMENT_UPDATED',
+             $user->getIdPersonnel(),
+             $result['data']
+         );
+
+         return $this->json(['message' => 'Événement mis à jour avec succès'], 201);
      }
 
 
@@ -386,31 +360,26 @@ class PlanningEvenementController extends AbstractController
     #[IsGranted('DELETE_EVENEMENT', subject: 'evenement',  message: 'Vous n\'avez pas la permission de supprimer cet événement.')]
     public function delete(Planningevenement $evenement, Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
-        try {
-            $id = $evenement->getIdplanningevenement();
-            $idPlanning = $request->headers->get('X-Planning-Id');
+        $id = $evenement->getIdplanningevenement();
+        $idPlanning = $request->headers->get('X-Planning-Id');
 
-            if (!$idPlanning) {
-                return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
-            }
-
-            $lignesSupprimees = $this->planningEvenementRepository->deleteEvent($id);
-            if ($lignesSupprimees === 0) {
-                return new JsonResponse(['error' => 1 , 'message' => 'Événement introuvable.'], 404);
-            }
-
-            $this->notifier->notifyPlanningChange(
-                $idPlanning,
-                'APPOINTMENT_DELETED',
-                $user->getIdPersonnel(),
-                ['IdPlanningEvenement' => $id]
-            );
-
-            return new JsonResponse(['error' => 0, 'message' => 'Événement supprimé avec succès']);
-
-        } catch (\Exception $e) {
-            return new JsonResponse(['error' => 1, 'message' => 'Erreur lors de la suppression de l\'événement: ' . $e->getMessage()], 500);
+        if (!$idPlanning) {
+            return $this->json(['message' => 'Id du planning manquant'], 400);
         }
+
+        $lignesSupprimees = $this->planningEvenementRepository->deleteEvent($id);
+        if ($lignesSupprimees === 0) {
+            return $this->json(['message' => 'Événement introuvable.'], 404);
+        }
+
+        $this->notifier->notifyPlanningChange(
+            $idPlanning,
+            'APPOINTMENT_DELETED',
+            $user->getIdPersonnel(),
+            ['IdPlanningEvenement' => $id]
+        );
+
+        return $this->json(['message' => 'Événement supprimé avec succès']);
     }
 
 
@@ -424,37 +393,33 @@ class PlanningEvenementController extends AbstractController
     #[OA\Response(response: 200, description: 'Événement supprimé')]
     public function deletes(Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
-        try {
 
-            $data = $request->toArray();
-            if (!isset($data['ids']) || !is_array($data['ids']) || empty($data['ids'])) {
-                return new JsonResponse(['error' => 1, 'message' => 'Le champ "ids" doit être un tableau d\'identifiants non vide.'], 400);
-            }
-            $this->denyAccessUnlessGranted('MASS_DELETE_EVENEMENT', $data['ids']);
-
-            $idPlanning = $request->headers->get('X-Planning-Id');
-
-            if (!$idPlanning) {
-                return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
-            }
-
-            $lignesSupprimees = $this->planningEvenementRepository->deleteEvents($data);
-            if ($lignesSupprimees === 0) {
-                return new JsonResponse(['error' => 1 , 'message' => 'Événement introuvable.'], 404);
-            }
-
-            $this->notifier->notifyPlanningChange(
-                $idPlanning,
-                'APPOINTMENTS_DELETED',
-                $user->getIdPersonnel(),
-                ['deletedIds' => $data['ids']]
-            );
-
-            return new JsonResponse(['error' => 0, 'message' => 'Événement supprimé avec succès']);
-
-        } catch (\Exception $e) {
-            return new JsonResponse(['error' => 1, 'message' => 'Erreur lors de la suppression de l\'événement: ' . $e->getMessage()], 500);
+        $data = $request->toArray();
+        if (!isset($data['ids']) || !is_array($data['ids']) || empty($data['ids'])) {
+            return $this->json(['message' => 'Le champ "ids" doit être un tableau d\'identifiants non vide.'], 400);
         }
+        $this->denyAccessUnlessGranted('MASS_DELETE_EVENEMENT', $data['ids']);
+
+        $idPlanning = $request->headers->get('X-Planning-Id');
+
+        if (!$idPlanning) {
+            return $this->json(['message' => 'Id du planning manquant'], 400);
+        }
+
+        $lignesSupprimees = $this->planningEvenementRepository->deleteEvents($data);
+        if ($lignesSupprimees === 0) {
+            return $this->json(['message' => 'Événement introuvable.'], 404);
+        }
+
+        $this->notifier->notifyPlanningChange(
+            $idPlanning,
+            'APPOINTMENTS_DELETED',
+            $user->getIdPersonnel(),
+            ['deletedIds' => $data['ids']]
+        );
+
+        return $this->json(['message' => 'Événement supprimé avec succès']);
+
     }
 
     /**
@@ -475,6 +440,7 @@ class PlanningEvenementController extends AbstractController
      * @param Request $request
      * @param LoggerInterface $logger
      * @return JsonResponse JSON indiquant le succès de l'opération: { "error": 0, "message": "..." }
+     * @throws \Exception
      */
     // PUT /api/event/updateRessourceAndEvent/:id -> met à jour un événement et la ressource associée via les procédure stockée
     #[Route('/updateRessourceAndEvent/{id}', name: 'api_evenement_et_ressource_update', methods: ['PUT'])]
@@ -496,82 +462,73 @@ class PlanningEvenementController extends AbstractController
     public function updateWithProcedure(Planningevenement $evenement, Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
         $id = $evenement->getIdplanningevenement();
-        try {
-            $idPlanning = $request->headers->get('X-Planning-Id');
+        $idPlanning = $request->headers->get('X-Planning-Id');
 
-            if (!$idPlanning) {
-                return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
-            }
+        if (!$idPlanning) {
+            return $this->json(['message' => 'Id du planning manquant'], 400);
+        }
 
-            $data = $request->toArray();
+        $data = $request->toArray();
 
-            if (($data === null) || $data === []) {
-                return new JsonResponse(['error' => 1, 'message' => 'Données JSON invalides.'], 400);
-            }
+        if (($data === null) || $data === []) {
+            return $this->json(['message' => 'Données JSON invalides.'], 400);
+        }
 
-            // Normalisation des timestamps envoyés en millisecondes -> int
-            if (isset($data['DebutPlanningEvenement']) && is_numeric($data['DebutPlanningEvenement'])) {
-                $data['DebutPlanningEvenement'] = (int) $data['DebutPlanningEvenement'];
-            }
-            if (isset($data['FinPlanningEvenement']) && is_numeric($data['FinPlanningEvenement'])) {
-                $data['FinPlanningEvenement'] = (int) $data['FinPlanningEvenement'];
-            }
+        // Normalisation des timestamps envoyés en millisecondes -> int
+        if (isset($data['DebutPlanningEvenement']) && is_numeric($data['DebutPlanningEvenement'])) {
+            $data['DebutPlanningEvenement'] = (int)$data['DebutPlanningEvenement'];
+        }
+        if (isset($data['FinPlanningEvenement']) && is_numeric($data['FinPlanningEvenement'])) {
+            $data['FinPlanningEvenement'] = (int)$data['FinPlanningEvenement'];
+        }
 
-            if ($data['PlanningEvenementPriorite'] === null) {
-                $data['PlanningEvenementPriorite'] = 0;
-            }
-
+        if ($data['PlanningEvenementPriorite'] === null) {
+            $data['PlanningEvenementPriorite'] = 0;
+        }
 
 
-            $logger->info('Appel PS update pour événement ' . $id, ['payload' => $data]);
+        $logger->info('Appel PS update pour événement ' . $id, ['payload' => $data]);
 
-            $returnData = [];
+        $returnData = [];
 
-            $result = $this->planningEvenementRepository->updateEvent($id, $data);
+        $result = $this->planningEvenementRepository->updateEvent($id, $data);
 
-            $logger->debug('Résultat de la mise à jour de l\'événement via PS', ['result' => $result]);
+        $logger->debug('Résultat de la mise à jour de l\'événement via PS', ['result' => $result]);
+
+        if ($result['LignesModifiees'] === 0) {
+            return $this->json(['message' => 'Événement introuvable ou aucune modification effectuée.'], 404);
+        }
+
+        $returnData['appointment'] = $result['data'];
+
+        // Si le payload contient des données de ressource, tenter de mettre à jour la ressource associée
+        $ressourceId = $data['IdPlanningRessource'] ?? ($data['Ressource']['IdPlanningRessource'] ?? null);
+        if ($ressourceId !== null && isset($data['Ressource']) && is_array($data['Ressource'])) {
+            $result = $this->planningRessourceRepository->updateRessource((int)$ressourceId, $data['Ressource'], $logger);
 
             if ($result['LignesModifiees'] === 0) {
-                return new JsonResponse(['error' => 1, 'message' => 'Événement introuvable ou aucune modification effectuée.'], 404);
+                return $this->json(['message' => 'Ressource introuvable ou aucune modification effectuée.'], 404);
             }
-
-            $returnData['appointment'] = $result['data'];
-
-            // Si le payload contient des données de ressource, tenter de mettre à jour la ressource associée
-            $ressourceId = $data['IdPlanningRessource'] ?? ($data['Ressource']['IdPlanningRessource'] ?? null);
-            if ($ressourceId !== null && isset($data['Ressource']) && is_array($data['Ressource'])) {
-                $result = $this->planningRessourceRepository->updateRessource((int)$ressourceId, $data['Ressource'], $logger);
-
-                if ($result['LignesModifiees'] === 0){
-                    return new JsonResponse(['error' => 1, 'message' => 'Ressource introuvable ou aucune modification effectuée.'], 404);
-                }
-            }
-            $logger->debug('Résultat de la mise à jour de la ressource via PS', ['result' => $result]);
-            $returnData['ressources'] = $result['data'];
-
-            $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
-            // La fonction delete() supprime instantanément la clé de Redis
-            $this->cache->delete($cacheKey);
-
-            $this->notifier->notifyPlanningChange(
-                $idPlanning,
-                'APPOINTMENT_AND_RESSOURCE_UPDATED',
-                $user->getIdPersonnel(),
-                $returnData
-            );
-
-            return new JsonResponse([
-                'error' => 0,
-                'message' => 'Événement mis à jour avec succès',
-            ]);
-
-        } catch (\Exception $e) {
-
-            return new JsonResponse(['error' => 1, 'message' => 'Erreur lors de la mise à jour via PS: ' . $e->getMessage()], 500);
-        } catch (InvalidArgumentException $e) {
-            return new JsonResponse(['error' => 1, 'message' => 'Erreur de cache: ' . $e->getMessage()], 500);
         }
+        $logger->debug('Résultat de la mise à jour de la ressource via PS', ['result' => $result]);
+        $returnData['ressources'] = $result['data'];
+
+        $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
+        // La fonction delete() supprime instantanément la clé de Redis
+        $this->cache->delete($cacheKey);
+
+        $this->notifier->notifyPlanningChange(
+            $idPlanning,
+            'APPOINTMENT_AND_RESSOURCE_UPDATED',
+            $user->getIdPersonnel(),
+            $returnData
+        );
+
+        return $this->json([
+            'message' => 'Événement mis à jour avec succès',
+        ]);
     }
+
 
     /**
      * Divise un événement en deux à une date précise.
@@ -583,6 +540,7 @@ class PlanningEvenementController extends AbstractController
      * @param int $id Identifiant de l'événement
      * @param Request $request
      * @return JsonResponse JSON contenant les données de l'événement divisé: { "error": 0, "data": {...} }
+     * @throws \Exception
      */
     #[Route('/divide/{id}', name: 'api_evenement_diviser', methods: ['PUT'])]
     #[OA\Tag(name: 'Opérations complexes événement')]
@@ -601,48 +559,41 @@ class PlanningEvenementController extends AbstractController
     #[IsGranted('UPDATE_EVENEMENT',  subject: 'evenement', message: 'Vous n\'avez pas la permission de modifier cet événement.')]
     public function divideEvent(Planningevenement $evenement, Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
-        try {
-            $id = $evenement->getIdplanningevenement();
-            $idPlanning = $request->headers->get('X-Planning-Id');
+        $id = $evenement->getIdplanningevenement();
+        $idPlanning = $request->headers->get('X-Planning-Id');
 
-            if (!$idPlanning) {
-                return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
-            }
-
-            $data = $request->toArray();
-
-            if (($data === null) || $data === []) {
-                return new JsonResponse(['error' => 1, 'message' => 'Données JSON invalides.'], 400);
-            }
-
-            // Normalisation des timestamps envoyés en millisecondes -> int
-            if (isset($data['DateCoupure']) && is_numeric($data['DateCoupure'])) {
-                $data['DateCoupure'] = (int) $data['DateCoupure'];
-            }
-
-            $result = $this->planningEvenementRepository->divideEvent($id, $data, $logger);
-
-            $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
-            $this->cache->delete($cacheKey);
-
-            $this->notifier->notifyPlanningChange(
-                $idPlanning,
-                'APPOINTMENT_DIVISION_UPDATED',
-                $user->getIdPersonnel(),
-                [
-                    'originalEventId' => $id,
-                    'newEvent' => $result,
-                    'divisionDate' => $data['DateCoupure']
-                ]
-            );
-
-            return new JsonResponse(['error' => 0, 'data' => ['NouvelIdEvenement' => $result['IdPlanningEvenement']]], 200);
-
-        } catch (\Exception $e) {
-            return new JsonResponse(['error' => 1, 'message' => 'Erreur lors de la division de l\'événement: ' . $e->getMessage()], 500);
-        } catch (InvalidArgumentException $e) {
-            return new JsonResponse(['error' => 1, 'message' => 'Erreur de cache: ' . $e->getMessage()], 500);
+        if (!$idPlanning) {
+            return $this->json([ 'message' => 'Id du planning manquant'], 400);
         }
+
+        $data = $request->toArray();
+
+        if (($data === null) || $data === []) {
+            return $this->json(['message' => 'Données JSON invalides.'], 400);
+        }
+
+        // Normalisation des timestamps envoyés en millisecondes -> int
+        if (isset($data['DateCoupure']) && is_numeric($data['DateCoupure'])) {
+            $data['DateCoupure'] = (int) $data['DateCoupure'];
+        }
+
+        $result = $this->planningEvenementRepository->divideEvent($id, $data, $logger);
+
+        $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
+        $this->cache->delete($cacheKey);
+
+        $this->notifier->notifyPlanningChange(
+            $idPlanning,
+            'APPOINTMENT_DIVISION_UPDATED',
+            $user->getIdPersonnel(),
+            [
+                'originalEventId' => $id,
+                'newEvent' => $result,
+                'divisionDate' => $data['DateCoupure']
+            ]
+        );
+
+        return $this->json(['data' => ['NouvelIdEvenement' => $result['IdPlanningEvenement']]], 200);
     }
 
     /**
@@ -664,52 +615,47 @@ class PlanningEvenementController extends AbstractController
     public function repeatEvent(int $id, Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
         $data = $request->toArray();
-        try {
-            $idRessource = (int)$data['IdPlanningRessource'] ?? null;
-            if (!$idRessource) {
-                return new JsonResponse(['error' => 1, 'message' => 'Le champ IdPlanningRessource est obligatoire.'], 400);
-            }
-
-            // 3. On passe la ressource au Voter !
-            $this->denyAccessUnlessGranted('REPEAT_EVENEMENT', $idRessource);
-
-
-            $idPlanning = $request->headers->get('X-Planning-Id');
-
-            if (!$idPlanning) {
-                return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
-            }
-
-            $data = $request->toArray();
-
-            if (!isset($data['Date']) || !is_array($data['Date'])) {
-                return new JsonResponse(['error' => 'Tableau de dates manquant'], 400);
-            }
-
-
-            $result = $this->planningEvenementRepository->repeatEvent($data, $idPlanning);
-
-            $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
-            $this->cache->delete($cacheKey);
-
-            $this->notifier->notifyPlanningChange(
-                $idPlanning,
-                'APPOINTMENT_REPEATED',
-                $user->getIdPersonnel(),
-                [
-                    'data' => $result['data'],
-                    'originalEventId' => $id
-                ]
-
-            );
-
-            return new JsonResponse(['error' => 0, 'data' => $result['ids']], 201);
-
-        } catch (\Exception $e) {
-            return new JsonResponse(['error' => 1, 'message' => 'Erreur lors de la répétition de l\'événement: ' . $e->getMessage()], 500);
-        } catch (InvalidArgumentException $e) {
-            return new JsonResponse(['error' => 1, 'message' => 'Erreur de cache: ' . $e->getMessage()], 500);
+        $idRessource = (int)$data['IdPlanningRessource'] ?? null;
+        if (!$idRessource) {
+            return $this->json(['message' => 'Le champ IdPlanningRessource est obligatoire.'], 400);
         }
+
+        // 3. On passe la ressource au Voter !
+        $this->denyAccessUnlessGranted('REPEAT_EVENEMENT', $idRessource);
+
+
+        $idPlanning = $request->headers->get('X-Planning-Id');
+
+        if (!$idPlanning) {
+            return $this->json(['message' => 'Id du planning manquant'], 400);
+        }
+
+        $data = $request->toArray();
+
+        if (!isset($data['Date']) || !is_array($data['Date'])) {
+            return $this->json(['message' => 'Tableau de dates manquant'], 400);
+        }
+
+
+        $result = $this->planningEvenementRepository->repeatEvent($data, $idPlanning);
+
+        $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
+        $this->cache->delete($cacheKey);
+
+        $this->notifier->notifyPlanningChange(
+            $idPlanning,
+            'APPOINTMENT_REPEATED',
+            $user->getIdPersonnel(),
+            [
+                'data' => $result['data'],
+                'originalEventId' => $id
+            ]
+
+        );
+
+        return $this->json(['data' => $result['ids']], 201);
+
+
     }
 
 
@@ -721,47 +667,46 @@ class PlanningEvenementController extends AbstractController
     #[OA\Response(response: 500, description: 'Erreur lors du déverrouillage du rendez-vous')]
     public function unlockRdv(int $id, #[CurrentUser] Session $user, Request $request): JsonResponse
     {
-        try {
-            $idPlanning = $request->headers->get('X-Planning-Id');
+        $idPlanning = $request->headers->get('X-Planning-Id');
 
-            if (!$idPlanning) {
-                return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
-            }
-
-            $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
-
-            $cacheItem = $this->cache->getItem($cacheKey);
-
-            if ($cacheItem->isHit()) {
-                // Le RDV est dans le cache Redis !
-                $ownerId = $cacheItem->get();
-
-                // Est-ce que le propriétaire du verrou est différent de moi ?
-                // (Si ownerId === currentUserId, c'est mon verrou, donc ce n'est pas locked pour moi)
-                if ($ownerId !== $user->getIdPersonnel()) {
-                    return new JsonResponse([
-                        'error' => 409,
-                        'isLocked' => true,
-                        'message' => 'Ce rendez-vous est actuellement en cours d\'édition par un autre utilisateur.'
-                    ]);
-                }
-            }
-
-
-            // La fonction delete() supprime instantanément la clé de Redis
-            $this->cache->delete($cacheKey);
-
-            $this->notifier->notifyPlanningChange(
-                $idPlanning,
-                'APPOINTMENT_UNLOCKED',
-                $user->getIdPersonnel(),
-                ['IdPlanningEvenement' => $id]
-            );
-
-        } catch (\Exception $e) {
-            return new JsonResponse(['error' => 1, 'message' => 'Erreur lors du déverrouillage du rendez-vous: ' . $e->getMessage()], 500);
+        if (!$idPlanning) {
+            return $this->json(['message' => 'Id du planning manquant'], 400);
         }
-        return new JsonResponse(['success' => true]);
+
+        $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
+
+        $cacheItem = $this->cache->getItem($cacheKey);
+
+        if ($cacheItem->isHit()) {
+            // Le RDV est dans le cache Redis !
+            $ownerId = $cacheItem->get();
+
+            // Est-ce que le propriétaire du verrou est différent de moi ?
+            // (Si ownerId === currentUserId, c'est mon verrou, donc ce n'est pas locked pour moi)
+            if ($ownerId !== $user->getIdPersonnel()) {
+                return $this->json([
+                    'isLocked' => true,
+                    'message' => 'Ce rendez-vous est actuellement en cours d\'édition par un autre utilisateur.'
+                ], 409);
+            }
+        }
+
+
+        // La fonction delete() supprime instantanément la clé de Redis
+        $this->cache->delete($cacheKey);
+
+        $this->notifier->notifyPlanningChange(
+            $idPlanning,
+            'APPOINTMENT_UNLOCKED',
+            $user->getIdPersonnel(),
+            ['IdPlanningEvenement' => $id]
+        );
+
+
+        return $this->json([
+            'isLocked' => false,
+            'message' => 'Le rendez-vous a été déverrouillé avec succès.'
+        ], 200);
     }
 
 
@@ -772,7 +717,7 @@ class PlanningEvenementController extends AbstractController
         $idPlanning = $request->headers->get('X-Planning-Id');
 
         if (!$idPlanning) {
-            return new JsonResponse(['error' => 1, 'message' => 'Id du planning manquant'], 400);
+            return $this->json(['message' => 'Id du planning manquant'], 400);
         }
 
         $id = $evenement->getIdplanningevenement();
@@ -780,19 +725,16 @@ class PlanningEvenementController extends AbstractController
         $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
         $currentUserId = $user->getIdPersonnel();
 
-        try {
-            $ownerId = $this->cache->get($cacheKey, function (ItemInterface $item) use ($currentUserId) {
-                // Largement suffisant pour un Drag & Drop. S'il abandonne, ça se libère très vite.
-                $item->expiresAfter(20);
-                return $currentUserId;
-            });
-        } catch (InvalidArgumentException $e) {
-            $logger->debug('Erreur lors de la récupération du verrou pour l\'événement ' . $id, ['exception' => $e]);
-            return new JsonResponse(['error' => 1, 'message' => 'Erreur'], 500);
-        }
+
+        $ownerId = $this->cache->get($cacheKey, function (ItemInterface $item) use ($currentUserId) {
+            // Largement suffisant pour un Drag & Drop. S'il abandonne, ça se libère très vite.
+            $item->expiresAfter(20);
+            return $currentUserId;
+        });
+
 
         if ($ownerId !== $currentUserId) {
-            return new JsonResponse(['error' => 409, 'message' => 'Ce rendez-vous est actuellement en cours d\'édition.'], 409);
+            return $this->json(['message' => 'Ce rendez-vous est actuellement en cours d\'édition.'], 409);
         }
 
         $this->notifier->notifyPlanningChange(
@@ -802,7 +744,10 @@ class PlanningEvenementController extends AbstractController
             ['IdPlanningEvenement' => $id]
         );
 
-        return new JsonResponse(['error' => 0]);
+        return $this->json([
+            'isLocked' => true,
+            'message' => 'Le rendez-vous a été verrouillé avec succès.'
+        ], 200);
     }
 
 }

@@ -21,78 +21,73 @@ class EmployeeRepository extends ServiceEntityRepository
     /**
      * @throws Exception
      */
-    public function getEmployeelist(?int $id = null)
+    public function getEmployeelist(int $idPlanningVue, ?int $id = null)
     {
-        try {
-            $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningEmployeeSelect @Id = :Id';
-            $params = [
-                'Id' => $id,
+        $conn = $this->getEntityManager()->getConnection();
+        $sql = 'EXEC ps_PlanningEmployeeSelect @Id = :Id, @IdPlanningVue = :IdPlanningVue';
+        $params = [
+            'Id' => $id,
+            'IdPlanningVue' => $idPlanningVue,
+        ];
+
+        $resultSet = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+        $structuredData = [];
+        $baseImageUrl = $this->router->generate('api_serve_image_file_user', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
+
+        foreach ($resultSet as $row) {
+            $structuredData[] = [
+                'IdPersonnel' => $row['Id'], // Adapte selon le nom de ton ID
+                'Nom' => $row['Nom'],
+                'Prenom' => $row['Prenom'],
+                'Actif' => $row['Actif'] === 1,
+                'Type' => $row['Type'],
+                'PoleActivite' => $row['IdPoleActivite'],
+                'Equipe' => $row['IdEquipe'],
+                'Image' => $row['Trombinoscope'] === 1 ? $baseImageUrl . $row['Id'] : null,
             ];
-
-            $resultSet = $conn->executeQuery($sql, $params)->fetchAllAssociative();
-
-            $structuredData = [];
-            $baseImageUrl = $this->router->generate('api_serve_image_file_user', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
-            $baseImageUrl = str_replace('999999', '', $baseImageUrl);
-
-            foreach ($resultSet as $row) {
-                $structuredData[] = [
-                    'IdPersonnel' => $row['Id'], // Adapte selon le nom de ton ID
-                    'Nom' => $row['Nom'],
-                    'Prenom' => $row['Prenom'],
-                    'Actif' => $row['Actif'] === 1,
-                    'Type' => $row['Type'],
-                    'PoleActivite' => $row['IdPoleActivite'],
-                    'Equipe' => $row['IdEquipe'],
-                    'Image' => $baseImageUrl . $row['Id'],
-                ];
-            }
-            return $structuredData;
-        } catch (Exception $e) {
-            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
         }
+        return $structuredData;
+
     }
 
     public function getEmployeePagination(int $limit, int $pageNumber, string $query, string $codes, LoggerInterface $logger){
-        try {
-            $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningEmployeeSelectSearch @Limit = :Limit, @PageNumber = :PageNumber, @Query= :Query, @Codes= :Codes';
-            $params = [
-                'Limit' => $limit,
-                'PageNumber' => $pageNumber,
-                'Query' => $query,
-                'Codes' => $codes
+        $conn = $this->getEntityManager()->getConnection();
+        $sql = 'EXEC ps_PlanningEmployeeSelectSearch @Limit = :Limit, @PageNumber = :PageNumber, @Query= :Query, @Codes= :Codes';
+        $params = [
+            'Limit' => $limit,
+            'PageNumber' => $pageNumber,
+            'Query' => $query,
+            'Codes' => $codes
+        ];
+
+        $resultSet = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+        $structuredData = [];
+
+        foreach ($resultSet as $row) {
+            $structuredData[] = [
+                'IdPersonnel' => $row['Id'],
+                'Code' => $row['Code'],
+                'Nom' => $row['Nom'],
+                'Prenom' => $row['Prenom'],
+                'Email' => $row['Email'],
+                'Actif' => $row['Actif'] === 1,
+                'Type' => $row['Type'],
+                'PoleActivite' => $row['IdPoleActivite'],
+                'Equipe' => $row['IdEquipe'],
             ];
-
-            $resultSet = $conn->executeQuery($sql, $params)->fetchAllAssociative();
-
-            $structuredData = [];
-
-            foreach ($resultSet as $row) {
-                $structuredData[] = [
-                    'IdPersonnel' => $row['Id'],
-                    'Code' => $row['Code'],
-                    'Nom' => $row['Nom'],
-                    'Prenom' => $row['Prenom'],
-                    'Email' => $row['Email'],
-                    'Actif' => $row['Actif'] === 1,
-                    'Type' => $row['Type'],
-                    'PoleActivite' => $row['IdPoleActivite'],
-                    'Equipe' => $row['IdEquipe'],
-                ];
-            }
-            $ligneTotal = $resultSet[0]['TotalLignes'] ?? 0;
-
-            $logger->debug("Données structurées après transformation", ['structuredData' => $structuredData, 'TotalLignes' => $ligneTotal]);
-            return
-            [
-                'data' => $structuredData,
-                'TotalLignes' => $ligneTotal
-            ];
-        } catch (Exception $e) {
-            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
         }
+        $ligneTotal = $resultSet[0]['TotalLignes'] ?? 0;
+
+        $logger->debug("Données structurées après transformation", ['structuredData' => $structuredData, 'TotalLignes' => $ligneTotal]);
+        return
+        [
+            'data' => $structuredData,
+            'TotalLignes' => $ligneTotal
+        ];
+
     }
 
 

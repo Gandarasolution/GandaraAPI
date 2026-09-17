@@ -109,12 +109,11 @@ class ImageRepository extends ServiceEntityRepository
 
             $result = $conn->executeQuery($sql, ['id' => $id])->fetchAssociative();
 
-            // 2. Gestion de l'erreur si l'image n'existe pas
-            if (!$result || empty($result['DataPlanningImage'])) {
+            if (!$result || empty($result['DataImage'])) {
                 return null;
             }
 
-            return $result['DataPlanningImage'];
+            return $result['DataImage'];
 
         }catch (Exception $e) {
             throw new \Exception('Une erreur est survenue lors de la récupération de l\'image pour l\'utilisateur avec l\'ID ' . $id . ': ' . $e->getMessage());

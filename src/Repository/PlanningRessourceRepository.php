@@ -81,48 +81,47 @@ class PlanningRessourceRepository extends ServiceEntityRepository
 
     public function updateRessource(int $id, mixed $data, LoggerInterface $logger)
     {
-        try {
-            $logger->debug('Données reçues pour la mise à jour de la ressource', ['id' => $id, 'data' => $data]);
-            $conn = $this->getEntityManager()->getConnection();
-            $sql = '
-                EXEC ps_PlanningRessourceUpdate
-                    @IdRessource = :Id,
-                    @CouleurFondPlanningRessource = :CouleurFondPlanningRessource,
-                    @CouleurBordurePlanningRessource = :CouleurBordurePlanningRessource,
-                    @CouleurTextePlanningRessource = :CouleurTextePlanningRessource,
-                    @IdImage = :IdImage,
-                    @CodePlanningRessource = :CodePlanningRessource,
-                    @Actif = :Actif,
-                    @LibellePlanningRessource = :LibellePlanningRessource
-            ';
-            $params = [
-                'Id' => $id,
-                'CouleurFondPlanningRessource' => $data['CouleurFondPlanningRessource'] ?? null,
-                'CouleurBordurePlanningRessource' => $data['CouleurBordurePlanningRessource'] ?? null,
-                'CouleurTextePlanningRessource' => $data['CouleurTextePlanningRessource'] ?? null,
-                'IdImage' => $data['IdImage'] ?? null,
-                'CodePlanningRessource' => $data['CodePlanningRessource'] ?? null,
-                'Actif' => (int)($data['Actif'] ?? 1),
-                'LibellePlanningRessource' => $data['LibellePlanningRessource'] ?? null,
-            ];
+        $logger->debug('Données reçues pour la mise à jour de la ressource', ['id' => $id, 'data' => $data]);
+        $conn = $this->getEntityManager()->getConnection();
+        $sql = '
+            EXEC ps_PlanningRessourceUpdate
+                @IdRessource = :Id,
+                @CouleurFondPlanningRessource = :CouleurFondPlanningRessource,
+                @CouleurBordurePlanningRessource = :CouleurBordurePlanningRessource,
+                @CouleurTextePlanningRessource = :CouleurTextePlanningRessource,
+                @IdImage = :IdImage,
+                @CodePlanningRessource = :CodePlanningRessource,
+                @Actif = :Actif,
+                @LibellePlanningRessource = :LibellePlanningRessource
+        ';
+        $params = [
+            'Id' => $id,
+            'CouleurFondPlanningRessource' => $data['CouleurFondPlanningRessource'] ?? null,
+            'CouleurBordurePlanningRessource' => $data['CouleurBordurePlanningRessource'] ?? null,
+            'CouleurTextePlanningRessource' => $data['CouleurTextePlanningRessource'] ?? null,
+            'IdImage' => $data['IdImage'] ?? null,
+            'CodePlanningRessource' => $data['CodePlanningRessource'] ?? null,
+            'Actif' => (int)($data['Actif'] ?? 1),
+            'LibellePlanningRessource' => $data['LibellePlanningRessource'] ?? null,
+        ];
 
-            $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+        $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
-            $logger->debug('Résultat de la mise à jour de la ressource', ['result' => $result]);
+        $logger->debug('Résultat de la mise à jour de la ressource', ['result' => $result]);
 
-            $row = $result[0];
-
-            $lignesModifiees = $row['LignesModifiees'];
-
-            unset($row['LignesModifiees']);
-
-            return [
-                'LignesModifiees' => $lignesModifiees,
-                'data'            => $row
-            ];
-        }catch (Exception $e) {
-            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
+        if (empty($result)) {
+            throw new \Exception("La procédure stockée n'a retourné aucun résultat pour la ressource $id.");
         }
+
+        $row = $result[0];
+        $lignesModifiees = $row['LignesModifiees'];
+        unset($row['LignesModifiees']);
+
+        return [
+            'LignesModifiees' => $lignesModifiees,
+            'data'            => $row
+        ];
+
     }
 
 

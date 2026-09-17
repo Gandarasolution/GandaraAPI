@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\Mercure\Jwt\TokenFactoryInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
-class JwtEventSubscriber implements EventSubscriberInterface
+final class JwtEventSubscriber implements EventSubscriberInterface
 {
 
     private int $jwtTtl;

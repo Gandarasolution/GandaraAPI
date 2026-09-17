@@ -18,7 +18,6 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 #[OA\Tag(name: 'Images')]
 class ImageController extends AbstractController
 {
-    use ApiResponseTrait;
     public function __construct(
         private ImageRepository $imageRepository,
         private LoggerInterface $logger,
@@ -30,23 +29,21 @@ class ImageController extends AbstractController
     #[OA\Response(response: 404, description: 'Image non trouvée')]
     public function getImage(int $id)
     {
-        try {
-            $image = $this->imageRepository->getImageById($id);
 
-            if (!$image) {
-                return new JsonResponse(['error' => 'Image introuvable'], 404);
-            }
+        $image = $this->imageRepository->getImageById($id);
 
-            $response = new Response($image);
-
-            $response->headers->set('Content-Type', 'image/png');
-
-            $response->headers->set('Cache-Control', 'public, max-age=31536000');
-
-            return $response;
-        }catch (\Exception $e) {
-            return new JsonResponse(['error'=> 1, 'message' => 'Une erreur s\'est produite lors de la récupération: ' .$e->getMessage()], 500);
+        if (!$image) {
+            return $this->json(['message' => 'Image introuvable'], 404);
         }
+
+        $response = new Response($image);
+
+        $response->headers->set('Content-Type', 'image/png');
+
+        $response->headers->set('Cache-Control', 'public, max-age=31536000');
+
+        return $response;
+
     }
 
     #[Route('', name: 'image_list', methods: ['GET'])]
@@ -55,41 +52,37 @@ class ImageController extends AbstractController
     #[OA\Response(response: 200, description: 'Toutes les images listées')]
     public function list(Request $request, UrlGeneratorInterface $router) : JsonResponse
     {
-        try {
-            $limit = $request->query->get('limit', 20);
-            $pageNumber = $request->query->get('pageNum', 1);
 
-            $result = $this->imageRepository->getImages($router, $pageNumber, $this->logger, $limit);
+        $limit = $request->query->get('limit', 20);
+        $pageNumber = $request->query->get('pageNum', 1);
 
-            return new JsonResponse(['error' => 0, 'data' => $result]);
-        } catch (\Exception $e) {
-            return new JsonResponse(['error' => 1, 'message' => 'An error occurred while retrieving images: ' . $e->getMessage()], 500);
-        }
+        $result = $this->imageRepository->getImages($router, $pageNumber, $this->logger, $limit);
+
+        return $this->json(['data' => $result]);
+
     }
 
-    #[Route('/{id}', name: 'api_serve_image_file_user', methods: ['GET'])]
+    #[Route('/user/{id}', name: 'api_serve_image_file_user', methods: ['GET'])]
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID du salarie/intérimaire', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'L\'image demandée')]
     #[OA\Response(response: 404, description: 'Image non trouvée')]
     public function getImageUser(int $id)
     {
-        try {
-            $image = $this->imageRepository->getImageByIdUser($id);
 
-            if (!$image) {
-                return new JsonResponse(['error' => 'Image introuvable'], 404);
-            }
+        $image = $this->imageRepository->getImageByIdUser($id);
 
-            $response = new Response($image);
-
-            $response->headers->set('Content-Type', 'image/png');
-
-            $response->headers->set('Cache-Control', 'public, max-age=31536000');
-
-            return $response;
-        }catch (\Exception $e) {
-            return new JsonResponse(['error'=> 1, 'message' => 'Une erreur s\'est produite lors de la récupération: ' .$e->getMessage()], 500);
+        if (!$image) {
+            return $this->json(['message' => 'Image introuvable'], 404);
         }
+
+        $response = new Response($image);
+
+        $response->headers->set('Content-Type', 'image/png');
+
+        $response->headers->set('Cache-Control', 'public, max-age=31536000');
+
+        return $response;
+
     }
 
 }

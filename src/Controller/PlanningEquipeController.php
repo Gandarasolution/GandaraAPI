@@ -15,17 +15,19 @@ use OpenApi\Attributes as OA;
 #[OA\Tag(name: 'Équipes/Ressources')]
 class PlanningEquipeController extends AbstractController
 {
-    use ApiResponseTrait;
 
     /**
      * @param EquipeRepository $repository
      */
     public function __construct(
         private EquipeRepository $repository,
-        private EntityManagerInterface $entityManager
     ){}
 
     //GET /api/equipes- Lister toutes les équipes
+
+    /**
+     * @throws \Exception
+     */
     #[Route('', name: 'equipe_planning_list', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Liste de toutes les équipes')]
     public function list(Request $request): JsonResponse
@@ -33,16 +35,13 @@ class PlanningEquipeController extends AbstractController
         $idPlanningVue = $request->headers->get('X-PlanningVue-Id');
 
         if (!$idPlanningVue) {
-            return $this->json(['error' => 1, 'message' => 'Id de la vue du planning manquante'], 400);
+            return $this->json(['message' => 'Id de la vue du planning manquante'], 400);
         }
 
-        try {
-            $equipes = $this->repository->getAllEquipes((int)$idPlanningVue);
-        }catch (\Exception $e){
-            return $this->json(['error' => 1, 'message' => $e->getMessage()], 400);
-        }
+        $equipes = $this->repository->getAllEquipes((int)$idPlanningVue);
 
-        return $this->json(['error' => 0, 'data' => $equipes]);
+
+        return $this->json(['data' => $equipes]);
 
     }
 
@@ -61,19 +60,9 @@ class PlanningEquipeController extends AbstractController
     #[OA\Response(response: 200, description: 'Équipe créée avec succès')]
     public function create(Request $request): JsonResponse
     {
-        try {
-//            // Logique de création d'une équipe à partir des données de la requête
-//            $data = json_decode($request->getContent(), true);
-//            $equipe = new Equipe();
-//            $equipe->setDesignationequipe($data['Name']);
-//
-//            $this->entityManager->persist($equipe);
-//            $this->entityManager->flush();
+        // Logique de création d'une équipe à partir des données de la requête
 
-            return $this->json(['message' => 'Équipe créée avec succès']);
-        }catch (\Exception $e) {
-            return $this->json(['error' => 'Erreur lors de la création de l\'équipe: ' . $e->getMessage()], 500);
-        }
+        return $this->json(['message' => 'Équipe créée avec succès']);
 
     }
 
@@ -97,8 +86,7 @@ class PlanningEquipeController extends AbstractController
 //        if (!$this->repository->find($id)) {
 //            return $this->json(['error' => 'Équipe non trouvée'], 404);
 //        }
-        try {
-            // Logique de mise à jour d'une équipe à partir des données de la requête
+        // Logique de mise à jour d'une équipe à partir des données de la requête
 //            $data = json_decode($request->getContent(), true);
 //            $equipe = $this->repository->find($id);
 //            $equipe->setDesignationequipe($data['Name']);
@@ -106,11 +94,9 @@ class PlanningEquipeController extends AbstractController
 //            $this->entityManager->persist($equipe);
 //            $this->entityManager->flush();
 
-            return $this->json(['message' => 'Équipe mise à jour avec succès']);
-        }
-        catch (\Exception $e) {
-            return $this->json(['error' => 'Erreur lors de la mise à jour de l\'équipe: ' . $e->getMessage()], 500);
-        }
+        return $this->json(['message' => 'Équipe mise à jour avec succès']);
+
+
     }
 
 }
