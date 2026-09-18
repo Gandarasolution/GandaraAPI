@@ -9,6 +9,7 @@ use App\Service\MercureNotificationService;
 use Doctrine\DBAL\Exception;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -30,20 +31,20 @@ class PermissionController extends AbstractController
      */
     #[Route('/', name: 'app_permissions', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Liste des permissions pour utilisateur')]
-    public function getPermissions(){
+    public function getPermissions(): JsonResponse
+    {
         $result = $this->securityRepository->getPermissions($this->logger);
 
-        return $this->json([
-            'data' => $result
-        ]);
+        return $this->json(['data' => $result]);
     }
 
     /**
-     * @throws Exception
+     * @throws \Throwable
      */
     #[Route('/', name: 'app_permissions_set', methods: ['PUT'])]
     #[IsGranted('MANAGE_PERMISSIONS',  message: 'Vous n\'avez pas la permission de modifier les droits.')]
-    public function updatePermissions(Request $request) {
+    public function updatePermissions(Request $request): JsonResponse
+    {
         // On décode le JSON reçu depuis React
         $data = json_decode($request->getContent(), true);
 

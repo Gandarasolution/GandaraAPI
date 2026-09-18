@@ -31,18 +31,13 @@ class PlanningEvenementController extends AbstractController
         private readonly PlanningEvenementRepository         $planningEvenementRepository,
         private readonly PlanningRessourceRepository         $planningRessourceRepository,
         private readonly CacheInterface                      $cache,
-        //private EntityManagerInterface $entityManager,
         private readonly LoggerInterface $logger
     ){}
 
+
     /**
-     * Liste les événements entre deux dates.
-     *
-     * @param \DateTimeInterface $dateStart Date de début de recherche (format date depuis l'URL)
-     * @param \DateTimeInterface $dateEnd Date de fin de recherche (format date depuis l'URL)
-     * @return JsonResponse JSON contenant la liste des événements: { "error": 0, "data": [...] }
+     * @throws Exception
      */
-    //GET /api/event- Lister (avec filtres startDate/endDate
     #[Route('/{dateStart}/{dateEnd}', name: 'api_evenements_index', methods: ['GET'])]
     #[OA\Parameter(name: 'dateStart', in: 'path', description: 'Date de début (ex: 2024-01-01)', schema: new OA\Schema(type: 'string', format: 'date'))]
     #[OA\Parameter(name: 'dateEnd', in: 'path', description: 'Date de fin (ex: 2024-12-31)', schema: new OA\Schema(type: 'string', format: 'date'))]
@@ -65,18 +60,14 @@ class PlanningEvenementController extends AbstractController
         $result = $this->planningEvenementRepository->findEventsByDate($dateStart, $dateEnd, $idPlanning, $idPlanningVue, $idEmployee);
 
 
-
         return $this->json([ 'data' => $result]);
     }
 
+
     /**
-     * Récupère un événement spécifique par son identifiant.
-     *
-     * @param int $id Identifiant de l'événement
-     * @return JsonResponse JSON avec les détails de l'événement: { "error": 0, "data": {...} } ou erreur
      * @throws InvalidArgumentException
+     * @throws Exception
      */
-    //GET /api/event/:id- Récupérer un RDV
     #[Route('/{id}', name: 'api_evenements_show', methods: ['GET'])]
     #[OA\Parameter(name: 'id', in: 'path', description: 'Identifiant numérique de l\'événement', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Détails de l\'événement')]
@@ -126,6 +117,7 @@ class PlanningEvenementController extends AbstractController
         );
 
         $result = $this->planningEvenementRepository->findEventById($id, $logger, $idPlanning, $idPlanningVue);
+
         if (!$result) {
             $this->notifier->notifyPlanningChange(
                 $idPlanning,
@@ -136,21 +128,13 @@ class PlanningEvenementController extends AbstractController
             return $this->json(['message' => 'Événement non trouvé'], 404);
         }
 
-
-
         return $this->json(['data' => $result]);
-
-
     }
 
+
     /**
-     * Récupère les événements pour un employé spécifique.
-     * Attend les paramètres de requête: ?employee={id}&type={Salarie|Interim}
-     *
-     * @param Request $request La requête HTTP contenant les paramètres.
-     * @return JsonResponse JSON avec la liste des événements de l'employé: { "error": 0, "data": [...] } ou erreur
+     * @throws Exception
      */
-    //GET /api/event?employee=:id&type=Salarie- RDV par employé
     #[Route('/', name: 'api_evenements_by_employee', methods: ['GET'])]
     #[OA\Parameter(name: 'employee', in: 'query', description: 'ID de l\'employé (Salarié ou Intérimaire)', schema: new OA\Schema(type: 'integer'))]
     #[OA\Parameter(name: 'type', in: 'query', description: 'Salarie ou Interim', schema: new OA\Schema(type: 'string', enum: ['Salarie', 'Interim']))]
@@ -169,40 +153,22 @@ class PlanningEvenementController extends AbstractController
             return $this->json(['message' => 'Id de la vue du planning manquante'], 400);
         }
 
-
         $employeeId =$request->query->get('employee');
-        $type = $request->query->get('type');
 
-        if (!$type || !in_array($type, ['Salarie', 'Interim'])) {
-            return $this->json(['message' => 'Le paramètre ?type=Salarie ou ?type=Interim est obligatoire'], 400);
-        }
 
         if (!$employeeId) {
             return $this->json(['message' => 'Le paramètre ?employee=:id est obligatoire'], 400);
         }
 
-        $result = $this->planningEvenementRepository->findEventsByEmployee($employeeId, $type, $idPlanning, $idPlanningVue);
+        $result = $this->planningEvenementRepository->findEventsByEmployee($employeeId, $idPlanning, $idPlanningVue);
         return $this->json(['data' => $result]);
 
     }
 
 
     /**
-     * Crée un nouvel événement.
-     * Données d'entrée (JSON):
-     * {
-     *   "DebutPlanningEvenement": int (timestamp),
-     *   "FinPlanningEvenement": int (timestamp),
-     *   "IdPlanningRessource": int,
-     *   ...
-     * }
-     *
-     * @param Request $request
-     * @param LoggerInterface $logger
-     * @return JsonResponse JSON contenant le résultat de la création: { "error": 0, "data": {...} }
-     * @throws \Exception
+     * @throws Exception
      */
-    //POST /api/event- Créer un RDV
     #[Route('', name: 'api_evenements_create', methods: ['POST'])]
     #[OA\RequestBody(
         description: 'L\'objet événement JSON (avec timestamp long ms pour Debut/Fin)',
@@ -258,24 +224,13 @@ class PlanningEvenementController extends AbstractController
 
         return $this->json(['data' => $result], 201);
 
-
     }
 
+
     /**
-     * Modifie un événement existant.
-     * Données d'entrée (JSON):
-     * {
-     *   "PlanningEvenementPriorite": int (optionnel),
-     *   ...autres champs à mettre à jour...
-     * }
-     *
-     * @param int $id Identifiant de l'événement
-     * @param Request $request
-     * @return JsonResponse JSON indiquant le succès de l'opération: { "error": 0, "message": "..." } ou erreur
+     * @throws Exception
      * @throws InvalidArgumentException
-     * @throws \Exception
      */
-    //PUT /api/event/:id- Modifier un RDV
     #[Route('/{id}', name: 'api_evenements_update', methods: ['PUT'])]
     #[OA\Parameter(name: 'id', in: 'path', description: 'Identifiant de l\'événement à modifier', schema: new OA\Schema(type: 'integer'))]
     #[OA\RequestBody(
@@ -312,7 +267,7 @@ class PlanningEvenementController extends AbstractController
 
 
          $data = $request->toArray();
-         if (($data === null) || $data === []) {
+         if ($data === []) {
              return $this->json(['message' => 'Données JSON invalides.'], 400);
          }
          if($data['PlanningEvenementPriorite'] === null){
@@ -348,12 +303,8 @@ class PlanningEvenementController extends AbstractController
 
 
     /**
-     * Supprime un événement par son identifiant.
-     *
-     * @param int $id Identifiant de l'événement
-     * @return JsonResponse JSON indiquant le succès: { "error": 0, "message": "..." } ou erreur
+     * @throws Exception
      */
-    //DELETE /api/event/:id- Supprimer un RDV
     #[Route('/{id}', name: 'api_evenement_delete', methods: ['DELETE'])]
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de l\'événement à supprimer', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Événement supprimé')]
@@ -368,7 +319,8 @@ class PlanningEvenementController extends AbstractController
         }
 
         $lignesSupprimees = $this->planningEvenementRepository->deleteEvent($id);
-        if ($lignesSupprimees === 0) {
+
+        if (!$lignesSupprimees) {
             return $this->json(['message' => 'Événement introuvable.'], 404);
         }
 
@@ -384,10 +336,7 @@ class PlanningEvenementController extends AbstractController
 
 
     /**
-     * Supprime des événements par identifiants.
-     *
-     * @param Request $request La requête HTTP contenant un tableau d'IDs à supprimer: { "ids": [1, 2, 3] }
-     * @return JsonResponse JSON indiquant le succès: { "error": 0, "message": "..." } ou erreur
+     * @throws \Throwable
      */
     #[Route('', name: 'api_evenements_delete', methods: ['DELETE'])]
     #[OA\Response(response: 200, description: 'Événement supprimé')]
@@ -406,10 +355,7 @@ class PlanningEvenementController extends AbstractController
             return $this->json(['message' => 'Id du planning manquant'], 400);
         }
 
-        $lignesSupprimees = $this->planningEvenementRepository->deleteEvents($data);
-        if ($lignesSupprimees === 0) {
-            return $this->json(['message' => 'Événement introuvable.'], 404);
-        }
+        $lignesSupprimees = $this->planningEvenementRepository->deleteEvents($data['ids']);
 
         $this->notifier->notifyPlanningChange(
             $idPlanning,
@@ -422,27 +368,11 @@ class PlanningEvenementController extends AbstractController
 
     }
 
+
     /**
-     * Met à jour un événement et sa ressource associée.
-     * Données d'entrée (JSON):
-     * {
-     *   "DebutPlanningEvenement": int (timestamp optionnel),
-     *   "FinPlanningEvenement": int (timestamp optionnel),
-     *   "PlanningEvenementPriorite": int (optionnel),
-     *   "IdPlanningRessource": int (optionnel),
-     *   "Ressource": {
-     *     "IdPlanningRessource": int (optionnel, pris en compte si paramètre précédent absent),
-     *     ...autres données de la ressource...
-     *   }
-     * }
-     *
-     * @param int $id Identifiant de l'événement
-     * @param Request $request
-     * @param LoggerInterface $logger
-     * @return JsonResponse JSON indiquant le succès de l'opération: { "error": 0, "message": "..." }
-     * @throws \Exception
+     * @throws Exception
+     * @throws InvalidArgumentException
      */
-    // PUT /api/event/updateRessourceAndEvent/:id -> met à jour un événement et la ressource associée via les procédure stockée
     #[Route('/updateRessourceAndEvent/{id}', name: 'api_evenement_et_ressource_update', methods: ['PUT'])]
     #[OA\Tag(name: 'Opérations complexes événement')]
     #[OA\Parameter(name: 'id', in: 'path', description: 'Identifiant de l\'événement ciblé', schema: new OA\Schema(type: 'integer'))]
@@ -470,7 +400,7 @@ class PlanningEvenementController extends AbstractController
 
         $data = $request->toArray();
 
-        if (($data === null) || $data === []) {
+        if ($data === []) {
             return $this->json(['message' => 'Données JSON invalides.'], 400);
         }
 
@@ -491,27 +421,27 @@ class PlanningEvenementController extends AbstractController
 
         $returnData = [];
 
-        $result = $this->planningEvenementRepository->updateEvent($id, $data);
+        $eventResult = $this->planningEvenementRepository->updateEvent($id, $data);
 
-        $logger->debug('Résultat de la mise à jour de l\'événement via PS', ['result' => $result]);
+        $logger->debug('Résultat de la mise à jour de l\'événement via PS', ['result' => $eventResult]);
 
-        if ($result['LignesModifiees'] === 0) {
+        if ($eventResult['LignesModifiees'] === 0) {
             return $this->json(['message' => 'Événement introuvable ou aucune modification effectuée.'], 404);
         }
 
-        $returnData['appointment'] = $result['data'];
+        $returnData['appointment'] = $eventResult['data'];
 
         // Si le payload contient des données de ressource, tenter de mettre à jour la ressource associée
         $ressourceId = $data['IdPlanningRessource'] ?? ($data['Ressource']['IdPlanningRessource'] ?? null);
         if ($ressourceId !== null && isset($data['Ressource']) && is_array($data['Ressource'])) {
-            $result = $this->planningRessourceRepository->updateRessource((int)$ressourceId, $data['Ressource'], $logger);
+            $ressourceResult = $this->planningRessourceRepository->updateRessource((int)$ressourceId, $data['Ressource'], $logger);
 
-            if ($result['LignesModifiees'] === 0) {
+            if ($ressourceResult['LignesModifiees'] === 0) {
                 return $this->json(['message' => 'Ressource introuvable ou aucune modification effectuée.'], 404);
             }
         }
-        $logger->debug('Résultat de la mise à jour de la ressource via PS', ['result' => $result]);
-        $returnData['ressources'] = $result['data'];
+        $logger->debug('Résultat de la mise à jour de la ressource via PS', ['result' => $ressourceResult]);
+        $returnData['ressources'] = $ressourceResult['data'];
 
         $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
         // La fonction delete() supprime instantanément la clé de Redis
@@ -531,16 +461,8 @@ class PlanningEvenementController extends AbstractController
 
 
     /**
-     * Divise un événement en deux à une date précise.
-     * Données d'entrée (JSON):
-     * {
-     *   "DateCoupure": int (timestamp où diviser l'événement)
-     * }
-     *
-     * @param int $id Identifiant de l'événement
-     * @param Request $request
-     * @return JsonResponse JSON contenant les données de l'événement divisé: { "error": 0, "data": {...} }
-     * @throws \Exception
+     * @throws InvalidArgumentException
+     * @throws Exception
      */
     #[Route('/divide/{id}', name: 'api_evenement_diviser', methods: ['PUT'])]
     #[OA\Tag(name: 'Opérations complexes événement')]
@@ -568,7 +490,7 @@ class PlanningEvenementController extends AbstractController
 
         $data = $request->toArray();
 
-        if (($data === null) || $data === []) {
+        if ($data === []) {
             return $this->json(['message' => 'Données JSON invalides.'], 400);
         }
 
@@ -596,13 +518,11 @@ class PlanningEvenementController extends AbstractController
         return $this->json(['data' => ['NouvelIdEvenement' => $result['IdPlanningEvenement']]], 200);
     }
 
+
     /**
-     * Répète un événement existant.
-     * Données d'entrée (JSON): Doit contenir les paramètres requis par la méthode repeatEvent du repository.
-     *
-     * @param Request $request
-     * @return JsonResponse JSON avec le résultat de la répétition: { "error": 0, "data": {...} }
+     * @throws \Throwable
      * @throws Exception
+     * @throws InvalidArgumentException
      */
     #[Route('/repeat/{id}', name: 'api_evenement_repeat', methods: ['POST'])]
     #[OA\Tag(name: 'Opérations complexes événement')]
@@ -655,7 +575,6 @@ class PlanningEvenementController extends AbstractController
 
         return $this->json(['data' => $result['ids']], 201);
 
-
     }
 
 
@@ -681,7 +600,6 @@ class PlanningEvenementController extends AbstractController
             // Le RDV est dans le cache Redis !
             $ownerId = $cacheItem->get();
 
-            // Est-ce que le propriétaire du verrou est différent de moi ?
             // (Si ownerId === currentUserId, c'est mon verrou, donc ce n'est pas locked pour moi)
             if ($ownerId !== $user->getIdPersonnel()) {
                 return $this->json([
@@ -710,6 +628,9 @@ class PlanningEvenementController extends AbstractController
     }
 
 
+    /**
+     * @throws InvalidArgumentException
+     */
     #[Route('/{id}/lock-quick', methods: ['POST'])]
     #[IsGranted('EVENEMENT_LOCK', subject: 'evenement', message: 'Vous n\'avez pas la permission de lock cet événement.')]
     public function quickLock(Planningevenement $evenement, #[CurrentUser] Session $user, LoggerInterface $logger, Request $request): JsonResponse

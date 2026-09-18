@@ -3,9 +3,8 @@
 namespace App\Controller;
 
 
-use App\Repository\EquipeRepository;
 use App\Repository\EtiquetteRepository;
-use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\DBAL\Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -18,10 +17,13 @@ use OpenApi\Attributes as OA;
 class PlanningEtiquetteController extends AbstractController
 {
     public function __construct(
-        private EtiquetteRepository $repository,
+        private readonly EtiquetteRepository $repository,
     ){}
 
 
+    /**
+     * @throws Exception
+     */
     #[Route('/{idRessource}', name: 'etiquette_planning_list', methods: ['GET'])]
     #[OA\Parameter(name: 'idRessource', in: 'path', description: 'Identifiant numérique de la ressource', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Liste de toutes les étiquettes associées à la ressource')]
@@ -38,34 +40,34 @@ class PlanningEtiquetteController extends AbstractController
     }
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     #[Route('', name: 'etiquette_planning_create', methods: ['POST'])]
     #[OA\Response(response: 200, description: 'Création d\'une nouvelle étiquette pour une ressource')]
     public function create(Request $request): JsonResponse
     {
-        $data = $request->toArray();
+            $data = $request->toArray();
 
-        $libelleCourt = $data['LibelleCourtPlanningEtiquette'] ?? null;
-        $libelleLong = $data['LibelleLongPlanningEtiquette'] ?? null;
+            $libelleCourt = $data['LibelleCourtPlanningEtiquette'] ?? null;
+            $libelleLong = $data['LibelleLongPlanningEtiquette'] ?? null;
 
-        if (!isset($data['IdPlanningRessource']) || !is_int($data['IdPlanningRessource']) || $data['IdPlanningRessource'] <= 0) {
-            return $this->json(['message' => 'ID de ressource invalide ou manquant'], 400);
-        }
-        if ((!isset($libelleLong) || !is_string($libelleLong) || empty(trim($libelleLong)))
-            && (!isset($libelleCourt) || !is_string($libelleCourt) || empty(trim($libelleCourt)))) {
-            return $this->json(['message' => 'Au moins un libellé (long ou court) doit être fourni et non vide'], 400);
+            if (!isset($data['IdPlanningRessource']) || !is_int($data['IdPlanningRessource']) || $data['IdPlanningRessource'] <= 0) {
+                return $this->json(['message' => 'ID de ressource invalide ou manquant'], 400);
+            }
+            if ((!isset($libelleLong) || !is_string($libelleLong) || empty(trim($libelleLong)))
+                && (!isset($libelleCourt) || !is_string($libelleCourt) || empty(trim($libelleCourt)))) {
+                return $this->json(['message' => 'Au moins un libellé (long ou court) doit être fourni et non vide'], 400);
         }
 
         $result = $this->repository->createEtiquette($data);
 
-        return $this->json(['data' => $result]);
+        return $this->json(['data' => $result, 'message' => 'Étiquette créée avec succès']);
 
 
     }
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     #[Route('/{idEtiquette}', name: 'etiquette_planning_delete', methods: ['DELETE'])]
     #[OA\Response(response: 200, description: 'Supression d\'une nouvelle étiquette pour une ressource')]

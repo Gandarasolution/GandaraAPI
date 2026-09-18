@@ -17,17 +17,16 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 final class JwtEventSubscriber implements EventSubscriberInterface
 {
 
-    private int $jwtTtl;
     public function __construct(
-        private Connection $connection,
-        private LoggerInterface $logger,
-        private UrlGeneratorInterface $router,
+        private readonly Connection            $connection,
+        private readonly LoggerInterface       $logger,
+        private readonly UrlGeneratorInterface $router,
         #[Autowire(service: 'mercure.hub.default.jwt.factory')]
-        private TokenFactoryInterface $mercureTokenFactory,
-        int $jwtTtl
+        private readonly TokenFactoryInterface $mercureTokenFactory,
+        #[Autowire(env: 'JWT_TTL')]
+        private int                            $jwtTtl
     )
     {
-        $this->jwtTtl = $jwtTtl;
     }
 
     public static function getSubscribedEvents(): array
@@ -38,17 +37,20 @@ final class JwtEventSubscriber implements EventSubscriberInterface
         ];
     }
 
+    /**
+     * @throws \DateMalformedIntervalStringException
+     * @throws Exception
+     */
     public function onAuthenticationSuccess(AuthenticationSuccessEvent $event): void
     {
-        try {
-            $data = $event->getData();
-            $user = $event->getUser();
+        $data = $event->getData();
+        $user = $event->getUser();
 
-            if (!$user instanceof Session) {
-                return;
-            }
+        if (!$user instanceof Session) {
+            return;
+        }
 
-            $sql = '
+        $sql = '
                 SELECT
                     COALESCE(S.NomSalarie, I.NomInterim) as NomEmploye,
                     COALESCE(S.PrenomSalarie, I.PrenomInterim) as PrenomEmployee
@@ -60,95 +62,83 @@ final class JwtEventSubscriber implements EventSubscriberInterface
                 WHERE IdPersonnel = :id
             ';
 
-            $employeInfos = $this->connection->fetchAssociative($sql, [
-                'id' => $user->getIdpersonnel()
-            ]);
+        $employeInfos = $this->connection->fetchAssociative($sql, [
+            'id' => $user->getIdpersonnel()
+        ]);
 
-            $sql = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id';
-            $planningDroit = $this->connection->fetchAssociative($sql, [
-                'id' => $user->getIdpersonnel()
-            ]);
-            $this->logger->debug("Requête pour récupérer les droits de l'utilisateur", ['IdPersonnel' => $user->getIdpersonnel(), 'PlanningDroit' => $planningDroit]);
+        $sql = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id';
+        $planningDroit = $this->connection->fetchAssociative($sql, [
+            'id' => $user->getIdpersonnel()
+        ]);
+        $this->logger->debug("Requête pour récupérer les droits de l'utilisateur", ['IdPersonnel' => $user->getIdpersonnel(), 'PlanningDroit' => $planningDroit]);
 
-            $sql = 'SELECT P.IdPlanning, NomPlanning, IdPlanningImage
+        $sql = 'SELECT P.IdPlanning, NomPlanning, IdPlanningImage
                     FROM Planning P
                     LEFT JOIN PlanningAffectation PA ON P.IdPlanning = PA.IdPlanning
                     WHERE IdPersonnel = :id
             ';
-            $planningAffectation = $this->connection->fetchAllAssociative($sql, [
-                'id' => $user->getIdpersonnel()
-            ]);
-            $this->logger->debug("Requête pour récupérer les plannings affectés à l'utilisateur", ['IdPersonnel' => $user->getIdpersonnel(), 'PlanningAffectation' => $planningAffectation]);
+        $planningAffectation = $this->connection->fetchAllAssociative($sql, [
+            'id' => $user->getIdpersonnel()
+        ]);
+        $this->logger->debug("Requête pour récupérer les plannings affectés à l'utilisateur", ['IdPersonnel' => $user->getIdpersonnel(), 'PlanningAffectation' => $planningAffectation]);
 
-            // 4. On prépare le tableau final à renvoyer au front
-            $data['user'] = [
-                'IdPersonnel' => $user->getIdpersonnel(),
-            ];
+        // 4. On prépare le tableau final à renvoyer au front
+        $data['user'] = [
+            'IdPersonnel' => $user->getIdpersonnel(),
+        ];
 
-            // 5. Si on a trouvé les infos, on les ajoute !
-            if ($employeInfos) {
-                $data['user']['Nom'] = $employeInfos['NomEmploye'];
-                $data['user']['Prenom'] = $employeInfos['PrenomEmployee'];
+        // 5. Si on a trouvé les infos, on les ajoute !
+        if ($employeInfos) {
+            $data['user']['Nom'] = $employeInfos['NomEmploye'];
+            $data['user']['Prenom'] = $employeInfos['PrenomEmployee'];
+        }
+
+        $data['permissions'] = (int) ($planningDroit['IdDroitNiveau'] ?? 21);
+
+        $data['planning'] = array_map(function ($row) {
+            // Default the image URL to null
+            $imageUrl = null;
+
+            // Only generate the URL if an image ID actually exists
+            if (!empty($row['IdPlanningImage'])) {
+                $imageUrl = $this->router->generate('api_serve_image_file', [
+                    'id' => $row['IdPlanningImage']
+                ], UrlGeneratorInterface::ABSOLUTE_URL);
             }
 
-            $data['permissions'] = (int)$planningDroit['IdDroitNiveau'] ?: 21; // Valeur par défaut si la requête ne retourne rien
-
-            $data['planning'] = array_map(function($row) {
-                // Default the image URL to null
-                $imageUrl = null;
-
-                // Only generate the URL if an image ID actually exists
-                if (!empty($row['IdPlanningImage'])) {
-                    $imageUrl = $this->router->generate('api_serve_image_file', [
-                        'id' => $row['IdPlanningImage']
-                    ], UrlGeneratorInterface::ABSOLUTE_URL);
-                }
-
-                return [
-                    'IdPlanning'    => $row['IdPlanning'],
-                    'NomPlanning'   => $row['NomPlanning'],
-                    'PlanningImage' => ['id' => $row['IdPlanningImage'], 'image' => $imageUrl ]// Will be the absolute URL, or null if no image exists
-                ];
-            }, $planningAffectation);
+            return [
+                'IdPlanning' => $row['IdPlanning'],
+                'NomPlanning' => $row['NomPlanning'],
+                'PlanningImage' => ['id' => $row['IdPlanningImage'], 'image' => $imageUrl]// Will be the absolute URL, or null if no image exists
+            ];
+        }, $planningAffectation);
 
 
+        $mercureToken = $this->mercureTokenFactory->create([
+            'https://gandara.com/planning/update', // Topic public
+            sprintf('http://gandara.com/user/%s', $user->getUserIdentifier()) // Topic privé exclusif à cet utilisateur
+        ]);
 
-            $mercureToken = $this->mercureTokenFactory->create([
-                'https://gandara.com/planning/update', // Topic public
-                sprintf('http://gandara.com/user/%s', $user->getUserIdentifier()) // Topic privé exclusif à cet utilisateur
-            ]);
+        $cookieMercure = Cookie::create('mercureAuthorization')
+            ->withValue($mercureToken)
+            ->withHttpOnly(true)
+            ->withSecure(true)
+            ->withSameSite(Cookie::SAMESITE_NONE)
+            ->withPath('/');
 
-            $cookie = Cookie::create('mercureAuthorization')
-                ->withValue($mercureToken)
-                ->withHttpOnly(true)
-                ->withSecure(true)
-                ->withSameSite(Cookie::SAMESITE_NONE)
-                ->withPath('/');
+        $cookieLogged = Cookie::create('is_logged_in')
+            ->withValue('true')
+            ->withHttpOnly(false)
+            ->withSecure(true)
+            ->withSameSite(Cookie::SAMESITE_NONE)
+            ->withPath('/')
+            ->withExpires(new \DateTimeImmutable()->add(new \DateInterval('PT' . $this->jwtTtl . 'S')));
 
-            $event->getResponse()->headers->setCookie($cookie);
+        $event->getResponse()->headers->setCookie($cookieMercure);
+        $event->getResponse()->headers->setCookie($cookieLogged);
 
-
-            $cookie = Cookie::create('is_logged_in')
-                ->withValue('true')
-                ->withHttpOnly(false)
-                ->withSecure(true)
-                ->withSameSite(Cookie::SAMESITE_NONE)
-                ->withPath('/')
-                ->withExpires((new \DateTime())->add(new \DateInterval('PT' . $this->jwtTtl . 'S')));
-
-            $event->getResponse()->headers->setCookie($cookie);
-
-            $data['error'] = 0;
-
-            $event->setData($data);
-        }catch (Exception $e) {
-
-            $this->logger->debug('Erreur lors de la récupération des informations utilisateur après authentification, exception: ' . $e->getMessage());
-            $event->setData([
-                'error' => 1,
-                'message' => 'Une erreur est survenue lors de la récupération des informations utilisateur.'
-            ]);
-        }
+        // 6. Injection des données finales dans le JWT
+        $event->setData($data);
 
     }
 }

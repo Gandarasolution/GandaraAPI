@@ -8,3 +8,5 @@ vendor/
 var/
 compose.override.yaml
 compose.yaml
+
+tests/

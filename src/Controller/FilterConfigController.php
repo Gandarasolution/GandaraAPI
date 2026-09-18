@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Repository\FilterConfigRepository;
+use Doctrine\DBAL\Exception;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -20,6 +21,9 @@ class FilterConfigController extends AbstractController
         //private EntityManagerInterface $entityManager,
     ){}
 
+    /**
+     * @throws Exception
+     */
     #[Route('', name: 'api_data_filter', methods: ['GET'])]
     #[OA\Parameter(name: 'types', in: 'query', description: 'Type de vue', schema: new OA\Schema(type: 'string', default: ''))]
     #[OA\Parameter(name: 'keys', in: 'query', description: 'Clé de chaque filtre voulu', schema: new OA\Schema(type: 'string', default: ''))]
@@ -32,7 +36,6 @@ class FilterConfigController extends AbstractController
         $logger->debug("Récupération des options de filtre", ['types' => $types, 'keys' => $keys]);
 
         $data = $this->filterConfigRepository->get($types, $keys, $logger);
-
 
         return $this->json(['data' => $data]);
 

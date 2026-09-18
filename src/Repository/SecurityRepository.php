@@ -7,6 +7,7 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\Exception;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 class SecurityRepository extends ServiceEntityRepository
@@ -17,7 +18,10 @@ class SecurityRepository extends ServiceEntityRepository
         parent::__construct($registry, Session::class);
     }
 
-    public function me(Session $user,LoggerInterface $logger): array
+    /**
+     * @throws Exception
+     */
+    public function me(Session $user, LoggerInterface $logger): array
     {
         $conn = $this->getEntityManager()->getConnection();
 
@@ -66,20 +70,19 @@ class SecurityRepository extends ServiceEntityRepository
         $conn = $this->getEntityManager()->getConnection();
         $sql = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id';
 
-
         $planningDroit = $conn->fetchAssociative($sql, [
             'id' => $user->getIdpersonnel()
         ]);
 
 
-        return $level = (int)$planningDroit['IdDroitNiveau'] ?? 21;
-
+        return (int)$planningDroit['IdDroitNiveau'] ?? 21;
     }
 
     /**
      * @throws Exception
      */
-    public function getPermissions(LoggerInterface $logger){
+    public function getPermissions(LoggerInterface $logger): array
+    {
         $conn = $this->getEntityManager()->getConnection();
         $sqlEmployeeDroit = 'EXEC ps_PlanningDroitSelect';
         $sqlListDroit = '
@@ -125,7 +128,7 @@ class SecurityRepository extends ServiceEntityRepository
     }
 
     /**
-     * @throws Exception
+     * @throws \Throwable
      */
     public function bulkUpdatePermissions(mixed $updates, LoggerInterface $logger): void
     {
@@ -138,7 +141,7 @@ class SecurityRepository extends ServiceEntityRepository
 
             foreach ($updates as $update) {
                 if (!isset($update['IdPersonnel']) || !isset($update['IdDroit'])) {
-                    throw new \InvalidArgumentException("Structure des données invalide.");
+                    throw new BadRequestHttpException("Structure des données invalide.");
                 }
 
                 $stmt->bindValue(1, (int)$update['IdPersonnel']);

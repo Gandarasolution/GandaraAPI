@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Session;
 use App\Repository\SecurityRepository;
+use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -61,6 +62,9 @@ class SecurityController extends AbstractController
     }
 
 
+    /**
+     * @throws Exception
+     */
     #[Route('/me', name: 'api_me', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Informations de l\'utilisateur connecté')]
     #[OA\Response(response: 401, description: 'Utilisateur non authentifié')]

@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Equipe;
 use App\Repository\EquipeRepository;
+use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -20,13 +21,13 @@ class PlanningEquipeController extends AbstractController
      * @param EquipeRepository $repository
      */
     public function __construct(
-        private EquipeRepository $repository,
+        private readonly EquipeRepository $repository,
     ){}
 
     //GET /api/equipes- Lister toutes les équipes
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     #[Route('', name: 'equipe_planning_list', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Liste de toutes les équipes')]

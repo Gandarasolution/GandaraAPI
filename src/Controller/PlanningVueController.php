@@ -12,6 +12,8 @@ use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Nelmio\ApiDocBundle\Annotation\Model;
 use OpenApi\Attributes as OA;
@@ -47,7 +49,7 @@ class PlanningVueController extends AbstractController
 
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     #[Route('/getLastVue', name: 'api_last_config_user', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Récupère la dernière vue d\'un utilisateur pour un planning donné')]
@@ -60,7 +62,7 @@ class PlanningVueController extends AbstractController
             $this->logger->debug('Le paramètre idPlanning doit être un entier positif. Valeur reçue: {idPlanning}', [
                 'idPlanning' => $idPlanning,
             ]);
-            return $this->json(['message' => 'Le paramètre idPlanning doit être un entier positif.'], 400);
+            throw new BadRequestHttpException('Le paramètre idPlanning doit être un entier positif.');
         }
 
         $result = $this->planningVueRepository->getLastVue($user, $idPlanning);
@@ -70,7 +72,7 @@ class PlanningVueController extends AbstractController
 
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     #[Route('/vue/{id}', name: 'api_config', methods: ['GET'])]
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la vue', schema: new OA\Schema(type: 'integer'))]
@@ -84,10 +86,8 @@ class PlanningVueController extends AbstractController
     }
 
 
-    //GET /api/planning/vue/user/:userId?idPlanning=:id- Configs d'un utilisateur
-
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     #[Route('/vue/user/{userId}', name: 'api_configs_user', methods: ['GET'])]
     #[OA\Parameter(name: 'userId', in: 'path', description: 'ID de l\'utilisateur', schema: new OA\Schema(type: 'integer'))]
@@ -98,7 +98,7 @@ class PlanningVueController extends AbstractController
         $IdPlanning = $request->query->get('idPlanning');
 
         if ($IdPlanning !== null && !is_numeric($IdPlanning) || $IdPlanning < 0) {
-            return $this->json(['message' => 'Le paramètre idPlanning doit être un entier positif.'], 400);
+            throw new BadRequestHttpException('Id du planning manquant');
         }
 
         $configs = $this->planningVueRepository->getConfigUser($userId, $IdPlanning);
@@ -108,7 +108,7 @@ class PlanningVueController extends AbstractController
 
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     #[Route('/non-working-dates', name: 'api_non_working_dates', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Liste des jours non travaillé du planning')]
@@ -120,7 +120,7 @@ class PlanningVueController extends AbstractController
             $this->logger->debug('Le paramètre idPlanning doit être un entier positif. Valeur reçue: {idPlanning}', [
                 'idPlanning' => $idPlanning,
             ]);
-            return $this->json(['message' => 'Le paramètre idPlanning doit être un entier positif.'], 400);
+            throw new BadRequestHttpException('Id du planning manquant');
         }
 
         $result = $this->planningVueRepository->getNonWorkingDates($idPlanning);
@@ -130,7 +130,7 @@ class PlanningVueController extends AbstractController
     }
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     #[Route('/mobile/display', name: 'api_mobile_get', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Affichage des évenement sur mobile')]
@@ -144,6 +144,9 @@ class PlanningVueController extends AbstractController
     }
 
 
+    /**
+     * @throws Exception
+     */
     #[Route('/mobile/settings', name: 'api_mobile_settings_get', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Affichage des évenement sur mobile')]
     public function getAffichageSettingsMobileSettings(#[CurrentUser] Session $user) :JsonResponse{
@@ -156,6 +159,9 @@ class PlanningVueController extends AbstractController
     }
 
 
+    /**
+     * @throws Exception
+     */
     #[Route('/mobile/save', name: 'api_mobile_settings_post', methods: ['POST'])]
     public function getAffichageSettingsMobileSettingsSave(#[CurrentUser] Session $user, Request $request): JsonResponse
     {
@@ -174,6 +180,9 @@ class PlanningVueController extends AbstractController
 
     }
 
+    /**
+     * @throws Exception
+     */
     #[Route('/setLastVue', name: 'api_set_last_vue', methods: ['POST'])]
     #[OA\Response(response: 200, description: 'Met à jour la dernière vue d\'un utilisateur pour un planning donné')]
     #[OA\Response(response: 400, description: 'Paramètre idVue manquant ou invalide')]
@@ -186,7 +195,7 @@ class PlanningVueController extends AbstractController
             $this->logger->debug('Le paramètre idVue doit être un entier positif. Valeur reçue: {idVue}', [
                 'idVue' => $data['idVue'],
             ]);
-            return $this->json(['message' => 'Le paramètre idVue doit être un entier positif.'], 400);
+            throw new BadRequestHttpException('Id du planning manquant');
         }
             $this->planningVueRepository->setLastVue($user, $data['idVue']);
             return $this->json(['message' => 'La dernière vue a été mise à jour avec succès.']);
@@ -194,7 +203,9 @@ class PlanningVueController extends AbstractController
     }
 
 
-    // POST /api/planning/{idPlanning}/non-working-dates Ajout d'un jour non travaillé
+    /**
+     * @throws Exception
+     */
     #[Route('/non-working-dates', name: 'api_add_non-working-dates', methods: ['POST'])]
     #[IsGranted('VUE_CREATE_DATE', message: 'Vous n\'avez pas la permission de créer cette journée.')]
     public function addNonWorkingDates(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
@@ -203,7 +214,7 @@ class PlanningVueController extends AbstractController
         $idPlanning = $request->headers->get('X-Planning-Id');
 
         if (!$idPlanning) {
-            return $this->json(['message' => 'Id du planning manquant'], 400);
+            throw new BadRequestHttpException('Id du planning manquant');
         }
 
         $data = $request->toArray();
@@ -221,6 +232,9 @@ class PlanningVueController extends AbstractController
     }
 
 
+    /**
+     * @throws \Throwable
+     */
     #[Route('/vue', name: 'api_vue_create', methods: ['POST'])]
     #[IsGranted('VUE_CREATE', message: 'Vous n\'avez pas la permission de créer de vue.')]
     public function addVue(#[CurrentUser] Session $user, Request $request): JsonResponse
@@ -228,7 +242,7 @@ class PlanningVueController extends AbstractController
         $idPlanning = $request->headers->get('X-Planning-Id');
 
         if (!$idPlanning) {
-            return $this->json([ 'message' => 'Id du planning manquant'], 400);
+            throw new BadRequestHttpException('Id du planning manquant');
         }
 
         $data = $request->toArray();
@@ -236,7 +250,7 @@ class PlanningVueController extends AbstractController
         $planningVue = $data['planningVue'];
 
         if (!$planningVue){
-            return $this->json(['message' => 'Données de la vue manquantes'], 400);
+            throw new BadRequestHttpException('Données de la vue manquantes');
         }
 
         $filtrePerso = $data['filtrePerso'];
@@ -259,6 +273,9 @@ class PlanningVueController extends AbstractController
 
     }
 
+    /**
+     * @throws Exception
+     */
     #[Route('/{idDate}/non-working-dates', name: 'api_non-working-dates', methods: ['DELETE'])]
     #[IsGranted('VUE_EDIT_DATE', message: 'Vous n\'avez pas la permission de supprimer cette journée.')]
     public function deleteNonWorkingDates(Request $request, int $idDate, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
@@ -266,7 +283,7 @@ class PlanningVueController extends AbstractController
         $idPlanning = $request->headers->get('X-Planning-Id');
 
         if (!$idPlanning) {
-            return $this->json(['message' => 'Id du planning manquant'], 400);
+            throw new BadRequestHttpException('Id du planning manquant');
         }
 
         $result = $this->planningVueRepository->deleteNonWorkingDates($idDate);
@@ -289,7 +306,7 @@ class PlanningVueController extends AbstractController
         $idPlanning = $request->headers->get('X-Planning-Id');
 
         if (!$idPlanning) {
-            return $this->json(['message' => 'Id du planning manquant'], 400);
+            throw new BadRequestHttpException('Id du planning manquant');
         }
 
         $cacheKey = 'edit_config_' . $idPlanning . '_' . $id;
@@ -302,7 +319,7 @@ class PlanningVueController extends AbstractController
 
 
         if ($ownerId !== $currentUserId) {
-            return $this->json(['message' => 'Cette configuration est actuellement en cours d\'édition.'], 409);
+            throw new ConflictHttpException("Cette configuration est actuellement en cours d'édition.");
         }
 
         $this->notifier->notifyPlanningChange(
@@ -315,13 +332,16 @@ class PlanningVueController extends AbstractController
         return $this->json(['message' => 'La configuration a été verrouillée avec succès.']);
     }
 
+    /**
+     * @throws Exception
+     */
     #[Route('/vue/{id}', name: 'api_vue', methods: ['PUT'])]
     #[IsGranted('VUE_EDIT', message: 'Vous n\'avez pas la permission de modifier cette vue.')]
     public function setvue(int $id, LoggerInterface $logger, Request $request): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
         if (!$idPlanning) {
-            return $this->json(['message' => 'Id du planning manquant'], 400);
+            throw new BadRequestHttpException('Id du planning manquant');
         }
 
         $data = $request->toArray();
@@ -334,13 +354,13 @@ class PlanningVueController extends AbstractController
         $planningVue = $data['planningVue'];
 
         if (!$planningVue)
-            return $this->json(['message' => 'Données de la vue manquantes'], 400);{
+            throw new BadRequestHttpException('Données de la vue manquantes');{
         }
 
         $filtrePerso = $data['filtrePerso'];
 
         if (is_null($filtrePerso)){
-            return $this->json(['message' => 'Données du filtre perso manquantes'], 400);
+            throw new BadRequestHttpException('Données du filtre perso manquantes');
         }
 
         $utilisateursAutorises = $data['utilisateursAutorises'] ?? [];
@@ -356,16 +376,23 @@ class PlanningVueController extends AbstractController
 
     }
 
+    /**
+     * @throws Exception
+     */
     #[Route('/vue/{id}', name: 'api_vue_delete', methods: ['DELETE'])]
     #[IsGranted('VUE_EDIT', message: 'Vous n\'avez pas la permission de supprimer cette vue.')]
     public function deleteVue(int $id, LoggerInterface $logger, Request $request,  #[CurrentUser] Session $user): JsonResponse{
         $idPlanning = $request->headers->get('X-Planning-Id');
         if (!$idPlanning) {
-            return $this->json(['message' => 'Id du planning manquant'], 400);
+            throw new BadRequestHttpException('Id du planning manquant');
         }
 
 
         $result = $this->planningVueRepository->deleteVue($id, $logger);
+
+        if (!$result) {
+            return $this->json(['message' => 'Aucune vue n\'a été supprimée (ID introuvable)'], 404);
+        }
 
 
         $this->notifier->notifyPlanningChange(

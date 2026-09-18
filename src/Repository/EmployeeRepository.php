@@ -21,7 +21,7 @@ class EmployeeRepository extends ServiceEntityRepository
     /**
      * @throws Exception
      */
-    public function getEmployeelist(int $idPlanningVue, ?int $id = null)
+    public function getEmployeelist(?int $idPlanningVue, ?int $id = null): array
     {
         $conn = $this->getEntityManager()->getConnection();
         $sql = 'EXEC ps_PlanningEmployeeSelect @Id = :Id, @IdPlanningVue = :IdPlanningVue';
@@ -41,7 +41,7 @@ class EmployeeRepository extends ServiceEntityRepository
                 'IdPersonnel' => $row['Id'], // Adapte selon le nom de ton ID
                 'Nom' => $row['Nom'],
                 'Prenom' => $row['Prenom'],
-                'Actif' => $row['Actif'] === 1,
+                'Actif' => (int)$row['Actif'] === 1,
                 'Type' => $row['Type'],
                 'PoleActivite' => $row['IdPoleActivite'],
                 'Equipe' => $row['IdEquipe'],
@@ -52,7 +52,11 @@ class EmployeeRepository extends ServiceEntityRepository
 
     }
 
-    public function getEmployeePagination(int $limit, int $pageNumber, string $query, string $codes, LoggerInterface $logger){
+    /**
+     * @throws Exception
+     */
+    public function getEmployeePagination(int $limit, int $pageNumber, string $query, string $codes, LoggerInterface $logger): array
+    {
         $conn = $this->getEntityManager()->getConnection();
         $sql = 'EXEC ps_PlanningEmployeeSelectSearch @Limit = :Limit, @PageNumber = :PageNumber, @Query= :Query, @Codes= :Codes';
         $params = [
@@ -79,7 +83,7 @@ class EmployeeRepository extends ServiceEntityRepository
                 'Equipe' => $row['IdEquipe'],
             ];
         }
-        $ligneTotal = $resultSet[0]['TotalLignes'] ?? 0;
+        $ligneTotal = !empty($resultSet) ? (int)$resultSet[0]['TotalLignes'] : 0;
 
         $logger->debug("Données structurées après transformation", ['structuredData' => $structuredData, 'TotalLignes' => $ligneTotal]);
         return
@@ -91,25 +95,28 @@ class EmployeeRepository extends ServiceEntityRepository
     }
 
 
+    /**
+     * @throws Exception
+     */
     public function setEquipeEmployee(int $id, Array $data, LoggerInterface $logger): int
     {
-        try {
-            $conn = $this->getEntityManager()->getConnection();
-            $logger->debug("Appel de la procédure stockée ps_EmployeeUpdateEquipe avec les paramètres", ['Id' => $id, 'Type' => $data['Type'], 'IdEquipe' => $data['IdEquipe']]);
-            $sql = 'EXEC ps_EmployeeUpdateEquipe @Id = :Id, @Type = :Type, @IdEquipe = :IdEquipe';
-            $params = [
-                'Id' => $id,
-                'Type' => $data['Type'],
-                'IdEquipe' => $data['IdEquipe'],
-            ];
+        $conn = $this->getEntityManager()->getConnection();
+        $logger->debug("Appel de la procédure stockée ps_EmployeeUpdateEquipe avec les paramètres", ['Id' => $id, 'Type' => $data['Type'], 'IdEquipe' => $data['IdEquipe']]);
+        $sql = 'EXEC ps_EmployeeUpdateEquipe @Id = :Id, @Type = :Type, @IdEquipe = :IdEquipe';
+        $params = [
+            'Id' => $id,
+            'Type' => $data['Type'],
+            'IdEquipe' => $data['IdEquipe'],
+        ];
 
-            $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+        $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
-            return $result[0]['LignesModifiees'];
-
-        } catch (Exception $e) {
-            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
+        if (empty($result)) {
+            $logger->error("La procédure stockée ps_EmployeeUpdateEquipe n'a pas renvoyé de résultat pour l'employé avec l'ID: $id");
+            throw new \RuntimeException("Erreur lors de la mise à jour de l'équipe pour l'employé avec l'ID: $id");
         }
+
+        return $result[0]['LignesModifiees'];
     }
 
 

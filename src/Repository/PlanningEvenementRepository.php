@@ -9,6 +9,7 @@ use Doctrine\DBAL\Exception;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
@@ -35,7 +36,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
         $ressources = [];
 
         $currentUser = $this->security->getUser();
-        $currentUserId = $currentUser ? $currentUser->getUserIdentifier() : null;
+        $currentUserId = $currentUser?->getUserIdentifier();
 
         $cacheKeys = [];
         foreach ($data as $row) {
@@ -112,245 +113,241 @@ class PlanningEvenementRepository extends ServiceEntityRepository
             }
         }
 
-        $structuredData = [
+        return [
             'appointments' => $appointments,
 
             // array_values() enlève les clés (les IDs) du tableau associatif
             // pour générer un vrai tableau JSON avec des crochets [ {..}, {..} ]
             'ressources'   => array_values($ressources)
         ];
-
-        return $structuredData;
-    }
-
-    /**
-     * @return PlanningEvenement[] Returns an array of PlanningEvenement objects
-     */
-    public function findEventsByDate(\DateTimeInterface $dateStart, \DateTimeInterface $dateEnd, int $idPlanning, ?int $idPlanningVue, ?int $idEmploye): array
-    {
-
-
-        try {
-            $startOfDay = (clone $dateStart)->setTime(0, 0, 0);
-            $endOfDay = (clone $dateEnd)->setTime(23, 59, 59);
-
-            $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningEvenementSelect @StartDate = :StartDate, @EndDate = :EndDate, @IdPlanningVue = :IdPlanningVue, @IdEmploye = :IdEmploye';
-            $params = [
-                'StartDate' => $startOfDay->format('Y-m-d\TH:i:s'),
-                'EndDate'   => $endOfDay->format('Y-m-d\TH:i:s'),
-                'IdPlanningVue' => $idPlanningVue,
-                'IdEmploye' => $idEmploye
-            ];
-
-             $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
-
-
-            return $this->structuredData($result, $idPlanning);
-
-        } catch (Exception $e) {
-            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
-        }
-    }
-
-    public function findEventById(int $id, LoggerInterface $logger, int $idPlanning, int $idPlanningVue): array
-    {
-        try {
-            $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningEvenementSelect @Id = :Id, @IdPlanningVue = :IdPlanningVue';
-            $params = [
-                'Id' => $id,
-                'IdPlanningVue' => $idPlanningVue
-            ];
-            $result = $conn->executeQuery($sql, $params)->fetchAssociative();
-
-            if (!$result) {
-                return [];
-            }
-
-            $logger->debug('Event found: ' . json_encode($result));
-
-            return $this->structuredData($result, $idPlanning);
-        }catch (Exception $e) {
-            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
-        }
-
-    }
-
-    public function findEventsByEmployee(int $employeeId, string $type, int $idPlanning, int $idPlanningVue): array
-    {
-        try {
-            $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningEvenementSelect @IdEmploye = :IdEmployee, @IdPlanningVue = :IdPlanningVue';
-            $params = [
-                'IdEmployee' => $employeeId,
-                'IdPlanningVue' => $idPlanningVue
-            ];
-            $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
-
-            return $this->structuredData($result, $idPlanning);
-
-        } catch (Exception $e) {
-            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
-        }
-    }
-
-    public function createEvent(array $data, LoggerInterface $logger, int $idPlanning): array
-    {
-        try {
-            $debutObj = new \DateTime()->setTimestamp((int)($data['DebutPlanningEvenement'] / 1000));
-            $finObj   = new \DateTime()->setTimestamp((int)($data['FinPlanningEvenement'] / 1000));
-
-            $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningEvenementInsert
-                    @IdEmploye = :IdEmploye,
-                    @DebutPlanningEvenement = :DebutPlanningEvenement,
-                    @FinPlanningEvenement = :FinPlanningEvenement,
-                    @AnnotationPlanningEvenement = :AnnotationPlanningEvenement,
-                    @IdPlanningRessource = :IdPlanningRessource,
-                    @IdPlanningEtiquette = :IdPlanningEtiquette,
-                    @PlanningEvenementPriorite = :PlanningEvenementPriorite
-            ';
-            $params = [
-                'IdEmploye' => $data['IdEmploye'],
-                'DebutPlanningEvenement' => $debutObj->format('Y-m-d\TH:i:s'),
-                'FinPlanningEvenement' => $finObj->format('Y-m-d\TH:i:s'),
-                'AnnotationPlanningEvenement' => $data['AnnotationPlanningEvenement'] ?? null,
-                'IdPlanningRessource' => $data['IdPlanningRessource'],
-                'IdPlanningEtiquette' => $data['IdPlanningEtiquette'] ?? null,
-                'PlanningEvenementPriorite' => $data['PlanningEvenementPriorite'] ?? null,
-            ];
-
-            $logger->debug('Executing SQL: ' . $sql . ' with params: ' . json_encode($params));
-            $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
-
-            if (!$result) {
-                throw new \Exception("Erreur : l'événement n'a pas pu être créé.");
-            }
-            return $this->structuredData($result, $idPlanning);
-        } catch (Exception $e) {
-            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
-        }
-    }
-
-    public function updateEvent(int $id, array $data)
-    {
-        try{
-
-            $debutObj = new \DateTime()->setTimestamp((int)($data['DebutPlanningEvenement'] / 1000))->setTimezone(new \DateTimeZone('Europe/Paris'));
-            $finObj   = new \DateTime()->setTimestamp((int)($data['FinPlanningEvenement'] / 1000))->setTimezone(new \DateTimeZone('Europe/Paris'));
-
-
-            $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningEvenementUpdate @IdEvenement = :IdEvenement, @IdEmploye = :IdEmploye, @DebutPlanningEvenement = :DebutPlanningEvenement, @FinPlanningEvenement = :FinPlanningEvenement, @AnnotationPlanningEvenement = :AnnotationPlanningEvenement, @IdPlanningRessource = :IdPlanningRessource, @IdPlanningEtiquette = :IdPlanningEtiquette, @Priorite = :Priorite';
-            $params = [
-                'IdEvenement' => $id,
-                'IdEmploye' => $data['IdEmploye'] ?? null,
-                'DebutPlanningEvenement' => $debutObj->format('Y-m-d\TH:i:s'),
-                'FinPlanningEvenement' => $finObj->format('Y-m-d\TH:i:s'),
-                'AnnotationPlanningEvenement' => $data['AnnotationPlanningEvenement'] ?? null,
-                'IdPlanningRessource' => $data['IdPlanningRessource'] ?? ($data['Ressource']['IdPlanningRessource'] ?? null) ?? null,
-                'IdPlanningEtiquette' => $data['IdPlanningEtiquette'] ?? null,
-                'Priorite' => $data['PlanningEvenementPriorite']
-            ];
-            $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
-
-            $structuredData = [
-                'IdPlanningEvenement' => (int)$result[0]['IdPlanningEvenement'],
-                'DebutPlanningEvenement' => (int)$result[0]['DebutPlanningEvenement'],
-                'FinPlanningEvenement' => (int)$result[0]['FinPlanningEvenement'],
-                'AnnotationPlanningEvenement' => $result[0]['AnnotationPlanningEvenement'],
-                'Etiquette' => [
-                    'IdPlanningEtiquette' => $result[0]['IdPlanningEtiquette'] ?? null,
-                    'LibelleLongPlanningEtiquette' => $result[0]['LibelleLongPlanningEtiquette'],
-                    'LibelleCourtPlanningEtiquette' => $result[0]['LibelleCourtPlanningEtiquette']
-                ],
-                'IdPlanningRessource' => (int)$result[0]['IdPlanningRessource'],
-                'IdEmploye' => (int)$result[0]['IdEmployee'],
-                'PlanningEvenementPriorite' => (int)$result[0]['PlanningEvenementPriorite']
-            ];
-
-
-
-
-
-            return ['LignesModifiees' => $result[0]['LignesModifiees'], 'data' => $structuredData];
-
-        }catch (Exception $e) {
-            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
-        }
-    }
-
-    public function deleteEvent(int $id)
-    {
-        try {
-            $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningEvenementDelete @IdEvenement = :IdEvenement';
-            $params = [
-                'IdEvenement' => $id,
-            ];
-            $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
-
-            return $result[0]['LignesSupprimees'];
-        } catch (Exception $e) {
-            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
-        }
-    }
-
-    public function divideEvent(int $id, array $data, LoggerInterface $logger): array
-    {
-        try {
-            $debutObj = new \DateTime()->setTimestamp((int)($data['DateCoupure'] / 1000));
-
-            $logger->debug('Dividing event with ID: ' . $id . ' at date: ' . $debutObj->format('Y-m-d\TH:i:s'));
-            $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_PlanningEvenementDivide @IdEvenement = :IdEvenement, @DateCoupure = :DateCoupure';
-            $params = [
-                'IdEvenement' => $id,
-                'DateCoupure' => $debutObj->format('Y-m-d\TH:i:s'),
-            ];
-            $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
-
-            $structuredData = [
-                'IdPlanningEvenement' => (int)$result[0]['IdPlanningEvenement'],
-                'DebutPlanningEvenement' => (int)$result[0]['DebutPlanningEvenement'],
-                'FinPlanningEvenement' => (int)$result[0]['FinPlanningEvenement'],
-                'AnnotationPlanningEvenement' => $result[0]['AnnotationPlanningEvenement'],
-                'Etiquette' => [
-                    'IdPlanningEtiquette' => $result[0]['IdPlanningEtiquette'] ?? null,
-                    'LibelleLongPlanningEtiquette' => $result[0]['LibelleLongPlanningEtiquette'],
-                    'LibelleCourtPlanningEtiquette' => $result[0]['LibelleCourtPlanningEtiquette']
-                ],
-                'IdPlanningRessource' => (int)$result[0]['IdPlanningRessource'],
-                'IdEmploye' => (int)$result[0]['IdEmployee'],
-                'PlanningEvenementPriorite' => (int)$result[0]['PlanningEvenementPriorite']
-            ];
-
-            return $structuredData;
-        } catch (Exception $e) {
-            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
-        }
     }
 
     /**
      * @throws Exception
      */
+    public function findEventsByDate(\DateTimeInterface $dateStart, \DateTimeInterface $dateEnd, int $idPlanning, ?int $idPlanningVue, ?int $idEmploye): array
+    {
+
+
+        $startOfDay = (clone $dateStart)->setTime(0, 0, 0);
+        $endOfDay = (clone $dateEnd)->setTime(23, 59, 59);
+
+        $conn = $this->getEntityManager()->getConnection();
+        $sql = 'EXEC ps_PlanningEvenementSelect @StartDate = :StartDate, @EndDate = :EndDate, @IdPlanningVue = :IdPlanningVue, @IdEmploye = :IdEmploye';
+        $params = [
+            'StartDate' => $startOfDay->format('Y-m-d\TH:i:s'),
+            'EndDate'   => $endOfDay->format('Y-m-d\TH:i:s'),
+            'IdPlanningVue' => $idPlanningVue,
+            'IdEmploye' => $idEmploye
+        ];
+
+         $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+        return $this->structuredData($result, $idPlanning);
+
+    }
+
+
+    /**
+     * @throws Exception
+     */
+    public function findEventById(int $id, LoggerInterface $logger, int $idPlanning, int $idPlanningVue): array
+    {
+        $conn = $this->getEntityManager()->getConnection();
+        $sql = 'EXEC ps_PlanningEvenementSelect @Id = :Id, @IdPlanningVue = :IdPlanningVue';
+        $params = [
+            'Id' => $id,
+            'IdPlanningVue' => $idPlanningVue
+        ];
+        $result = $conn->executeQuery($sql, $params)->fetchAssociative();
+
+        if (!$result) {
+            return [];
+        }
+
+        $logger->debug('Event found: ' . json_encode($result));
+
+        return $this->structuredData($result, $idPlanning);
+
+
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function findEventsByEmployee(int $employeeId, int $idPlanning, int $idPlanningVue): array
+    {
+        $conn = $this->getEntityManager()->getConnection();
+        $sql = 'EXEC ps_PlanningEvenementSelect @IdEmploye = :IdEmployee, @IdPlanningVue = :IdPlanningVue';
+        $params = [
+            'IdEmployee' => $employeeId,
+            'IdPlanningVue' => $idPlanningVue
+        ];
+        $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+        return $this->structuredData($result, $idPlanning);
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function createEvent(array $data, LoggerInterface $logger, int $idPlanning): array
+    {
+        $debutObj = new \DateTime()->setTimestamp((int)($data['DebutPlanningEvenement'] / 1000));
+        $finObj   = new \DateTime()->setTimestamp((int)($data['FinPlanningEvenement'] / 1000));
+
+        $conn = $this->getEntityManager()->getConnection();
+        $sql = 'EXEC ps_PlanningEvenementInsert
+                @IdEmploye = :IdEmploye,
+                @DebutPlanningEvenement = :DebutPlanningEvenement,
+                @FinPlanningEvenement = :FinPlanningEvenement,
+                @AnnotationPlanningEvenement = :AnnotationPlanningEvenement,
+                @IdPlanningRessource = :IdPlanningRessource,
+                @IdPlanningEtiquette = :IdPlanningEtiquette,
+                @PlanningEvenementPriorite = :PlanningEvenementPriorite
+        ';
+        $params = [
+            'IdEmploye' => $data['IdEmploye'],
+            'DebutPlanningEvenement' => $debutObj->format('Y-m-d\TH:i:s'),
+            'FinPlanningEvenement' => $finObj->format('Y-m-d\TH:i:s'),
+            'AnnotationPlanningEvenement' => $data['AnnotationPlanningEvenement'] ?? null,
+            'IdPlanningRessource' => $data['IdPlanningRessource'],
+            'IdPlanningEtiquette' => $data['IdPlanningEtiquette'] ?? null,
+            'PlanningEvenementPriorite' => $data['PlanningEvenementPriorite'] ?? null,
+        ];
+
+        $logger->debug('Executing SQL: ' . $sql . ' with params: ' . json_encode($params));
+        $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+        if (!$result) {
+            throw new \Exception("Erreur : l'événement n'a pas pu être créé.");
+        }
+        return $this->structuredData($result, $idPlanning);
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function updateEvent(int $id, array $data): array
+    {
+
+        $debutObj = new \DateTime()->setTimestamp((int)($data['DebutPlanningEvenement'] / 1000))->setTimezone(new \DateTimeZone('Europe/Paris'));
+        $finObj   = new \DateTime()->setTimestamp((int)($data['FinPlanningEvenement'] / 1000))->setTimezone(new \DateTimeZone('Europe/Paris'));
+
+
+        $conn = $this->getEntityManager()->getConnection();
+        $sql = 'EXEC ps_PlanningEvenementUpdate @IdEvenement = :IdEvenement, @IdEmploye = :IdEmploye, @DebutPlanningEvenement = :DebutPlanningEvenement, @FinPlanningEvenement = :FinPlanningEvenement, @AnnotationPlanningEvenement = :AnnotationPlanningEvenement, @IdPlanningRessource = :IdPlanningRessource, @IdPlanningEtiquette = :IdPlanningEtiquette, @Priorite = :Priorite';
+        $params = [
+            'IdEvenement' => $id,
+            'IdEmploye' => $data['IdEmploye'] ?? null,
+            'DebutPlanningEvenement' => $debutObj->format('Y-m-d\TH:i:s'),
+            'FinPlanningEvenement' => $finObj->format('Y-m-d\TH:i:s'),
+            'AnnotationPlanningEvenement' => $data['AnnotationPlanningEvenement'] ?? null,
+            'IdPlanningRessource' => $data['IdPlanningRessource'] ?? ($data['Ressource']['IdPlanningRessource'] ?? null) ?? null,
+            'IdPlanningEtiquette' => $data['IdPlanningEtiquette'] ?? null,
+            'Priorite' => $data['PlanningEvenementPriorite']
+        ];
+        $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+
+        if (empty($result)) {
+            throw new \RuntimeException("La procédure stockée n'a retourné aucun résultat pour l'événement $id.");
+        }
+
+        $structuredData = [
+            'IdPlanningEvenement' => (int)$result[0]['IdPlanningEvenement'],
+            'DebutPlanningEvenement' => (int)$result[0]['DebutPlanningEvenement'],
+            'FinPlanningEvenement' => (int)$result[0]['FinPlanningEvenement'],
+            'AnnotationPlanningEvenement' => $result[0]['AnnotationPlanningEvenement'],
+            'Etiquette' => [
+                'IdPlanningEtiquette' => $result[0]['IdPlanningEtiquette'] ?? null,
+                'LibelleLongPlanningEtiquette' => $result[0]['LibelleLongPlanningEtiquette'],
+                'LibelleCourtPlanningEtiquette' => $result[0]['LibelleCourtPlanningEtiquette']
+            ],
+            'IdPlanningRessource' => (int)$result[0]['IdPlanningRessource'],
+            'IdEmploye' => (int)$result[0]['IdEmployee'],
+            'PlanningEvenementPriorite' => (int)$result[0]['PlanningEvenementPriorite']
+        ];
+        return ['LignesModifiees' => $result[0]['LignesModifiees'], 'data' => $structuredData];
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function deleteEvent(int $id) : bool
+    {
+        $conn = $this->getEntityManager()->getConnection();
+        $sql = 'EXEC ps_PlanningEvenementDelete @IdEvenement = :IdEvenement';
+        $params = [
+            'IdEvenement' => $id,
+        ];
+        $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+        if ($result[0]['LignesSupprimees'] === 0) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function divideEvent(int $id, array $data, LoggerInterface $logger): array
+    {
+        $debutObj = new \DateTime()->setTimestamp((int)($data['DateCoupure'] / 1000));
+
+        $logger->debug('Dividing event with ID: ' . $id . ' at date: ' . $debutObj->format('Y-m-d\TH:i:s'));
+        $conn = $this->getEntityManager()->getConnection();
+        $sql = 'EXEC ps_PlanningEvenementDivide @IdEvenement = :IdEvenement, @DateCoupure = :DateCoupure';
+        $params = [
+            'IdEvenement' => $id,
+            'DateCoupure' => $debutObj->format('Y-m-d\TH:i:s'),
+        ];
+        $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+        if (empty($result)) {
+            throw new \RuntimeException("La procédure stockée n'a retourné aucun résultat pour l'événement $id lors de la division.");
+        }
+
+        $structuredData = [
+            'IdPlanningEvenement' => (int)$result[0]['IdPlanningEvenement'],
+            'DebutPlanningEvenement' => (int)$result[0]['DebutPlanningEvenement'],
+            'FinPlanningEvenement' => (int)$result[0]['FinPlanningEvenement'],
+            'AnnotationPlanningEvenement' => $result[0]['AnnotationPlanningEvenement'],
+            'Etiquette' => [
+                'IdPlanningEtiquette' => $result[0]['IdPlanningEtiquette'] ?? null,
+                'LibelleLongPlanningEtiquette' => $result[0]['LibelleLongPlanningEtiquette'],
+                'LibelleCourtPlanningEtiquette' => $result[0]['LibelleCourtPlanningEtiquette']
+            ],
+            'IdPlanningRessource' => (int)$result[0]['IdPlanningRessource'],
+            'IdEmploye' => (int)$result[0]['IdEmployee'],
+            'PlanningEvenementPriorite' => (int)$result[0]['PlanningEvenementPriorite']
+        ];
+
+        return $structuredData;
+    }
+
+    /**
+     * @throws Exception
+     * @throws \Throwable
+     */
     public function repeatEvent(array $data, int $idPlanning): array
     {
         $conn = $this->getEntityManager()->getConnection();
 
-        try {
+        $idEmploye = $data['IdEmploye'];
+        $idRessource = $data['IdPlanningRessource'];
+        $annotation = $data['AnnotationPlanningEvenement'] ?? null;
+
+        return $conn->transactional(function ($conn) use ($idPlanning, $data, $idEmploye, $idRessource, $annotation) {
             $createdIds = [];
             $results = [];
-            $idEmploye = $data['IdEmploye'];
-            $idRessource = $data['IdPlanningRessource'];
-            $annotation = $data['AnnotationPlanningEvenement'] ?? null;
 
-            $conn->beginTransaction();
             foreach ($data['Date'] as $periode) {
 
-                $debut = (new \DateTime())->setTimestamp((int)($periode['DebutPlanningEvenement'] / 1000))->format('Y-m-d\TH:i:s');
-                $fin = (new \DateTime())->setTimestamp((int)($periode['FinPlanningEvenement'] / 1000))->format('Y-m-d\TH:i:s');
+                $debut = new \DateTime()->setTimestamp((int)($periode['DebutPlanningEvenement'] / 1000))->format('Y-m-d\TH:i:s');
+                $fin = new \DateTime()->setTimestamp((int)($periode['FinPlanningEvenement'] / 1000))->format('Y-m-d\TH:i:s');
 
 
                 $sql = 'EXEC ps_PlanningEvenementInsert @IdEmploye = :IdEmployee, @DebutPlanningEvenement = :DebutPlanningEvenement, @FinPlanningEvenement = :FinPlanningEvenement, @AnnotationPlanningEvenement = :AnnotationPlanningEvenement, @IdPlanningRessource = :IdPlanningRessource';
@@ -361,43 +358,40 @@ class PlanningEvenementRepository extends ServiceEntityRepository
                     'AnnotationPlanningEvenement' => $annotation,
                     'IdPlanningRessource' => $idRessource
                 ];
-                $result = $conn->executeQuery($sql, $params)->fetchAllAssociative()[0];
-                $id = $result['IdPlanningEvenement'];
-                $createdIds[] = $id;
-                $results[] = $result;
+                $dbResult = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+                if (empty($dbResult)) {
+                    throw new \RuntimeException("L'insertion de la répétition a échoué pour la période débutant le $debut (aucun résultat).");
+                }
+
+                $row = $dbResult[0];
+                $createdIds[] = $row['IdPlanningEvenement'];
+                $results[] = $row;
+
             }
-            $conn->commit();
             return ['ids' => $createdIds, 'data' => $this->structuredData($results, $idPlanning)];
-        }catch (\Exception $e) {
-            $conn->rollBack();
-            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
-        }
+        });
     }
 
-    public function deleteEvents(array $data)
+    /**
+     * @throws \Throwable
+     */
+    public function deleteEvents(array $ids): bool
     {
-        try {
-            $conn = $this->getEntityManager()->getConnection();
-            $conn->beginTransaction();
+        $conn = $this->getEntityManager()->getConnection();
 
-            foreach ($data['Ids'] as $id) {
+        return $conn->transactional(function ($conn) use ($ids) {
+
+            foreach ($ids as $id) {
                 $sql = 'EXEC ps_PlanningEvenementDelete @IdEvenement = :IdEvenement';
-                $params = [
-                    'IdEvenement' => $id,
-                ];
-                $conn->executeStatement($sql, $params);
+                $result = $conn->executeStatement($sql, ['IdEvenement' => $id]);
+
+                // Si la suppression échoue, on LÈVE UNE EXCEPTION pour annuler toute la transaction
+                if ($result === 0) {
+                    throw new NotFoundHttpException("L'événement avec l'ID $id est introuvable.");
+                }
             }
-
-            $conn->commit();
-            return 1;
-        } catch (\Throwable $e) {
-
-            if (isset($conn) && $conn->isTransactionActive()) {
-                $conn->rollBack();
-            }
-
-            // 5. On relance l'erreur pour que le contrôleur puisse renvoyer une erreur 500 au front
-            throw new \Exception('Erreur lors de la suppression en masse : ' . $e->getMessage(), 0, $e);
-        }
+            return true;
+        });
     }
 }

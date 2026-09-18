@@ -15,22 +15,21 @@ class EquipeRepository extends ServiceEntityRepository
     }
 
 
-    public function getAllEquipes(int $idPlanningVue)
+    /**
+     * @throws Exception
+     */
+    public function getAllEquipes(int $idPlanningVue): array
     {
         $sql = 'EXEC ps_PlanningEquipeSelect @IdPlanningVue = :idPlanningVue';
         $conn = $this->getEntityManager()->getConnection();
 
-        try {
-            $rows = $conn->fetchAllAssociative($sql, ['idPlanningVue' => $idPlanningVue]);
-            $rows[] = [
-                'Id' => null,
-                'Nom' => 'Sans équipe',
-            ];
+        $rows = $conn->fetchAllAssociative($sql, ['idPlanningVue' => $idPlanningVue]);
+        $rows[] = [
+            'Id' => null,
+            'Nom' => 'Sans équipe',
+        ];
 
-            return $rows;
-        }catch (Exception $e){
-            throw new \Exception('Erreur lors de la récupération des équipes : ' . $e->getMessage());
-        }
+        return $rows;
     }
 
 

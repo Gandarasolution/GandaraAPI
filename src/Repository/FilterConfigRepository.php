@@ -16,39 +16,38 @@ class FilterConfigRepository extends ServiceEntityRepository
         parent::__construct($registry, PlanningEvenement::class);
     }
 
+    /**
+     * @throws Exception
+     */
     public function get(mixed $types, mixed $keys, LoggerInterface $logger)
     {
-        try {
-            $conn = $this->getEntityManager()->getConnection();
-            $sql = 'EXEC ps_GetDynamicFilterOptions @Keys = :Keys, @ViewType = :Types';
-            $params = [
-                'Keys' => trim($keys, '"'),
-                'Types' => $types
-            ];
 
-            $resultSet = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+        $conn = $this->getEntityManager()->getConnection();
+        $sql = 'EXEC ps_GetDynamicFilterOptions @Keys = :Keys, @ViewType = :Types';
+        $params = [
+            'Keys' => trim($keys, '"'),
+            'Types' => $types
+        ];
 
-            //$logger->debug("Résultat brut de la procédure stockée", ['resultSet' => $resultSet]);
+        $resultSet = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
-            $structuredData = [];
+        $structuredData = [];
 
-            foreach ($resultSet as $row) {
-                // On récupère la clé (ex: "etat") et la valeur (ex: "En cours")
-                $key = $row['FilterKey'];
-                $value = $row['FilterValue'];
+        foreach ($resultSet as $row) {
+            // On récupère la clé (ex: "etat") et la valeur (ex: "En cours")
+            $key = $row['FilterKey'];
+            $value = $row['FilterValue'];
 
-                // Si la clé n'existe pas encore dans notre tableau final, on l'initialise comme un tableau vide
-                if (!isset($structuredData[$key])) {
-                    $structuredData[$key] = [];
-                }
-
-                // On ajoute la valeur dans le tableau correspondant à la clé
-                $structuredData[$key][] = $value;
+            // Si la clé n'existe pas encore dans notre tableau final, on l'initialise comme un tableau vide
+            if (!isset($structuredData[$key])) {
+                $structuredData[$key] = [];
             }
 
-            return $structuredData;
-        } catch (Exception $e) {
-            throw new \Exception('Erreur lors de l\'exécution de la procédure stockée: ' . $e->getMessage());
+            // On ajoute la valeur dans le tableau correspondant à la clé
+            $structuredData[$key][] = $value;
         }
+
+        return $structuredData;
+
     }
 }

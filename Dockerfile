@@ -1,5 +1,4 @@
 # --- 1. ÉTAPE DE BASE ---
-# On utilise Debian au lieu d'Alpine pour une compatibilité parfaite avec SQL Server
 FROM php:8.4-fpm AS base
 
 # 1.1 Installation des dépendances système (gnupg2 et curl sont requis pour la clé MS)
@@ -10,6 +9,10 @@ RUN apt-get update && apt-get install -y \
     unixodbc-dev \
     unzip \
     git \
+    libfreetype6-dev \
+    libjpeg62-turbo-dev \
+    libpng-dev \
+    libwebp-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # 1.2 Ajout du dépôt officiel Microsoft (Debian 12 - Bookworm)
@@ -26,6 +29,9 @@ RUN docker-php-ext-install intl opcache \
     && pecl install redis sqlsrv pdo_sqlsrv \
     && docker-php-ext-enable redis sqlsrv pdo_sqlsrv \
     && rm -rf /tmp/pear
+
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
+    && docker-php-ext-install -j$(nproc) gd
 
 # 1.5 Installation de Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer

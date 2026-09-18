@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\PlanningNotification;
 use App\Entity\Session;
 use App\Repository\PlanningNotificationRepository;
+use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -24,6 +25,9 @@ class NotificationController extends AbstractController
         private EntityManagerInterface $entityManager
     ){}
 
+    /**
+     * @throws Exception
+     */
     #[Route('', name: 'list', methods: ['GET'])]
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de l\'employé pour lequel lister les notifications', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Liste des notifications de l\'employé')]
@@ -37,6 +41,7 @@ class NotificationController extends AbstractController
 
     /**
      * @throws \Exception
+     * @throws Exception
      */
     #[Route('', name: 'create', methods: ['POST'])]
     #[OA\RequestBody(
@@ -58,13 +63,12 @@ class NotificationController extends AbstractController
 
         $newNotificationId = $this->planningNotificationRepository->createNotification($data);
 
-
         return $this->json(['message' => 'Événement créé avec succès', 'IdPlanningNotification' => $newNotificationId], 201);
 
     }
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     #[Route('/{id}', name: 'update', methods: ['PUT'])]
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la notification à modifier', schema: new OA\Schema(type: 'integer'))]
@@ -105,7 +109,7 @@ class NotificationController extends AbstractController
 
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     #[Route('/read', name: 'read', methods: ['PATCH'])]
     #[OA\RequestBody(

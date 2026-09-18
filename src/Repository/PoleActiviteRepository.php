@@ -16,21 +16,20 @@ class PoleActiviteRepository extends ServiceEntityRepository
     }
 
 
+    /**
+     * @throws Exception
+     */
     public function getPoles(int $idPlanningVue) :array {
         $sql = 'EXEC ps_PlanningPoleActiviteSelect @IdPlanningVue = :idPlanningVue';
         $conn = $this->getEntityManager()->getConnection();
 
-        try {
-            $rows = $conn->fetchAllAssociative($sql, ['idPlanningVue' => $idPlanningVue]);
-            $rows[] = [
-                'Id' => null,
-                'Nom' => 'Sans pôle',
-            ];
+        $rows = $conn->fetchAllAssociative($sql, ['idPlanningVue' => $idPlanningVue]);
+        $rows[] = [
+            'Id' => null,
+            'Nom' => 'Sans pôle',
+        ];
 
-            return $rows;
-        }catch (Exception $e){
-            throw new \Exception('Erreur lors de la récupération des pôles d\'activité : ' . $e->getMessage());
-        }
+        return $rows;
     }
 
 }

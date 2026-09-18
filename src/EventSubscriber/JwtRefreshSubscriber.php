@@ -5,6 +5,7 @@ namespace App\EventSubscriber;
 use Lexik\Bundle\JWTAuthenticationBundle\Exception\JWTDecodeFailureException;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\TokenExtractor\TokenExtractorInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
@@ -13,23 +14,17 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 
 final class JwtRefreshSubscriber implements EventSubscriberInterface
 {
-    private JWTTokenManagerInterface $jwtManager;
-    private TokenStorageInterface $tokenStorage;
-    private string $cookieName;
-    private int $jwtTtl;
+
 
     public function __construct(
-        JWTTokenManagerInterface $jwtManager,
-        TokenStorageInterface $tokenStorage,
-        private TokenExtractorInterface $tokenExtractor,
-        string $cookieName,
-        int $jwtTtl
-    ) {
-        $this->jwtManager = $jwtManager;
-        $this->tokenStorage = $tokenStorage;
-        $this->cookieName = $cookieName;
-        $this->jwtTtl = $jwtTtl;
-    }
+        private JWTTokenManagerInterface         $jwtManager,
+        private TokenStorageInterface            $tokenStorage,
+        private readonly TokenExtractorInterface $tokenExtractor,
+        #[Autowire(env: 'JWT_NAME')]
+        private readonly string                  $cookieName,
+        #[Autowire(env: 'JWT_TTL')]
+        private readonly int                     $jwtTtl
+    ) {}
 
     public static function getSubscribedEvents(): array
     {
@@ -39,6 +34,9 @@ final class JwtRefreshSubscriber implements EventSubscriberInterface
         ];
     }
 
+    /**
+     * @throws \DateMalformedIntervalStringException
+     */
     public function onKernelResponse(ResponseEvent $event): void
     {
         // Ignorer les sous-requêtes
@@ -85,7 +83,7 @@ final class JwtRefreshSubscriber implements EventSubscriberInterface
             ->withHttpOnly(true)
             ->withSecure(true) // À passer à 'false' si tu testes en local sans HTTPS
             ->withSameSite('lax')
-            ->withExpires((new \DateTime())->add(new \DateInterval('PT' . $this->jwtTtl . 'S')));
+            ->withExpires(new \DateTimeImmutable()->add(new \DateInterval('PT' . $this->jwtTtl . 'S')));
 
         // 3. Ajouter le cookie à la réponse
         $event->getResponse()->headers->setCookie($cookie);
@@ -97,7 +95,7 @@ final class JwtRefreshSubscriber implements EventSubscriberInterface
             ->withSecure(true)
             ->withSameSite(Cookie::SAMESITE_NONE)
             ->withPath('/')
-            ->withExpires((new \DateTime())->add(new \DateInterval('PT' . $this->jwtTtl . 'S')));
+            ->withExpires(new \DateTimeImmutable()->add(new \DateInterval('PT' . $this->jwtTtl . 'S')));
 
         $event->getResponse()->headers->setCookie($cookie);
     }

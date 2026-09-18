@@ -4,12 +4,16 @@ namespace App\Controller;
 
 use App\Entity\Poleactivite;
 use App\Repository\PoleActiviteRepository;
+use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Nelmio\ApiDocBundle\Annotation\Model;
 use OpenApi\Attributes as OA;
+use function PHPUnit\Framework\throwException;
 
 #[Route('/api/pole-activites')]
 #[OA\Tag(name: 'Pôles d\'activité')]
@@ -22,13 +26,17 @@ class PoleActiviteController extends AbstractController
     )
     {}
 
+    /**
+     * @throws Exception
+     */
     #[Route('', name: 'pole_activite_list', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Liste de tous les pôles d\'activité')]
-    public function list(Request $request){
+    public function list(Request $request): JsonResponse
+    {
         $idPlanningVue = $request->headers->get('X-PlanningVue-Id');
 
         if (!$idPlanningVue) {
-            return $this->json(['message' => 'Id de la vue du planning manquante'], 400);
+            throw new BadRequestHttpException('Id de la vue du planning manquante');
         }
 
         $result = $this->poleActiviteRepository->getPoles((int)$idPlanningVue);
