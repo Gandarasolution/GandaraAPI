@@ -3,6 +3,7 @@
 namespace App\Security\Voter;
 
 use App\Entity\Planningjournontravaille;
+use App\Entity\Session;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception;
 use Psr\Log\LoggerInterface;
@@ -22,18 +23,16 @@ class NonWorkingDateVoter extends Voter
 
     protected function supports(string $attribute, mixed $subject): bool
     {
-        if ($attribute === self::CREATE_DATE) {
+        if (in_array($attribute, [self::CREATE_DATE, self::EDIT_DATE])) {
             return true;
         }
-
-        return $attribute == self::EDIT_DATE
-            && $subject instanceof Planningjournontravaille;
+        return false;
     }
 
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token, ?Vote $vote = null): bool
     {
         $user = $token->getUser();
-        if (!$user instanceof \App\Entity\Session) {
+        if (!$user instanceof Session) {
             return false;
         }
 

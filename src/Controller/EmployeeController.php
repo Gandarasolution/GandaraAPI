@@ -174,14 +174,6 @@ class EmployeeController extends AbstractController
             ], 400);
         }
 
-        $idEquipe = filter_var($data['IdEquipe'], FILTER_VALIDATE_INT);
-
-        if ($idEquipe === false) {
-            return $this->json([
-                'message' => 'Le champ "IdEquipe" doit être un entier valide.'
-            ], 400);
-        }
-
 
         $type = $data['Type'] ?? null;
         if (!$type || !in_array($type, ['SALARIE', 'INTERIM'])) {

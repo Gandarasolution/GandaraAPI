@@ -17,7 +17,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 class ImageRepository extends ServiceEntityRepository
 {
 
-    public function __construct(ManagerRegistry $registry, private UrlGeneratorInterface $router)
+    public function __construct(ManagerRegistry $registry, private UrlGeneratorInterface $router, private LoggerInterface $logger)
     {
         parent::__construct($registry, Image::class);
     }
@@ -117,23 +117,27 @@ class ImageRepository extends ServiceEntityRepository
     }
 
     /**
-     * Appelle la procédure stockée pour insérer l'image binaire
+     * Appelle la procédure stockée pour insérer l'image
      * @throws Exception
-     */
-    public function insertImageProcedure(string $pngBinaryData): int
-    {
-        $conn = $this->getEntityManager()->getConnection();
+     */ public function insertImageProcedure(string $pngBinaryData, ?string $libelleImage = null): int
+{
+    $conn = $this->getEntityManager()->getConnection();
 
-        $sql = 'EXEC ps_PlanningImageClientInsert @DataPlanningImage = :imageData';
-
-        $id = $conn->executeQuery($sql, ['imageData' => $pngBinaryData], [Types::BLOB])->fetchOne();
+    $sql = 'EXEC ps_PlanningImageInsertUpdateDelete @DataB64 = :imageData, @LibelleImage = :libelleImage';
 
 
-        if (!$id) {
-            throw new \RuntimeException('Erreur lors de l\'insertion de l\'image.');
-        }
 
-        return $id;
+    $id = $conn->executeQuery($sql, ['imageData' => $pngBinaryData, 'libelleImage' => $libelleImage])->fetchOne();
 
+
+    $this->logger->debug(sprintf('Image insérée avec l\'ID : %s', $id));
+
+    if (!$id) {
+        throw new \RuntimeException('Erreur lors de l\'insertion de l\'image.');
     }
+
+    return $id;
+
 }
+}
+

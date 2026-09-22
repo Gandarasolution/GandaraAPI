@@ -113,57 +113,65 @@ class ImageController extends AbstractController
     #[Route('/upload', name: 'api_image_upload', methods: ['POST'])]
     public function upload(Request $request, ImageRepository $imageRepository): JsonResponse
     {
-        /** @var UploadedFile $file */
-        $file = $request->files->get('image');
+        // 0. Récupération de l'image Base64 depuis le corps de la requête (JSON)
+        $payload = $request->toArray();
+        $base64Input = $payload['image'] ?? null;
 
-        if (!$file instanceof UploadedFile) {
+        if (!$base64Input) {
             return $this->json(['message' => 'Aucune image fournie.'], 400);
         }
 
-        // 1. Vérification du Poids (ex: Max 5 Mo)
+        // 1. Nettoyage de l'en-tête potentiel (ex: "data:image/jpeg;base64,") et décodage
+        $base64Clean = preg_replace('#^data:image/\w+;base64,#i', '', $base64Input);
+        $binaryData = base64_decode($base64Clean);
+
+        if ($binaryData === false) {
+            return $this->json(['message' => 'Encodage Base64 invalide.'], 400);
+        }
+
+        // 2. Vérification du Poids (ex: Max 5 Mo)
+        // strlen() compte le nombre d'octets de la chaîne binaire décodée
         $maxWeight = 5 * 1024 * 1024;
-        if ($file->getSize() > $maxWeight) {
+        if (strlen($binaryData) > $maxWeight) {
             return $this->json(['message' => 'L\'image est trop lourde. Maximum 5 Mo.'], 400);
         }
 
-        // 2. Vérification de la Taille (Dimensions)
-        $imageInfo = getimagesize($file->getPathname());
+        // 3. Vérification de la Taille (Dimensions) en mémoire
+        $imageInfo = getimagesizefromstring($binaryData);
         if ($imageInfo === false) {
-            return $this->json(['message' => 'Le fichier n\'est pas une image valide.'], 400);
+            return $this->json(['message' => 'Le format n\'est pas une image valide.'], 400);
         }
 
         $width = $imageInfo[0];
         $height = $imageInfo[1];
-        $mimeType = $imageInfo['mime'];
 
         if ($width < 100 || $height < 100 || $width > 500 || $height > 500) {
             return $this->json(['message' => 'Dimensions invalides (doit être entre 100x100 et 500x500).'], 400);
         }
 
-        // 3. Lecture de l'image selon son format d'origine
-        $gdImage = match ($mimeType) {
-            'image/jpeg' => imagecreatefromjpeg($file->getPathname()),
-            'image/png'  => imagecreatefrompng($file->getPathname()),
-            'image/webp' => imagecreatefromwebp($file->getPathname()),
-            default      => false,
-        };
+        // 4. Lecture de l'image (imagecreatefromstring gère automatiquement JPEG, PNG, WEBP...)
+        $gdImage = imagecreatefromstring($binaryData);
 
         if (!$gdImage) {
-            return $this->json(['message' => 'Format d\'image non supporté (JPEG, PNG, WEBP).'], 400);
+            return $this->json(['message' => 'Format d\'image non supporté par le serveur.'], 400);
         }
 
-        // 4. Conversion obligatoire en PNG (Capture dans le buffer de sortie)
+        // 5. Conversion obligatoire en PNG puis ré-encodage en Base64 "propre"
         ob_start();
-        // Le paramètre -1 laisse la compression par défaut, vous pouvez ajuster de 0 à 9
         imagepng($gdImage, null, -1);
         $pngBinaryData = ob_get_clean();
         imagedestroy($gdImage); // Libère la mémoire
 
-        // 5. Enregistrement en base via Procédure Stockée
-        $id = $imageRepository->insertImageProcedure($pngBinaryData);
+        // On encode le binaire PNG validé en Base64 pour l'envoi à la BDD
+        $finalBase64Image = base64_encode($pngBinaryData);
 
-        $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => $id], UrlGeneratorInterface::ABSOLUTE_URL);
-        return $this->json(['message' => 'Image vérifiée, convertie en PNG et sauvegardée avec succès !', 'image' => ['id' =>  $id, 'image' => $baseImageUrl]], 201);
+        // 6. Enregistrement en base via Procédure Stockée
+        $id = $imageRepository->insertImageProcedure($finalBase64Image);
+
+        return $this->json([
+            'message' => 'Image vérifiée, convertie en PNG et sauvegardée avec succès !',
+            'id' => $id
+        ], 201);
     }
 
 }

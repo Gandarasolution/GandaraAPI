@@ -63,13 +63,23 @@ class PlanningRessourceRepository extends ServiceEntityRepository
 
         $data = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
+        $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
+
+
+
         $structuredData = [];
         foreach($data as $row) {
+            $image = null;
+
+            if (!empty($row['IdPlanningImage'])) {
+                $image = $baseImageUrl . $row['IdPlanningImage'];
+            }
             $structuredData[] = [
                 'IdPlanningRessource' => $row['IdPlanningRessource'],
                 'LibellePlanningRessource' => $row['LibellePlanningRessource'],
                 'Type' => $row['Type'],
-                'IdImage' => $row['IdImage'],
+                'Image' => $image,
                 'Actif' => (int)$row['Actif'] === 1
             ];
         }
