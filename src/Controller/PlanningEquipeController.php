@@ -35,9 +35,6 @@ class PlanningEquipeController extends AbstractController
     {
         $idPlanningVue = $request->headers->get('X-PlanningVue-Id');
 
-        if (!$idPlanningVue) {
-            return $this->json(['message' => 'Id de la vue du planning manquante'], 400);
-        }
 
         $equipes = $this->repository->getAllEquipes((int)$idPlanningVue);
 

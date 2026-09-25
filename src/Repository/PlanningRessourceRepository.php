@@ -111,7 +111,7 @@ class PlanningRessourceRepository extends ServiceEntityRepository
             'CouleurFondPlanningRessource' => $data['CouleurFondPlanningRessource'] ?? null,
             'CouleurBordurePlanningRessource' => $data['CouleurBordurePlanningRessource'] ?? null,
             'CouleurTextePlanningRessource' => $data['CouleurTextePlanningRessource'] ?? null,
-            'IdImage' => $data['IdImage'] ?? null,
+            'IdImage' => $data['IdPlanningImage'] ?? null,
             'CodePlanningRessource' => $data['CodePlanningRessource'] ?? null,
             'Actif' => (int)($data['Actif'] ?? 1),
             'LibellePlanningRessource' => $data['LibellePlanningRessource'] ?? null,
@@ -165,16 +165,21 @@ class PlanningRessourceRepository extends ServiceEntityRepository
         ];
         $result = $conn->executeQuery($sql,$params)->fetchAllAssociative();
 
+
+        $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
+
         $structuredData = [];
         foreach($result as $row) {
+
             $image = null;
             if (!empty($row['IdPlanningImage'])) {
                 $image = [
-                    'image' => $this->router->generate('api_serve_image_file', [
-                        'id' => $row['IdPlanningImage']
-                    ], UrlGeneratorInterface::ABSOLUTE_URL),
-                    'id' => $row['IdPlanningImage']];
+                    'image' => $baseImageUrl . $row['IdPlanningImage'],
+                    'id' => $row['IdPlanningImage']
+                ];
             }
+
             $structuredData[] = [
                 'IdPlanningRessource' => $row['IdPlanningRessource'],
                 'LibellePlanningRessource' => $row['LibellePlanningRessource'],
@@ -228,14 +233,17 @@ class PlanningRessourceRepository extends ServiceEntityRepository
         $result = $conn->executeQuery($sql,$params)->fetchAllAssociative();
 
         $structuredData = [];
+
+        $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
+
         foreach($result as $row) {
             $image = null;
             if (!empty($row['IdPlanningImage'])) {
                 $image = [
-                    'image' => $this->router->generate('api_serve_image_file', [
-                        'id' => $row['IdPlanningImage']
-                    ], UrlGeneratorInterface::ABSOLUTE_URL),
-                    'id' => $row['IdPlanningImage']];
+                    'image' => $baseImageUrl . $row['IdPlanningImage'],
+                    'id' => $row['IdPlanningImage']
+                ];
             }
 
             $structuredData[] = [
@@ -279,14 +287,17 @@ class PlanningRessourceRepository extends ServiceEntityRepository
         $result = $conn->executeQuery($sql,$params)->fetchAllAssociative();
 
         $structuredData = [];
+
+        $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
+
         foreach($result as $row) {
             $image = null;
             if (!empty($row['IdPlanningImage'])) {
                 $image = [
-                    'image' => $this->router->generate('api_serve_image_file', [
-                        'id' => $row['IdPlanningImage']
-                    ], UrlGeneratorInterface::ABSOLUTE_URL),
-                    'id' => $row['IdPlanningImage']];
+                    'image' => $baseImageUrl . $row['IdPlanningImage'],
+                    'id' => $row['IdPlanningImage']
+                ];
             }
 
 
@@ -331,7 +342,7 @@ class PlanningRessourceRepository extends ServiceEntityRepository
             'LibellePlanningRessource' => $data['LibellePlanningRessource'],
             'Actif' => $data['Actif'],
             'Code' => $data['CodePlanningRessource'],
-            'IdImage' => $data['IdImage'] ?? null,
+            'IdImage' => $data['IdPlanningImage'] ?? null,
             'CouleurFondPlanningRessource' => $data['CouleurFondPlanningRessource'],
             'CouleurBordurePlanningRessource' => $data['CouleurBordurePlanningRessource'],
             'CouleurTextePlanningRessource' => $data['CouleurTextePlanningRessource']

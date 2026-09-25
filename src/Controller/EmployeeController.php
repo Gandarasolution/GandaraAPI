@@ -46,14 +46,6 @@ class EmployeeController extends AbstractController
 
 
         $idPlanningVue = $request->headers->get('X-PlanningVue-Id', null);
-        if (
-            $idPlanningVue === null ||
-            filter_var($idPlanningVue, FILTER_VALIDATE_INT) === false
-        ) {
-            return $this->json([
-                'message' => 'L\'en-tête X-PlanningVue-Id doit contenir un identifiant valide.'
-            ], 400);
-        }
 
         $logger->debug("Récupération de TOUS les employés (sans filtres/pagination)");
         $employees = $this->employeeRepository->getEmployeelist($idPlanningVue);

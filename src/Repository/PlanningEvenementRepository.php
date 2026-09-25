@@ -7,6 +7,7 @@ use App\Entity\Session;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\Exception;
 use Doctrine\Persistence\ManagerRegistry;
+use Monolog\Logger;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -20,7 +21,13 @@ use Symfony\Contracts\Cache\CacheInterface;
  */
 class PlanningEvenementRepository extends ServiceEntityRepository
 {
-    public function __construct(ManagerRegistry $registry, private CacheInterface $cache, private Security $security, private UrlGeneratorInterface $router)
+    public function __construct(
+        ManagerRegistry $registry,
+        private CacheInterface $cache,
+        private Security $security,
+        private UrlGeneratorInterface $router,
+        private readonly LoggerInterface $logger
+    )
     {
         parent::__construct($registry, Planningevenement::class);
     }
@@ -36,7 +43,9 @@ class PlanningEvenementRepository extends ServiceEntityRepository
         $ressources = [];
 
         $currentUser = $this->security->getUser();
-        $currentUserId = $currentUser?->getUserIdentifier();
+        $currentUserId = (int)$currentUser?->getUserIdentifier();
+
+        $this->logger->debug('Current user ID: ' . $currentUserId);
 
         $cacheKeys = [];
         foreach ($data as $row) {
@@ -51,6 +60,8 @@ class PlanningEvenementRepository extends ServiceEntityRepository
                 $locks[$cacheItem->getKey()] = $cacheItem->get();
             }
         }
+
+        $this->logger->debug('Locks retrieved from cache: ' . json_encode($locks));
 
         $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
         $baseImageUrl = str_replace('999999', '', $baseImageUrl);
@@ -193,8 +204,10 @@ class PlanningEvenementRepository extends ServiceEntityRepository
      */
     public function createEvent(array $data, LoggerInterface $logger, int $idPlanning): array
     {
-        $debutObj = new \DateTime()->setTimestamp((int)($data['DebutPlanningEvenement'] / 1000));
-        $finObj   = new \DateTime()->setTimestamp((int)($data['FinPlanningEvenement'] / 1000));
+        $timezone = new \DateTimeZone('Europe/Paris');
+
+        $debutObj = new \DateTime()->setTimestamp((int)($data['DebutPlanningEvenement'] / 1000))->setTimezone($timezone);
+        $finObj   = new \DateTime()->setTimestamp((int)($data['FinPlanningEvenement'] / 1000))->setTimezone($timezone);
 
         $conn = $this->getEntityManager()->getConnection();
         $sql = 'EXEC ps_PlanningEvenementInsert
@@ -295,7 +308,9 @@ class PlanningEvenementRepository extends ServiceEntityRepository
      */
     public function divideEvent(int $id, array $data, LoggerInterface $logger): array
     {
-        $debutObj = new \DateTime()->setTimestamp((int)($data['DateCoupure'] / 1000));
+        $timezone = new \DateTimeZone('Europe/Paris');
+
+        $debutObj = new \DateTime()->setTimestamp((int)($data['DateCoupure'] / 1000))->setTimezone($timezone);
 
         $logger->debug('Dividing event with ID: ' . $id . ' at date: ' . $debutObj->format('Y-m-d\TH:i:s'));
         $conn = $this->getEntityManager()->getConnection();
@@ -344,10 +359,13 @@ class PlanningEvenementRepository extends ServiceEntityRepository
             $createdIds = [];
             $results = [];
 
+            $timezone = new \DateTimeZone('Europe/Paris');
+
+
             foreach ($data['Date'] as $periode) {
 
-                $debut = new \DateTime()->setTimestamp((int)($periode['DebutPlanningEvenement'] / 1000))->format('Y-m-d\TH:i:s');
-                $fin = new \DateTime()->setTimestamp((int)($periode['FinPlanningEvenement'] / 1000))->format('Y-m-d\TH:i:s');
+                $debut = new \DateTime()->setTimestamp((int)($periode['DebutPlanningEvenement'] / 1000))->setTimezone($timezone)->format('Y-m-d\TH:i:s');
+                $fin = new \DateTime()->setTimestamp((int)($periode['FinPlanningEvenement'] / 1000))->setTimezone($timezone)->format('Y-m-d\TH:i:s');
 
 
                 $sql = 'EXEC ps_PlanningEvenementInsert @IdEmploye = :IdEmployee, @DebutPlanningEvenement = :DebutPlanningEvenement, @FinPlanningEvenement = :FinPlanningEvenement, @AnnotationPlanningEvenement = :AnnotationPlanningEvenement, @IdPlanningRessource = :IdPlanningRessource';

@@ -327,7 +327,7 @@ class Session implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function getUserIdentifier(): string
     {
-        return (string) $this->idpersonnel;
+        return $this->idpersonnel;
     }
 
 }

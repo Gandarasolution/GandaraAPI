@@ -71,6 +71,7 @@ Le conteneur de développement installe automatiquement Composer si `vendor` est
 ```bash
 docker compose exec api composer install
 ```
+docker compose exec api php bin/console lexik:jwt:generate-keypair
 
 Testez ensuite la connexion SQL Server :
 
@@ -83,7 +84,6 @@ docker compose exec api php bin/console dbal:run-sql "SELECT 1"
 Si les fichiers `config/jwt/private.pem` et `config/jwt/public.pem` n'existent pas, générez-les depuis le conteneur :
 
 ```bash
-docker compose exec api php bin/console lexik:jwt:generate-keypair
 ```
 
 Cette commande utilise `JWT_PASSPHRASE` défini dans l'environnement. Si les clés existent déjà, ne les remplacez pas sans vérifier les clients qui utilisent l'API.
