@@ -10,13 +10,14 @@ use Doctrine\DBAL\Exception;
 use Monolog\Logger;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 
 
 class PlanningVueRepository extends ServiceEntityRepository
 {
 
-    public function __construct(ManagerRegistry $registry, private CacheInterface $cache, private Security $security)
+    public function __construct(ManagerRegistry $registry, private CacheInterface $cache, private Security $security, private UrlGeneratorInterface $router,)
     {
         parent::__construct($registry, PlanningVue::class);
     }
@@ -41,6 +42,9 @@ class PlanningVueRepository extends ServiceEntityRepository
 
         $structuredData = [];
 
+        $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
+
         foreach ($result as $row) {
             $idVue = (int)$row['IdPlanningVue'];
             $isLocked = false;
@@ -51,11 +55,17 @@ class PlanningVueRepository extends ServiceEntityRepository
             if ($cacheItem->isHit()) {
                 $ownerId = $cacheItem->get();
 
-                // Est-ce que le propriétaire du verrou est différent de moi ?
-                // (Si ownerId === currentUserId, c'est mon verrou, donc ce n'est pas locked pour moi)
                 if ($ownerId !== $currentUserId) {
                     $isLocked = true;
                 }
+            }
+
+            $image = null;
+            if (!empty($row['IdPlanningImage'])) {
+                $image = [
+                    'image' => $baseImageUrl . $row['IdPlanningImage'],
+                    'id' => $row['IdPlanningImage']
+                ];
             }
 
             $structuredData[] = [
@@ -66,7 +76,7 @@ class PlanningVueRepository extends ServiceEntityRepository
                     'ChampsPremierGroupePlanningVue' => $row['ChampsPremierGroupePlanningVue'],
                     'ChampsDeuxiemeGroupePlanningVue' => $row['ChampsDeuxiemeGroupePlanningVue']
                 ],
-                'IdPlanningImage' => $row['IdPlanningImage'],
+                'PlanningVueImage' => $image,
                 'isLocked' => $isLocked,
             ];
         }
@@ -264,6 +274,17 @@ class PlanningVueRepository extends ServiceEntityRepository
         ];
         $result = $conn->executeQuery($sql, $params)->fetchAssociative();
 
+        $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
+
+        $image = null;
+        if (!empty($result['IdPlanningImage'])) {
+            $image = [
+                'image' => $baseImageUrl . $result['IdPlanningImage'],
+                'id' => $result['IdPlanningImage']
+            ];
+        }
+
         $structurePlanningVue = [
             'IdPlanningVue' => $id,
             'DescriptionPlanningVue' => $result['DescriptionPlanningVue'],
@@ -275,7 +296,7 @@ class PlanningVueRepository extends ServiceEntityRepository
             'chantierEvenement' => $result['FiltreChantierPlanningVue'] === 1,
             'paieEvenement' => $result['FiltreSocialPlanningVue'] === 1,
             'persoEvenement' => $result ['FiltreAutresPlanningVue'] === 1,
-            'IdPlanningImage' => $result['IdPlanningImage'],
+            'PlanningVueImage' => $image,
             'isLocked' => false,
         ];
 
