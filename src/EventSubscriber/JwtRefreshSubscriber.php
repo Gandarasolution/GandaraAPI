@@ -23,7 +23,9 @@ final class JwtRefreshSubscriber implements EventSubscriberInterface
         #[Autowire(env: 'JWT_NAME')]
         private readonly string                  $cookieName,
         #[Autowire(env: 'JWT_TTL')]
-        private readonly int                     $jwtTtl
+        private readonly int                     $jwtTtl,
+        #[Autowire(env: 'AUTH_COOKIE_DOMAIN')]
+        private string                           $cookieDomain
     ) {}
 
     public static function getSubscribedEvents(): array
@@ -95,6 +97,7 @@ final class JwtRefreshSubscriber implements EventSubscriberInterface
             ->withSecure(true)
             ->withSameSite(Cookie::SAMESITE_NONE)
             ->withPath('/')
+            ->withDomain($this->cookieDomain)
             ->withExpires(new \DateTimeImmutable()->add(new \DateInterval('PT' . $this->jwtTtl . 'S')));
 
         $event->getResponse()->headers->setCookie($cookie);
