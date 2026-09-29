@@ -23,9 +23,7 @@ final class JwtRefreshSubscriber implements EventSubscriberInterface
         #[Autowire(env: 'JWT_NAME')]
         private readonly string                  $cookieName,
         #[Autowire(env: 'JWT_TTL')]
-        private readonly int                     $jwtTtl,
-        #[Autowire(env: 'AUTH_COOKIE_DOMAIN')]
-        private string                           $cookieDomain
+        private readonly int                     $jwtTtl
     ) {}
 
     public static function getSubscribedEvents(): array
@@ -75,6 +73,8 @@ final class JwtRefreshSubscriber implements EventSubscriberInterface
             return;
         }
 
+        $expiresAt = time() + $this->jwtTtl;
+
 
         // 1. Générer le nouveau JWT avec le compteur remis à 0
         $newJwt = $this->jwtManager->create($token->getUser());
@@ -85,21 +85,20 @@ final class JwtRefreshSubscriber implements EventSubscriberInterface
             ->withHttpOnly(true)
             ->withSecure(true) // À passer à 'false' si tu testes en local sans HTTPS
             ->withSameSite('lax')
-            ->withExpires(new \DateTimeImmutable()->add(new \DateInterval('PT' . $this->jwtTtl . 'S')));
+            ->withExpires(
+                new \DateTimeImmutable()->setTimestamp($expiresAt)
+            );
+
+
+        $response = $event->getResponse();
 
         // 3. Ajouter le cookie à la réponse
-        $event->getResponse()->headers->setCookie($cookie);
+        $response->headers->setCookie($cookie);
 
-        // 4. Créer le cookie is_logged_in pour indiquer que l'utilisateur est connecté
-        $cookie = Cookie::create('is_logged_in')
-            ->withValue('true')
-            ->withHttpOnly(false)
-            ->withSecure(true)
-            ->withSameSite(Cookie::SAMESITE_NONE)
-            ->withPath('/')
-            ->withDomain($this->cookieDomain)
-            ->withExpires(new \DateTimeImmutable()->add(new \DateInterval('PT' . $this->jwtTtl . 'S')));
-
-        $event->getResponse()->headers->setCookie($cookie);
+        // Informe le frontend qu'un refresh vient d'avoir lieu
+        $response->headers->set(
+            'X-Token-Expires-At',
+            (string) $expiresAt
+        );
     }
 }

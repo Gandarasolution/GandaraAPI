@@ -8,4 +8,4 @@ nelmio_cors:
         allow_credentials: true
         max_age: 3600
     paths:
-        '^/': null
+        '^/': ~

@@ -24,9 +24,7 @@ final class JwtEventSubscriber implements EventSubscriberInterface
         #[Autowire(service: 'mercure.hub.default.jwt.factory')]
         private readonly TokenFactoryInterface $mercureTokenFactory,
         #[Autowire(env: 'JWT_TTL')]
-        private int                            $jwtTtl,
-        #[Autowire(env: 'AUTH_COOKIE_DOMAIN')]
-        private string                         $cookieDomain
+        private int                            $jwtTtl
     )
     {
     }
@@ -128,20 +126,20 @@ final class JwtEventSubscriber implements EventSubscriberInterface
             ->withSameSite(Cookie::SAMESITE_NONE)
             ->withPath('/');
 
-        $cookieLogged = Cookie::create('is_logged_in')
-            ->withValue('true')
-            ->withHttpOnly(false)
-            ->withSecure(true)
-            ->withSameSite(Cookie::SAMESITE_NONE)
-            ->withPath('/')
-            ->withDomain($this->cookieDomain)
-            ->withExpires(new \DateTimeImmutable()->add(new \DateInterval('PT' . $this->jwtTtl . 'S')));
 
-        $event->getResponse()->headers->setCookie($cookieMercure);
-        $event->getResponse()->headers->setCookie($cookieLogged);
+        $response = $event->getResponse();
+
+        $response->headers->setCookie($cookieMercure);
 
         // 6. Injection des données finales dans le JWT
         $event->setData($data);
+
+        $expiresAt = time() + $this->jwtTtl;
+
+        $response->headers->set(
+            'X-Token-Expires-At',
+            (string) $expiresAt
+        );
 
     }
 }
