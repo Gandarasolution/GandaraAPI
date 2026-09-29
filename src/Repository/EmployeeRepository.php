@@ -70,6 +70,9 @@ class EmployeeRepository extends ServiceEntityRepository
 
         $structuredData = [];
 
+        $baseImageUrl = $this->router->generate('api_serve_image_file_user', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
+
         foreach ($resultSet as $row) {
             $structuredData[] = [
                 'IdPersonnel' => $row['Id'],
@@ -81,6 +84,7 @@ class EmployeeRepository extends ServiceEntityRepository
                 'Type' => $row['Type'],
                 'PoleActivite' => $row['IdPoleActivite'],
                 'Equipe' => $row['IdEquipe'],
+                'Image' => $row['Trombinoscope'] === 1 ? $baseImageUrl . $row['Id'] : null,
             ];
         }
         $ligneTotal = !empty($resultSet) ? (int)$resultSet[0]['TotalLignes'] : 0;
