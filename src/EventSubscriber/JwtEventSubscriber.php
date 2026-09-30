@@ -127,6 +127,11 @@ final class JwtEventSubscriber implements EventSubscriberInterface
             ->withPath('/');
 
 
+        $expiresAt = time() + $this->jwtTtl;
+
+        $data['token_expires_at'] = $expiresAt;
+
+
         $response = $event->getResponse();
 
         $response->headers->setCookie($cookieMercure);
@@ -134,12 +139,6 @@ final class JwtEventSubscriber implements EventSubscriberInterface
         // 6. Injection des données finales dans le JWT
         $event->setData($data);
 
-        $expiresAt = time() + $this->jwtTtl;
-
-        $response->headers->set(
-            'X-Token-Expires-At',
-            (string) $expiresAt
-        );
 
     }
 }

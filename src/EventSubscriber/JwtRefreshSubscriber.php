@@ -8,6 +8,7 @@ use Lexik\Bundle\JWTAuthenticationBundle\TokenExtractor\TokenExtractorInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Cookie;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
@@ -95,10 +96,14 @@ final class JwtRefreshSubscriber implements EventSubscriberInterface
         // 3. Ajouter le cookie à la réponse
         $response->headers->setCookie($cookie);
 
-        // Informe le frontend qu'un refresh vient d'avoir lieu
-        $response->headers->set(
-            'X-Token-Expires-At',
-            (string) $expiresAt
-        );
+        if ($response instanceof JsonResponse) {
+            $data = json_decode($response->getContent(), true);
+
+            if (is_array($data)) {
+                $data['token_expires_at'] = $expiresAt;
+
+                $response->setData($data);
+            }
+        }
     }
 }
