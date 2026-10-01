@@ -82,6 +82,7 @@ class PlanningRessourceRepository extends ServiceEntityRepository
                 'Image' => $image,
                 'Actif' => (int)$row['Actif'] === 1,
                 'CodePlanningRessource' => $row['CodePlanningRessource'],
+                'Identifiant' => $row['Identifiant'],
             ];
         }
 
