@@ -5,6 +5,7 @@ namespace App\EventSubscriber;
 use Lexik\Bundle\JWTAuthenticationBundle\Exception\JWTDecodeFailureException;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\TokenExtractor\TokenExtractorInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Cookie;
@@ -24,7 +25,8 @@ final class JwtRefreshSubscriber implements EventSubscriberInterface
         #[Autowire(env: 'JWT_NAME')]
         private readonly string                  $cookieName,
         #[Autowire(env: 'JWT_TTL')]
-        private readonly int                     $jwtTtl
+        private readonly int                     $jwtTtl,
+        private readonly LoggerInterface $logger
     ) {}
 
     public static function getSubscribedEvents(): array
@@ -70,7 +72,7 @@ final class JwtRefreshSubscriber implements EventSubscriberInterface
 
         $timeRemaining = $payload['exp'] - time();
 
-        if ($timeRemaining > 180) {
+        if ($timeRemaining > 300) {
             return;
         }
 

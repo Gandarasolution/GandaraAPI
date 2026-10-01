@@ -80,7 +80,8 @@ class PlanningRessourceRepository extends ServiceEntityRepository
                 'LibellePlanningRessource' => $row['LibellePlanningRessource'],
                 'Type' => $row['Type'],
                 'Image' => $image,
-                'Actif' => (int)$row['Actif'] === 1
+                'Actif' => (int)$row['Actif'] === 1,
+                'CodePlanningRessource' => $row['CodePlanningRessource'],
             ];
         }
 
