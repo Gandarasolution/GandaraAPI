@@ -374,6 +374,18 @@ class PlanningVueRepository extends ServiceEntityRepository
                 throw new \RuntimeException("Impossible de relire la vue après sa mise à jour.");
             }
 
+            $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+            $baseImageUrl = str_replace('999999', '', $baseImageUrl);
+
+            $image = null;
+            if (!empty($result['IdPlanningImage'])) {
+                $image = [
+                    'image' => $baseImageUrl . $result['IdPlanningImage'],
+                    'id' => $result['IdPlanningImage']
+                ];
+            }
+
+
             $structurePlanningVue = [
                 'IdPlanningVue' => $id,
                 'DescriptionPlanningVue' => $result['DescriptionPlanningVue'],
@@ -382,7 +394,7 @@ class PlanningVueRepository extends ServiceEntityRepository
                     'ChampsPremierGroupePlanningVue' => $result['ChampsPremierGroupePlanningVue'],
                     'ChampsDeuxiemeGroupePlanningVue' => $result['ChampsDeuxiemeGroupePlanningVue']
                 ],
-                'IdPlanningImage' => $result['IdPlanningImage'],
+                'PlanningVueImage' => $image,
                 'isLocked' => false,
             ];
 

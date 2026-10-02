@@ -131,6 +131,21 @@ class PlanningRessourceRepository extends ServiceEntityRepository
         $lignesModifiees = $row['LignesModifiees'];
         unset($row['LignesModifiees']);
 
+
+        $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
+
+        $image = null;
+        if (!empty($row['IdPlanningImage'])) {
+            $image = [
+                'image' => $baseImageUrl . $row['IdPlanningImage'],
+                'id' => $row['IdPlanningImage']
+            ];
+        }
+
+        $row['Image'] = $image;
+
+
         return [
             'LignesModifiees' => $lignesModifiees,
             'data'            => $row

@@ -335,6 +335,7 @@ class PlanningVueController extends AbstractController
 
     /**
      * @throws Exception
+     * @throws \Throwable
      */
     #[Route('/vue/{id}', name: 'api_vue', methods: ['PUT'])]
     #[IsGranted('VUE_EDIT', message: 'Vous n\'avez pas la permission de modifier cette vue.')]
