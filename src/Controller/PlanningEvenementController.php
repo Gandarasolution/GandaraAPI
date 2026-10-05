@@ -54,8 +54,21 @@ class PlanningEvenementController extends AbstractController
 
         $idPlanningVue = $request->headers->get('X-PlanningVue-Id', null);
 
+        $idEmployeeParam = $request->query->get('idEmployee');
 
-        $idEmployee = $request->query->get('idEmployee');
+        $idEmployee = null;
+
+        if ($idEmployeeParam !== null && $idEmployeeParam !== '') {
+            $idEmployee = array_values(
+                array_filter(
+                    array_map(
+                        'intval',
+                        explode(',', $idEmployeeParam)
+                    ),
+                    fn (int $id) => $id > 0
+                )
+            );
+        }
 
         $result = $this->planningEvenementRepository->findEventsByDate($dateStart, $dateEnd, $idPlanning, $idPlanningVue, $idEmployee);
 

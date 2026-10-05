@@ -136,26 +136,80 @@ class PlanningEvenementRepository extends ServiceEntityRepository
     /**
      * @throws Exception
      */
-    public function findEventsByDate(\DateTimeInterface $dateStart, \DateTimeInterface $dateEnd, int $idPlanning, ?int $idPlanningVue, ?int $idEmploye): array
-    {
-
+    public function findEventsByDate(
+        \DateTimeInterface $dateStart,
+        \DateTimeInterface $dateEnd,
+        int $idPlanning,
+        ?int $idPlanningVue,
+        int|array|null $idEmploye
+    ): array {
+        $startTotal = microtime(true);
 
         $startOfDay = (clone $dateStart)->setTime(0, 0, 0);
         $endOfDay = (clone $dateEnd)->setTime(23, 59, 59);
 
+        if (is_array($idEmploye)) {
+            $idEmployeParam = !empty($idEmploye)
+                ? implode(',', $idEmploye)
+                : null;
+        }
+        elseif ($idEmploye !== null) {
+            $idEmployeParam = (string) $idEmploye;
+        }
+        else {
+            $idEmployeParam = null;
+        }
+
         $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningEvenementSelect @StartDate = :StartDate, @EndDate = :EndDate, @IdPlanningVue = :IdPlanningVue, @IdEmploye = :IdEmploye';
+
+        $sql = '
+            EXEC ps_PlanningEvenementSelect
+                @StartDate = :StartDate,
+                @EndDate = :EndDate,
+                @IdPlanningVue = :IdPlanningVue,
+                @IdEmploye = :IdEmploye
+        ';
+
         $params = [
             'StartDate' => $startOfDay->format('Y-m-d\TH:i:s'),
-            'EndDate'   => $endOfDay->format('Y-m-d\TH:i:s'),
+            'EndDate' => $endOfDay->format('Y-m-d\TH:i:s'),
             'IdPlanningVue' => $idPlanningVue,
-            'IdEmploye' => $idEmploye
+            'IdEmploye' => $idEmployeParam,
         ];
 
-         $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+        $startSql = microtime(true);
 
-        return $this->structuredData($result, $idPlanning);
+        $result = $conn
+            ->executeQuery($sql, $params)
+            ->fetchAllAssociative();
 
+        $sqlDuration = microtime(true) - $startSql;
+
+        error_log(sprintf(
+            '[EVENTS] SQL = %.2f ms | rows = %d | vue = %s | employees = %s',
+            $sqlDuration * 1000,
+            count($result),
+            $idPlanningVue ?? 'NULL',
+            $idEmployeParam ?? 'NULL'
+        ));
+
+        $startStructured = microtime(true);
+
+        $structured = $this->structuredData($result, $idPlanning);
+
+        $structuredDuration = microtime(true) - $startStructured;
+
+        error_log(sprintf(
+            '[EVENTS] structuredData = %.2f ms',
+            $structuredDuration * 1000
+        ));
+
+        error_log(sprintf(
+            '[EVENTS] TOTAL repository = %.2f ms',
+            (microtime(true) - $startTotal) * 1000
+        ));
+
+        return $structured;
     }
 
 

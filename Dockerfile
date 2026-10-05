@@ -41,7 +41,7 @@ WORKDIR /var/www/html
 FROM base AS dev
 ENV APP_ENV=dev
 # Installe les dépendances au démarrage uniquement si le dossier vendor est absent
-CMD sh -c "[ ! -d vendor ] && composer install --no-interaction; php-fpm"
+CMD ["sh", "-c", "composer install --no-interaction --prefer-dist && exec php-fpm"]
 
 # --- 3. PRODUCTION (Défaut) ---
 FROM base AS prod
@@ -74,3 +74,16 @@ opcache.jit=tracing" > $PHP_INI_DIR/conf.d/docker-php-ext-opcache.ini
 # Générer l'autoloader optimisé et exécuter les scripts
 RUN composer install --no-dev --optimize-autoloader --classmap-authoritative --no-interaction
 RUN chown -R www-data:www-data var/
+
+
+
+
+# ---------------------------------
+# NGINX PRODUCTION
+# ---------------------------------
+
+FROM nginx:alpine AS nginx_prod
+
+COPY --from=prod /var/www/html/public /var/www/html/public
+
+COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf

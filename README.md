@@ -39,7 +39,7 @@ Modifiez ensuite `.env` avec vos valeurs locales. Comme Compose injecte ce fichi
 DATABASE_URL="sqlsrv://UTILISATEUR:MOT_DE_PASSE@HOTE:PORT/NOM_DE_LA_BDD?serverVersion=13&TrustServerCertificate=yes&charset=UTF-8"
 ```
 
-Vérifiez également `APP_SECRET`, `JWT_PASSPHRASE`, `MERCURE_JWT_SECRET` et `MERCURE_CORS_ALLOWED_ORIGINS`. Ne versionnez jamais de secrets réels.
+Vérifiez également `APP_SECRET`, `JWT_PASSPHRASE`, `MERCURE_JWT_SECRET`, `CORS_ALLOW_ORIGIN` et `MERCURE_CORS_ALLOWED_ORIGINS`. Ne versionnez jamais de secrets réels.
 
 ### 3. Construire et démarrer Docker
 
