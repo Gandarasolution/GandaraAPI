@@ -166,11 +166,12 @@ class PlanningRessourceRepository extends ServiceEntityRepository
         string $chefChantiers,
         string $codes,
         string $etats,
+        string $libelle,
         LoggerInterface $logger
     ): array
     {
         $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningRessourceSelectProjet @Limit= :Limit, @PageNumber= :PageNumber, @Query= :Query, @ChargeeAffaires= :ChargeeAffaires, @ChefChantiers= :ChefChantiers, @Codes= :Codes, @Etats= :Etats';
+        $sql = 'EXEC ps_PlanningRessourceSelectProjet @Limit= :Limit, @PageNumber= :PageNumber, @Query= :Query, @ChargeeAffaires= :ChargeeAffaires, @ChefChantiers= :ChefChantiers, @Codes= :Codes, @Etats= :Etats, @Libelle = :Libelle';
         $params = [
             'Limit' => $limit ?? 20,
             'PageNumber' => $pageNumber ?? 1,
@@ -178,7 +179,8 @@ class PlanningRessourceRepository extends ServiceEntityRepository
             'ChargeeAffaires' => $chargeeAffaires,
             'ChefChantiers' => $chefChantiers,
             'Codes' => $codes,
-            'Etats' => $etats
+            'Etats' => $etats,
+            'Libelle' => $libelle,
         ];
         $result = $conn->executeQuery($sql,$params)->fetchAllAssociative();
 

@@ -101,6 +101,7 @@ class PlanningRessourceController extends abstractController
         $chefChantiers = $request->query->get('chefChantier', "");
         $codes = $request->query->get('code',"");
         $etats = $request->query->get('etat', "");
+        $libelle = $request->query->get('libelle', "");
 
         $logger->debug('Récupération des projets avec les paramètres',
             [
@@ -110,7 +111,8 @@ class PlanningRessourceController extends abstractController
             '@ChargeeAffaires' => $chargeeAffaires,
             '@ChefChantiers' => $chefChantiers,
             '@Codes' => $codes,
-            '@Etats' => $etats
+            '@Etats' => $etats,
+            '@Libelle' => $libelle
         ]);
 
         $result = $this->planningRessourceRepository->getProjet(
@@ -121,6 +123,7 @@ class PlanningRessourceController extends abstractController
             $chefChantiers,
             $codes,
             $etats,
+            $libelle,
             $logger
         );
 
