@@ -107,6 +107,24 @@ class PlanningVueController extends AbstractController
 
     }
 
+    #[Route('/getLastPosition', name: 'lastPositionUser', methods: ['GET'])]
+    #[OA\Response(response: 200, description: 'Récupère la dernière position d\'un utilisateur')]
+    public function getLastPositionUser(#[CurrentUser] Session $user, Request $request): JsonResponse
+    {
+        $idPlanning = $request->headers->get('X-Planning-Id');
+
+        if ($idPlanning !== null && !is_numeric($idPlanning) || $idPlanning < 0) {
+            $this->logger->debug('Le paramètre idPlanning doit être un entier positif. Valeur reçue: {idPlanning}', [
+                'idPlanning' => $idPlanning,
+            ]);
+            throw new BadRequestHttpException('Le paramètre idPlanning doit être un entier positif.');
+        }
+
+        $result = $this->planningVueRepository->getLastPosition($idPlanning, $user->getIdpersonnel());
+        $result['canSetLastPosition'] = (bool)$result['canSetLastPosition'];
+        return $this->json(['data' => $result]);
+    }
+
 
     /**
      * @throws Exception
@@ -160,6 +178,44 @@ class PlanningVueController extends AbstractController
     }
 
 
+    #[Route('/setLastPosition', name: 'api_setPosition', methods: ['POST'])]
+    public function setPosition(#[CurrentUser] Session $user, Request $request): JsonResponse
+    {
+        $idPlanning = $request->headers->get('X-Planning-Id');
+
+        if ($idPlanning !== null && !is_numeric($idPlanning) || $idPlanning < 0) {
+            $this->logger->debug('Le paramètre idPlanning doit être un entier positif. Valeur reçue: {idPlanning}', [
+                'idPlanning' => $idPlanning,
+            ]);
+            throw new BadRequestHttpException('Le paramètre idPlanning doit être un entier positif.');
+        }
+
+
+        $idPersonnel = $user->getIdpersonnel();
+        $data = $request->toArray();
+        $date = $data['date'] ?? null;
+
+        if ($date === null) {
+            $this->logger->debug('Le paramètre date est manquant dans le payload. Payload reçu ' .  json_encode($data));
+
+            throw new BadRequestHttpException('Le paramètre date est manquant dans le payload.');
+        }
+
+
+        $this->logger->info('Requête API de sauvegarde de la position dernière reçue', [
+            'idPersonnel' => $idPersonnel,
+            'payload'     => $data
+        ]);
+
+        $result = $this->planningVueRepository->setPosition($idPlanning, $idPersonnel, $date, $this->logger);
+
+
+        return $this->json(['data' => $result]);
+
+
+    }
+
+
     /**
      * @throws Exception
      */
@@ -200,7 +256,6 @@ class PlanningVueController extends AbstractController
         }
             $this->planningVueRepository->setLastVue($user, $data['idVue']);
             return $this->json(['message' => 'La dernière vue a été mise à jour avec succès.']);
-
     }
 
 

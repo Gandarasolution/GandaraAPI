@@ -10,6 +10,8 @@ use Doctrine\DBAL\Exception;
 use Monolog\Logger;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 
@@ -120,13 +122,13 @@ class PlanningVueRepository extends ServiceEntityRepository
         ])->fetchAllAssociative();
 
         if (empty($dbResult)) {
-            throw new \RuntimeException("La procédure d'insertion du jour non travaillé n'a rien retourné.");
+            throw new \RuntimeException("La procédure d'insertion du jour non travaillé n'a rien retourné.", 500);
         }
 
         $result = $dbResult[0];
 
         if ((int)$result['LignesInserees'] === 0) {
-            throw new \RuntimeException("Aucun jour non travaillé n'a été ajouté. Veuillez vérifier les données fournies.");
+            throw new BadRequestHttpException("Aucun jour non travaillé n'a été ajouté. Veuillez vérifier les données fournies.");
         }
 
         $logger->debug(json_encode($result));
@@ -144,13 +146,13 @@ class PlanningVueRepository extends ServiceEntityRepository
         $dbResult = $conn->executeQuery($sql, ['IdDate' => $idDate])->fetchAllAssociative();
 
         if (empty($dbResult)) {
-            throw new \RuntimeException("La procédure de suppression du jour non travaillé n'a rien retourné.");
+            throw new \RuntimeException("La procédure de suppression du jour non travaillé n'a rien retourné.", 500);
         }
 
         $result = $dbResult[0];
 
         if (!isset($result['LignesSupprimee']) || (int)$result['LignesSupprimee'] === 0) {
-            throw new \RuntimeException("Aucun jour non travaillé n'a été supprimé (ID introuvable).");
+            throw new NotFoundHttpException("Aucun jour non travaillé n'a été supprimé (ID introuvable).");
         }
 
 
@@ -192,7 +194,7 @@ class PlanningVueRepository extends ServiceEntityRepository
 
         // Si vraiment aucune vue n'est dispo, on lève l'exception
         if (!$vuesDisponibles) {
-            throw new \RuntimeException(printf("Aucune vue disponible pour l'utilisateur %d et le planning %d", $idPersonnel, $idPlanning));
+            throw new NotFoundHttpException("Aucune vue disponible pour l'utilisateur");
         }
 
         return $vuesDisponibles;
@@ -226,7 +228,7 @@ class PlanningVueRepository extends ServiceEntityRepository
         $logger->debug('Résultat de la requête pour l\'ID ' . $id . ': ' . json_encode($result));
 
         if (!$result) {
-            throw new \RuntimeException('Auncun type de filtre trouvé pour cette vue: ' . $id);
+            throw new NotFoundHttpException('Auncun type de filtre trouvé pour cette vue: ' . $id);
         }
         $structuredData = [];
 
@@ -371,7 +373,7 @@ class PlanningVueRepository extends ServiceEntityRepository
             ];
             $result = $conn->executeQuery($sql, $params)->fetchAssociative();
             if (!$result) {
-                throw new \RuntimeException("Impossible de relire la vue après sa mise à jour.");
+                throw new NotFoundHttpException("Impossible de relire la vue après sa mise à jour.");
             }
 
             $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
@@ -487,7 +489,7 @@ class PlanningVueRepository extends ServiceEntityRepository
 
         $result = $conn->fetchAssociative($sql, $params);
 
-        if (!$result) throw new \RuntimeException("Erreur lors de la suppression de la vue (ID : $id). Aucune réponse de la procédure stockée.");
+        if (!$result) throw new \RuntimeException("Erreur lors de la suppression de la vue (ID : $id). Aucune réponse de la procédure stockée.", 500);
 
         $nbLignes = $result['LignesAffectees'];
 
@@ -625,6 +627,48 @@ class PlanningVueRepository extends ServiceEntityRepository
         $conn->executeStatement($sql, $params);
 
         $logger->info('Sauvegarde de la configuration mobile réussie', [
+            'idPersonnel' => $idPersonnel
+        ]);
+
+        return 0;
+    }
+
+    public function getLastPosition(int $idPlaninng, int $idPersonnel): array
+    {
+        $conn = $this->getEntityManager()->getConnection();
+
+        $sql = 'EXEC ps_PlanningDernierePosition @IdPersonnel = :IdPersonnel, @IdPlanning = :IdPlanning';
+        $params = [
+            'IdPersonnel' => $idPersonnel,
+            'IdPlanning' => $idPlaninng
+        ];
+        $result = $conn->executeQuery($sql, $params)->fetchAssociative();
+
+        return $result;
+    }
+
+    public function setPosition(int $idPlaninng, int $idPersonnel, int $date, LoggerInterface $logger): int
+    {
+        $logger->info('Début de la sauvegarde de la position mobile', [
+            'idPersonnel' => $idPersonnel
+        ]);
+
+        $timezone = new \DateTimeZone('Europe/Paris');
+
+        $date = new \DateTime()->setTimestamp((int)($date / 1000))->setTimezone($timezone);
+
+        $conn = $this->getEntityManager()->getConnection();
+
+        $sql = 'EXEC ps_PlanningDernierePositionUpdate @IdPersonnel = :IdPersonnel, @IdPlanning = :IdPlanning, @Date = :Date';
+        $params = [
+            'IdPersonnel' => $idPersonnel,
+            'IdPlanning' => $idPlaninng,
+            'Date' => $date
+        ];
+
+        $conn->executeStatement($sql, $params);
+
+        $logger->info('Sauvegarde de la position mobile réussie', [
             'idPersonnel' => $idPersonnel
         ]);
 
