@@ -72,10 +72,6 @@ class PlanningRessourceController extends abstractController
     #[OA\Parameter(name: 'limit', in: 'query', description: 'Limite de résultats', schema: new OA\Schema(type: 'integer', default: 20))]
     #[OA\Parameter(name: 'pageNum', in: 'query', description: 'Numéro de page pour la pagination', schema: new OA\Schema(type: 'integer', default: 1))]
     #[OA\Parameter(name: 'q', in: 'query', description: '', schema: new OA\Schema(type: 'string', default: ''))]
-    #[OA\Parameter(name: 'chargeAffaire', in: 'query', description: 'Filtre sur les chargée d\'affaire', schema: new OA\Schema(type: 'string', default: ''))]
-    #[OA\Parameter(name: 'chefChantier', in: 'query', description: 'Filtre sur les chefs de chantiers', schema: new OA\Schema(type: 'string', default: ''))]
-    #[OA\Parameter(name: 'code', in: 'query', description: 'Filtre sur les codes d\'identification', schema: new OA\Schema(type: 'string', default: ''))]
-    #[OA\Parameter(name: 'etat', in: 'query', description: 'Filtre sur les état', schema: new OA\Schema(type: 'string', default: ''))]
     #[OA\Response(response: 200, description: 'Liste des projets')]
     public function getProjet(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
@@ -96,34 +92,23 @@ class PlanningRessourceController extends abstractController
         );
 
         $q = $request->query->get('q', '');
+        $viewType = $request->query->get('viewType', '');
 
-        $chargeeAffaires = $request->query->get('chargeAffaire', "");
-        $chefChantiers = $request->query->get('chefChantier', "");
-        $codes = $request->query->get('code',"");
-        $etats = $request->query->get('etat', "");
-        $libelle = $request->query->get('libelle', "");
 
         $logger->debug('Récupération des projets avec les paramètres',
             [
             '@Limit' => $limit,
             '@PageNumber' => $pageNumber,
             '@Query' => $q,
-            '@ChargeeAffaires' => $chargeeAffaires,
-            '@ChefChantiers' => $chefChantiers,
-            '@Codes' => $codes,
-            '@Etats' => $etats,
-            '@Libelle' => $libelle
+            '@ViewType' => $viewType,
         ]);
 
         $result = $this->planningRessourceRepository->getProjet(
             $limit,
             $pageNumber,
             $q,
-            $chargeeAffaires,
-            $chefChantiers,
-            $codes,
-            $etats,
-            $libelle,
+            $user->getIdpersonnel(),
+            $viewType,
             $logger
         );
 

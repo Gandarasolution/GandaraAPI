@@ -162,25 +162,24 @@ class PlanningRessourceRepository extends ServiceEntityRepository
         mixed $limit,
         mixed $pageNumber,
         mixed $query,
-        string $chargeeAffaires,
-        string $chefChantiers,
-        string $codes,
-        string $etats,
-        string $libelle,
+        int $idPersonnel,
+        string $viewType,
         LoggerInterface $logger
     ): array
     {
         $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningRessourceSelectProjet @Limit= :Limit, @PageNumber= :PageNumber, @Query= :Query, @ChargeeAffaires= :ChargeeAffaires, @ChefChantiers= :ChefChantiers, @Codes= :Codes, @Etats= :Etats, @Libelle = :Libelle';
+        $sql = 'EXEC ps_PlanningRessourceSelectProjet
+            @Limit= :Limit,
+            @PageNumber= :PageNumber,
+            @Query= :Query,
+            @IdPersonnel= :IdPersonnel,
+            @ViewType= :ViewType';
         $params = [
             'Limit' => $limit ?? 20,
             'PageNumber' => $pageNumber ?? 1,
             'Query' => $query,
-            'ChargeeAffaires' => $chargeeAffaires,
-            'ChefChantiers' => $chefChantiers,
-            'Codes' => $codes,
-            'Etats' => $etats,
-            'Libelle' => $libelle,
+            'IdPersonnel' => $idPersonnel,
+            'ViewType' => $viewType,
         ];
         $result = $conn->executeQuery($sql,$params)->fetchAllAssociative();
 

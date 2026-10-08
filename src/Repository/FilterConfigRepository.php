@@ -19,35 +19,90 @@ class FilterConfigRepository extends ServiceEntityRepository
     /**
      * @throws Exception
      */
-    public function get(mixed $types, mixed $keys, LoggerInterface $logger)
+    public function get(int $idPersonnel, mixed $types, mixed $keys, LoggerInterface $logger)
     {
 
+
         $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_GetDynamicFilterOptions @Keys = :Keys, @ViewType = :Types';
+
+        $sql = '
+    EXEC dbo.ps_GetDynamicFilterOptions
+        @Keys = :Keys,
+        @ViewType = :ViewType,
+        @IdPersonnel = :IdPersonnel
+';
+
         $params = [
             'Keys' => trim($keys, '"'),
-            'Types' => $types
+            'ViewType' => $types,
+            'IdPersonnel' => $idPersonnel
         ];
 
-        $resultSet = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+        $resultSet = $conn->executeQuery($sql, $params)
+            ->fetchAllAssociative();
 
         $structuredData = [];
+        $activeFilter = new \stdClass();
 
         foreach ($resultSet as $row) {
-            // On récupère la clé (ex: "etat") et la valeur (ex: "En cours")
+
+            if ($row['FilterKey'] === null) {
+                $activeFilter = json_decode(
+                    $row['ActiveFilters'] ?? '{}',
+                    false,
+                    512,
+                    JSON_THROW_ON_ERROR
+                );
+
+                continue;
+            }
+
+            // Options disponibles
             $key = $row['FilterKey'];
             $value = $row['FilterValue'];
+            $label = $row['FilterLabel'];
 
-            // Si la clé n'existe pas encore dans notre tableau final, on l'initialise comme un tableau vide
             if (!isset($structuredData[$key])) {
                 $structuredData[$key] = [];
             }
 
-            // On ajoute la valeur dans le tableau correspondant à la clé
-            $structuredData[$key][] = $value;
+            $structuredData[$key][] = [
+                'value' => $value,
+                'label' => $label
+            ];
         }
 
-        return $structuredData;
+        return [
+            'Filters' => $structuredData,
+            'ActiveFilters' => $activeFilter
+        ];
 
+    }
+
+    /**
+     * @throws Exception
+     * @throws \JsonException
+     */
+    public function save(int $getIdpersonnel, mixed $viewType, mixed $activeFilters, LoggerInterface $logger): int
+    {
+
+        $conn = $this->getEntityManager()->getConnection();
+
+        $sql = ' EXEC ps_SessionFiltreInsertUpdate
+            @IdPersonnel = :IdPersonnel,
+            @ClePage = :ViewType,
+            @FiltresJSON = :ActiveFilters';
+        $params = [
+            'IdPersonnel' => $getIdpersonnel,
+            'ViewType' => $viewType,
+            'ActiveFilters' => json_encode(
+                (object) $activeFilters,
+                JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
+            )
+        ];
+
+        $conn->executeStatement($sql, $params);
+
+        return 0;
     }
 }
