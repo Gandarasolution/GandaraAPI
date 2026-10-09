@@ -466,4 +466,24 @@ class PlanningEvenementRepository extends ServiceEntityRepository
             return true;
         });
     }
+
+    /**
+     * @throws \DateMalformedStringException
+     */
+    public function transferEvent(mixed $sourceEmployeeId, mixed $targetEmployeeId, mixed $startDate, mixed $endDate, LoggerInterface $logger)
+    {
+
+        $conn = $this->getEntityManager()->getConnection();
+        $sql = 'EXEC ps_PlanningEvenementTransfer @SourceEmployeeId = :SourceEmployeeId, @TargetEmployeeId = :TargetEmployeeId, @StartDate = :StartDate, @EndDate = :EndDate';
+        $params = [
+            'SourceEmployeeId' => $sourceEmployeeId,
+            'TargetEmployeeId' => $targetEmployeeId,
+            'StartDate' => new \DateTime($startDate)->format('Y-m-d\TH:i:s'),
+            'EndDate' => new \DateTime($endDate)->format('Y-m-d\TH:i:s'),
+        ];
+
+
+        return $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+    }
 }

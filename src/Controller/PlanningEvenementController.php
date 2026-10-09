@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Planningevenement;
 use App\Repository\PlanningEvenementRepository;
 use App\Repository\PlanningRessourceRepository;
+use App\Repository\SecurityRepository;
 use App\Service\MercureNotificationService;
 use App\Entity\Session;
 use Doctrine\DBAL\Exception;
@@ -13,6 +14,8 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Nelmio\ApiDocBundle\Annotation\Model;
 use OpenApi\Attributes as OA;
@@ -30,6 +33,7 @@ class PlanningEvenementController extends AbstractController
         private readonly MercureNotificationService $notifier,
         private readonly PlanningEvenementRepository         $planningEvenementRepository,
         private readonly PlanningRessourceRepository         $planningRessourceRepository,
+        private readonly SecurityRepository                   $securityRepository,
         private readonly CacheInterface                      $cache,
         private readonly LoggerInterface $logger
     ){}
@@ -545,8 +549,10 @@ class PlanningEvenementController extends AbstractController
         content: new OA\JsonContent(type: 'object')
     )]
     #[OA\Response(response: 201, description: 'Répétition effectuée avec succès')]
-    public function repeatEvent(int $id, Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
+    #[IsGranted('UPDATE_EVENEMENT',  subject: 'evenement', message: 'Vous n\'avez pas la permission de modifier cet événement.')]
+    public function repeatEvent(Planningevenement $evenement, Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
+        $id = $evenement->getIdplanningevenement();
         $data = $request->toArray();
         $idRessource = (int)$data['IdPlanningRessource'] ?? null;
         if (!$idRessource) {
@@ -590,6 +596,40 @@ class PlanningEvenementController extends AbstractController
 
     }
 
+
+
+    #[Route('/transfer', name: 'api_evenement_transfer', methods: ['POST'])]
+    #[OA\Tag(name: 'Opérations complexes événement')]
+    #[OA\RequestBody(
+        description: 'Paramètres logiques pour le transfert de l\'événement',
+        required: true,
+        content: new OA\JsonContent(type: 'object')
+    )]
+    #[OA\Response(response: 201, description: 'Transfert effectué avec succès')]
+    public function transferEvent(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
+    {
+        $droit = $this->securityRepository->getPermission($user, $logger);
+        if (!in_array($droit, [22, 23])) {
+            throw new AccessDeniedHttpException('Vous n\'avez pas la permission de faire un transfert.');
+        }
+
+        $data = $request->toArray();
+        $sourceEmployeeId = $data['sourceEmployeeId'] ?? null;
+        $targetEmployeeId = $data['targetEmployeeId'] ?? null;
+        $startDate = $data['startDate'] ?? null;
+        $endDate = $data['endDate'] ?? null;
+
+        if (!$sourceEmployeeId || !$targetEmployeeId || !$startDate || !$endDate) {
+            throw new BadRequestHttpException('Tous les paramètres sourceEmployeeId, targetEmployeeId, startDate et endDate sont obligatoires.');
+        }
+
+        $logger->debug('Appel de la procédure de transfert d\'événements', ['sourceEmployeeId' => $sourceEmployeeId, 'targetEmployeeId' => $targetEmployeeId, 'startDate' => $startDate, 'endDate' => $endDate]);
+
+        $result = $this->planningEvenementRepository->transferEvent($sourceEmployeeId, $targetEmployeeId, $startDate, $endDate, $logger);
+
+        return $this->json(['message' => 'Transfert effectué avec succès', 'data' => $result], 201);
+
+    }
 
     /**
      * @throws InvalidArgumentException
