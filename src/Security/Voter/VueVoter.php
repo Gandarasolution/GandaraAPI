@@ -53,7 +53,7 @@ class VueVoter extends Voter
             case self::CREATE:
             case self::EDIT:
             case self::LOCK:
-                return $level === 23;
+                return $level > 22;
 
             default:
                 return false;

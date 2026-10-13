@@ -72,6 +72,50 @@ class PlanningVueController extends AbstractController
     }
 
 
+
+    #[Route('/chantier/getLastVue', name: 'api_last_config_user_chantier', methods: ['GET'])]
+    #[OA\Response(response: 200, description: 'Récupère la dernière vue d\'un utilisateur pour un planning donné')]
+    #[OA\Response(response: 400, description: 'Paramètre idPlanning manquant ou invalide')]
+    #[OA\Response(response: 500, description: 'Erreur serveur')]
+    public function getChantierLastVue(#[CurrentUser] Session $user, Request $request) :JsonResponse{
+        $idPlanning = $request->headers->get('X-Planning-Id');
+
+        if ($idPlanning !== null && !is_numeric($idPlanning) || $idPlanning < 0) {
+            $this->logger->debug('Le paramètre idPlanning doit être un entier positif. Valeur reçue: {idPlanning}', [
+                'idPlanning' => $idPlanning,
+            ]);
+            throw new BadRequestHttpException('Le paramètre idPlanning doit être un entier positif.');
+        }
+
+        $result = $this->planningVueRepository->getChantierLastVue($user, $idPlanning);
+        return $this->json(['data' => $result]);
+
+    }
+
+
+
+    /**
+     * @throws Exception
+     */
+    #[Route('/chantier/vue/{id}', name: 'api_config_chantier', methods: ['GET'])]
+    #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la vue', schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'Récupère les détails d\'une vue chantier spécifique')]
+    #[IsGranted('VUE_VIEW', message: 'Vous n\'avez pas la permission de visualiser cette vue.')]
+    public function getChantierVue(int $id, Request $request, #[CurrentUser] Session $user) :JsonResponse {
+
+        $viewType = $request->query->get('viewType');
+
+        if ($viewType === null){
+            throw new BadRequestHttpException('Le paramètre viewType est manquant dans la requête.');
+        }
+
+        $result = $this->planningVueRepository->getChantierVue($user, $id, $this->logger, $viewType);
+
+        return $this->json(['data' => $result]);
+
+    }
+
+
     /**
      * @throws Exception
      */
@@ -83,16 +127,35 @@ class PlanningVueController extends AbstractController
         $result = $this->planningVueRepository->getVue($id, $this->logger);
 
         return $this->json(['data' => $result]);
-
     }
 
 
     /**
      * @throws Exception
      */
+    #[Route('chantier/vue/user/{userId}', name: 'api_configs_chantier_user', methods: ['GET'])]
+    #[OA\Parameter(name: 'userId', in: 'path', description: 'ID de l\'utilisateur', schema: new OA\Schema(type: 'integer'))]
+    #[OA\Parameter(name: 'idPlanning', in: 'query', description: 'ID de planning', schema: new OA\Schema(type: 'integer'))]
+    #[OA\Response(response: 200, description: 'Liste des configurations de l\'utilisateur et des jours non travaillé du planning')]
+    public function getUserChantierConfigs(int $userId, Request $request): JsonResponse
+    {
+        $IdPlanning = $request->query->get('idPlanning');
+
+        if ($IdPlanning !== null && !is_numeric($IdPlanning) || $IdPlanning < 0) {
+            throw new BadRequestHttpException('Id du planning manquant');
+        }
+
+        $configs = $this->planningVueRepository->getChantierConfigUser($userId, $IdPlanning);
+        return $this->json(['data' => $configs]);
+
+    }
+
+    /**
+     * @throws Exception
+     */
     #[Route('/vue/user/{userId}', name: 'api_configs_user', methods: ['GET'])]
     #[OA\Parameter(name: 'userId', in: 'path', description: 'ID de l\'utilisateur', schema: new OA\Schema(type: 'integer'))]
-    #[OA\Parameter(name: 'idPlanning', in: 'query', description: 'ID de planning (optionnel)', schema: new OA\Schema(type: 'integer'))]
+    #[OA\Parameter(name: 'idPlanning', in: 'query', description: 'ID de planning', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Liste des configurations de l\'utilisateur et des jours non travaillé du planning')]
     public function getUserConfigs(int $userId, Request $request): JsonResponse
     {
@@ -321,6 +384,46 @@ class PlanningVueController extends AbstractController
         $this->notifier->notifyPlanningChange(
             $idPlanning,
             'ADD_VUE',
+            $user->getIdpersonnel(),
+            ['vue' => $result['data']]
+        );
+
+        return $this->json($result);
+
+    }
+
+
+
+    /**
+     * @throws \Throwable
+     */
+    #[Route('/chantier/vue', name: 'api_chantier_vue_create', methods: ['POST'])]
+    #[IsGranted('VUE_CREATE', message: 'Vous n\'avez pas la permission de créer de vue.')]
+    public function addChantierVue(#[CurrentUser] Session $user, Request $request): JsonResponse
+    {
+        $idPlanning = $request->headers->get('X-Planning-Id');
+
+        if (!$idPlanning) {
+            throw new BadRequestHttpException('Id du planning manquant');
+        }
+
+        $data = $request->toArray();
+
+        $planningVue = $data['planningVue'];
+
+        if (!$planningVue){
+            throw new BadRequestHttpException('Données de la vue manquantes');
+        }
+
+        $filtrePerso = $data['filtrePerso'];
+
+        $utilisateursAutorises = $data['utilisateursAutorises'] ?? [];
+
+        $result = $this->planningVueRepository->createChantierVue($planningVue, $filtrePerso, $utilisateursAutorises, $idPlanning, $user->getIdpersonnel(),  $this->logger);
+
+        $this->notifier->notifyPlanningChange(
+            $idPlanning,
+            'ADD_CHANTIER_VUE',
             $user->getIdpersonnel(),
             ['vue' => $result['data']]
         );
