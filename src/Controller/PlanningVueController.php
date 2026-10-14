@@ -133,19 +133,26 @@ class PlanningVueController extends AbstractController
     /**
      * @throws Exception
      */
-    #[Route('chantier/vue/user/{userId}', name: 'api_configs_chantier_user', methods: ['GET'])]
+    #[Route('/chantier/vue/user/{userId}', name: 'api_configs_chantier_user', methods: ['GET'])]
     #[OA\Parameter(name: 'userId', in: 'path', description: 'ID de l\'utilisateur', schema: new OA\Schema(type: 'integer'))]
     #[OA\Parameter(name: 'idPlanning', in: 'query', description: 'ID de planning', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Liste des configurations de l\'utilisateur et des jours non travaillé du planning')]
     public function getUserChantierConfigs(int $userId, Request $request): JsonResponse
     {
-        $IdPlanning = $request->query->get('idPlanning');
+        $idPlanning = $request->headers->get('X-Planning-Id');
 
-        if ($IdPlanning !== null && !is_numeric($IdPlanning) || $IdPlanning < 0) {
-            throw new BadRequestHttpException('Id du planning manquant');
+        if ($idPlanning === null) {
+            throw new BadRequestHttpException('Le header X-Planning-Id est manquant.');
         }
 
-        $configs = $this->planningVueRepository->getChantierConfigUser($userId, $IdPlanning);
+        if ($idPlanning !== null && !is_numeric($idPlanning) || $idPlanning < 0) {
+            $this->logger->debug('Le paramètre idPlanning doit être un entier positif. Valeur reçue: {idPlanning}', [
+                'idPlanning' => $idPlanning,
+            ]);
+            throw new BadRequestHttpException('Le paramètre idPlanning doit être un entier positif.');
+        }
+
+        $configs = $this->planningVueRepository->getChantierConfigUser($userId, $idPlanning, $this->logger);
         return $this->json(['data' => $configs]);
 
     }
@@ -159,13 +166,20 @@ class PlanningVueController extends AbstractController
     #[OA\Response(response: 200, description: 'Liste des configurations de l\'utilisateur et des jours non travaillé du planning')]
     public function getUserConfigs(int $userId, Request $request): JsonResponse
     {
-        $IdPlanning = $request->query->get('idPlanning');
+        $idPlanning = $request->headers->get('X-Planning-Id');
 
-        if ($IdPlanning !== null && !is_numeric($IdPlanning) || $IdPlanning < 0) {
-            throw new BadRequestHttpException('Id du planning manquant');
+        if ($idPlanning === null) {
+            throw new BadRequestHttpException('Le header X-Planning-Id est manquant.');
         }
 
-        $configs = $this->planningVueRepository->getConfigUser($userId, $IdPlanning);
+        if ($idPlanning !== null && !is_numeric($idPlanning) || $idPlanning < 0) {
+            $this->logger->debug('Le paramètre idPlanning doit être un entier positif. Valeur reçue: {idPlanning}', [
+                'idPlanning' => $idPlanning,
+            ]);
+            throw new BadRequestHttpException('Le paramètre idPlanning doit être un entier positif.');
+        }
+
+        $configs = $this->planningVueRepository->getConfigUser($userId, $idPlanning);
         return $this->json(['data' => $configs]);
 
     }
@@ -415,17 +429,16 @@ class PlanningVueController extends AbstractController
             throw new BadRequestHttpException('Données de la vue manquantes');
         }
 
-        $filtrePerso = $data['filtrePerso'];
 
         $utilisateursAutorises = $data['utilisateursAutorises'] ?? [];
 
-        $result = $this->planningVueRepository->createChantierVue($planningVue, $filtrePerso, $utilisateursAutorises, $idPlanning, $user->getIdpersonnel(),  $this->logger);
+        $result = $this->planningVueRepository->createChantierVue($planningVue, $utilisateursAutorises, $idPlanning, $user->getIdpersonnel(),  $this->logger);
 
         $this->notifier->notifyPlanningChange(
             $idPlanning,
             'ADD_CHANTIER_VUE',
             $user->getIdpersonnel(),
-            ['vue' => $result['data']]
+            ['vue' => $result]
         );
 
         return $this->json($result);
@@ -533,6 +546,45 @@ class PlanningVueController extends AbstractController
         }
 
         return $this->json([ 'message' => 'Vue mise à jour avec succès.', 'data' => $result]);
+
+    }
+
+
+    /**
+     * @throws \Throwable
+     */
+    #[Route('/chantier/vue/{id}', name: 'api_chantier_vue_set', methods: ['PUT'])]
+    #[IsGranted('VUE_EDIT', message: 'Vous n\'avez pas la permission de créer de vue.')]
+    public function setChantierVue(int $id, #[CurrentUser] Session $user, Request $request): JsonResponse
+    {
+        $idPlanning = $request->headers->get('X-Planning-Id');
+
+        if (!$idPlanning) {
+            throw new BadRequestHttpException('Id du planning manquant');
+        }
+
+        $data = $request->toArray();
+
+        $planningVue = $data['planningVue'];
+
+        if (!$planningVue){
+            throw new BadRequestHttpException('Données de la vue manquantes');
+        }
+
+        $utilisateursAutorises = $data['utilisateursAutorises'] ?? [];
+
+        $result = $this->planningVueRepository->setChantierVue(
+            $id, $planningVue, $utilisateursAutorises, $idPlanning, $user->getIdpersonnel(),  $this->logger
+        );
+
+        $this->notifier->notifyPlanningChange(
+            $idPlanning,
+            'SET_CHANTIER_VUE',
+            $user->getIdpersonnel(),
+            ['vue' => $result]
+        );
+
+        return $this->json($result);
 
     }
 

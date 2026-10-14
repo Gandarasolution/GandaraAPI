@@ -93,6 +93,11 @@ class PlanningRessourceController extends abstractController
 
         $q = $request->query->get('q', '');
         $viewType = $request->query->get('viewType', '');
+        $idPlanningChantierVue = $request->query->get('idPlanningChantierVue', null);
+
+        if ($idPlanningChantierVue === null) {
+            throw new BadRequestHttpException('Le paramètre idPlanningChantierVue est requis.');
+        }
 
 
         $logger->debug('Récupération des projets avec les paramètres',
@@ -101,6 +106,7 @@ class PlanningRessourceController extends abstractController
             '@PageNumber' => $pageNumber,
             '@Query' => $q,
             '@ViewType' => $viewType,
+            '@IdPlanningChantierVue' => $idPlanningChantierVue,
         ]);
 
         $result = $this->planningRessourceRepository->getProjet(
@@ -109,6 +115,7 @@ class PlanningRessourceController extends abstractController
             $q,
             $user->getIdpersonnel(),
             $viewType,
+            $idPlanningChantierVue,
             $logger
         );
 

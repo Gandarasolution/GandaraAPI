@@ -719,89 +719,167 @@ class PlanningVueRepository extends ServiceEntityRepository
             throw new NotFoundHttpException('Aucune vue chantier trouvée pour cet ID: ' . $id);
         }
 
+        return $this->structuredChantierVue($result);
+    }
+
+    public function createChantierVue(mixed $planningVue, mixed $utilisateursAutorises, string $idPlanning, int $getIdpersonnel, LoggerInterface $logger)
+    {
+        $conn =  $this->getEntityManager()->getConnection();
+
+        $logger->debug('Création de la vue chantier avec les données: ' . json_encode($planningVue) . ', filtres: ' . json_encode($planningVue['filtres']) . ', utilisateurs: ' . json_encode($utilisateursAutorises));
+
+            $sql = 'EXEC ps_PlanningChantierVueUpdateInsert
+            @IdPlanning = :IdPlanning,
+            @IdSession = :IdSession,
+            @LibellePlanningVue = :LibellePlanningVue,
+            @DescriptionPlanningVue = :DescriptionPlanningVue,
+            @FiltresJSON = :FiltresJSON,
+            @JsonUtilisateurs = :JsonUtilisateurs,
+            @IdPlanningImage = :IdPlanningImage,
+            @JsonColonnes = :JsonColonnes';
+
+        $jsonUsers = json_encode($utilisateursAutorises);
+        $jsonFiltres = json_encode($planningVue['filtres'] ?? []);
+        $jsonColonnes = json_encode($planningVue['ChantierColonnes'] ?? []);
+
+        $params = [
+            'IdPlanning' => $idPlanning,
+            'IdSession' => $getIdpersonnel,
+            'LibellePlanningVue' => $planningVue['LibellePlanningVue'],
+            'FiltresJSON' => $jsonFiltres,
+            'JsonUtilisateurs' => $jsonUsers,
+            'DescriptionPlanningVue' => $planningVue['DescriptionPlanningVue'] ?? '',
+            'IdPlanningImage' => $planningVue['IdPlanningImage'] ?? null,
+            'JsonColonnes' => $jsonColonnes
+        ];
+
+        $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+        $logger->debug('Résultat de la création de la vue chantier: ' . json_encode($result));
+
+        if ($result === false) {
+            throw new \RuntimeException("La création de la vue chantier a échoué (aucun retour de la procédure).");
+        }
+
+        return $this->structuredChantierVue($result);
+    }
+
+    public function getChantierConfigUser(int $userId, float|bool|int|string|null $IdPlanning, LoggerInterface $logger): array
+    {
+
+        $conn = $this->getEntityManager()->getConnection();
+            $sql = 'EXEC ps_PlanningChantierVueSelect @IdPersonnel = :IdPersonnel';
+            $params = [
+                'IdPersonnel' => $userId,
+            ];
+
+            $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+            $vues = [];
+
+            foreach ($result as $row) {
+                $vueId = (int) $row['IdPlanningChantierVue'];
+
+                // Initialisation de la vue lors de la première rencontre de son ID
+                if (!isset($vues[$vueId])) {
+                    $vues[$vueId] = (object) [
+                        'id'         => $vueId,
+                        'libelle'    => $row['LibellePlanningVue'],
+                        'filtres'    => json_decode($row['FiltresJSON'] ?? '[]', true),
+                        'colonnes'   => []
+                    ];
+                }
+
+            // Ajout de la colonne si elle existe (LEFT JOIN peut renvoyer NULL)
+            if (!empty($row['PlanningVueColonneCodeColonne'])) {
+                $vues[$vueId]->colonnes[] = (object) [
+                    'code'  => $row['PlanningVueColonneCodeColonne'],
+                    'ordre' => (int) $row['Ordre']
+                ];
+            }
+        }
+
+        // Réindexation numérique simple (0, 1, 2...)
+        $listeDesVues = array_values($vues);
+
+        return [
+            'vues' => $listeDesVues,
+            'hasFiltres' => (bool) ($result[0]['HasFiltres'] ?? false),
+        ];
+    }
+
+    public function setChantierVue(int $idPlanningVue, mixed $planningVue, mixed $utilisateursAutorises, string $idPlanning, int $getIdpersonnel, LoggerInterface $logger)
+    {
+
+        $conn =  $this->getEntityManager()->getConnection();
+
+        $logger->debug('Mise à jour de la vue chantier avec les données: ' . json_encode($planningVue) . ', utilisateurs: ' . json_encode($utilisateursAutorises));
+
+        $sql = 'EXEC ps_PlanningChantierVueUpdateInsert
+            @IdPlanningVue = :IdPlanningChantierVue,
+            @IdPlanning = :IdPlanning,
+            @IdSession = :IdSession,
+            @LibellePlanningVue = :LibellePlanningVue,
+            @DescriptionPlanningVue = :DescriptionPlanningVue,
+            @FiltresJSON = :FiltresJSON,
+            @JsonUtilisateurs = :JsonUtilisateurs,
+            @IdPlanningImage = :IdPlanningImage,
+            @JsonColonnes = :JsonColonnes';
+
+        $jsonUsers = json_encode($utilisateursAutorises);
+        $jsonFiltres = json_encode($planningVue['filtres'] ?? []);
+        $jsonColonnes = json_encode($planningVue['ChantierColonnes'] ?? []);
+
+
+        $params = [
+            'IdPlanningChantierVue' => $idPlanningVue,
+            'IdPlanning' => $idPlanning,
+            'IdSession' => $getIdpersonnel,
+            'LibellePlanningVue' => $planningVue['LibellePlanningVue'],
+            'FiltresJSON' => $jsonFiltres,
+            'JsonUtilisateurs' => $jsonUsers,
+            'DescriptionPlanningVue' => $planningVue['DescriptionPlanningVue'] ?? '',
+            'IdPlanningImage' => $planningVue['IdPlanningImage'] ?? null,
+            'JsonColonnes' => $jsonColonnes
+        ];
+
+        $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+        $logger->debug('Résultat de la mise à jour de la vue chantier: ' . json_encode($result));
+
+        if ($result === false) {
+            throw new \RuntimeException("La mise à jour de la vue chantier a échoué (aucun retour de la procédure).");
+        }
+
+
+        return $this->structuredChantierVue($result);
+
+    }
+
+    /**
+     * @param $result
+     * @return object
+     */
+    private function structuredChantierVue($result): array
+    {
         $firstRow = $result[0];
 
-        $vueObjet = (object) [
-            'id'          => (int) $firstRow['IdPlanningChantierVue'],
-            'libelle'     => $firstRow['LibellePlanningVue'],
-            'filtres'     => json_decode($firstRow['FiltresJSON'], true),
-            'colonnes'    => []
+        $vueObjet = [
+            'id' => (int)$firstRow['IdPlanningChantierVue'],
+            'libelle' => $firstRow['LibellePlanningVue'],
+            'filtres' => json_decode($firstRow['FiltresJSON'], true),
+            'colonnes' => []
         ];
 
         // 3. Agrégation des colonnes
         foreach ($result as $row) {
             if (!empty($row['PlanningVueColonneCodeColonne'])) {
-                $vueObjet->colonnes[] = (object) [
-                    'code'  => $row['PlanningVueColonneCodeColonne'],
-                    'ordre' => (int) $row['Ordre']
+                $vueObjet['colonnes'][] = [
+                    'code' => $row['PlanningVueColonneCodeColonne'],
+                    'ordre' => (int)$row['Ordre']
                 ];
 
             }
         }
 
         return $vueObjet;
-    }
-
-    public function createChantierVue(mixed $planningVue, mixed $filtrePerso, mixed $utilisateursAutorises, string $idPlanning, int $getIdpersonnel, LoggerInterface $logger)
-    {
-        $conn =  $this->getEntityManager()->getConnection();
-
-        $logger->debug('Création de la vue chantier avec les données: ' . json_encode($planningVue) . ', filtres: ' . json_encode($filtrePerso) . ', utilisateurs: ' . json_encode($utilisateursAutorises));
-
-        return $conn->transactional(function ($conn) use ($planningVue, $filtrePerso, $utilisateursAutorises, $idPlanning, $getIdpersonnel, $logger) {
-            $sql = 'EXEC ps_PlanningChantierVueUpdateInsert
-                @IdPlanning = :IdPlanning,
-                @IdSession = :IdSession,
-                @LibellePlanningVue = :LibellePlanningVue,
-                @DescriptionPlanningVue = :DescriptionPlanningVue,
-                @FiltresJSON = :FiltresJSON,
-                @JsonUtilisateurs = :JsonUtilisateurs,
-                @IdPlanningImage = :IdPlanningImage';
-
-            $jsonUsers = json_encode($utilisateursAutorises);
-            $jsonFiltres = json_encode($filtrePerso);
-
-            $params = [
-                'IdPlanning' => $idPlanning,
-                'IdSession' => $getIdpersonnel,
-                'LibellePlanningVue' => $planningVue['LibellePlanningVue'],
-                'FiltresJSON' => $jsonFiltres,
-                'JsonUtilisateurs' => $jsonUsers,
-                'DescriptionPlanningVue' => $planningVue['DescriptionPlanningVue'] ?? '',
-                'IdPlanningImage' => $planningVue['IdPlanningImage'] ?? null,
-            ];
-
-            $result = $conn->executeQuery($sql, $params)->fetchAssociative();
-            $logger->debug('Résultat de la création de la vue chantier: ' . json_encode($result));
-
-            if ($result === false) {
-                throw new \RuntimeException("La création de la vue chantier a échoué (aucun retour de la procédure).");
-            }
-
-            return [
-                'IdPlanningChantierVue' => (int)$result['IdPlanningChantierVue'],
-                'LibellePlanningVue' => $result['LibellePlanningVue'],
-                'FiltresJSON' => json_decode($result['FiltresJSON'], true),
-                'isLocked' => false,
-            ];
-        });
-    }
-
-    public function getChantierConfigUser(int $userId, float|bool|int|string|null $IdPlanning)
-    {
-
-        $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningChantierVueSelect @IdPersonnel = :IdPersonnel';
-        $params = [
-            'IdPersonnel' => $userId,
-        ];
-
-        $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
-
-        if (!$result) {
-            throw new NotFoundHttpException('Aucune configuration de vue chantier trouvée pour cet utilisateur: ' . $userId);
-        }
-
-        return $result;
     }
 }

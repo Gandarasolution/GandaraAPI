@@ -164,6 +164,7 @@ class PlanningRessourceRepository extends ServiceEntityRepository
         mixed $query,
         int $idPersonnel,
         string $viewType,
+        int $idPlanningChantierVue,
         LoggerInterface $logger
     ): array
     {
@@ -173,13 +174,15 @@ class PlanningRessourceRepository extends ServiceEntityRepository
             @PageNumber= :PageNumber,
             @Query= :Query,
             @IdPersonnel= :IdPersonnel,
-            @ViewType= :ViewType';
+            @ViewType= :ViewType,
+            @IdPlanningVue= :IdPlanningChantierVue';
         $params = [
             'Limit' => $limit ?? 20,
             'PageNumber' => $pageNumber ?? 1,
             'Query' => $query,
             'IdPersonnel' => $idPersonnel,
             'ViewType' => $viewType,
+            'IdPlanningChantierVue' => $idPlanningChantierVue
         ];
         $result = $conn->executeQuery($sql,$params)->fetchAllAssociative();
 
@@ -200,28 +203,32 @@ class PlanningRessourceRepository extends ServiceEntityRepository
 
             $structuredData[] = [
                 'IdPlanningRessource' => $row['IdPlanningRessource'],
-                'LibellePlanningRessource' => $row['LibellePlanningRessource'],
-                'Image' => $image,
-                'Actif' => (int)$row['Actif'] === 1,
-                'CouleurFondPlanningRessource' => $row['CouleurFondPlanningRessource'],
-                'CouleurBordurePlanningRessource' => $row['CouleurBordurePlanningRessource'],
-                'CouleurTextePlanningRessource' => $row['CouleurTextePlanningRessource'],
+                'LibellePlanningRessource' => $row['LibellePlanningRessource'] ?? null,
+                'Image' => $image ?? null,
+                'Actif' => isset($row['Actif']) && (int)$row['Actif'] === 1,
+                'CouleurFondPlanningRessource' => $row['CouleurFondPlanningRessource'] ?? null,
+                'CouleurBordurePlanningRessource' => $row['CouleurBordurePlanningRessource'] ?? null,
+                'CouleurTextePlanningRessource' => $row['CouleurTextePlanningRessource'] ?? null,
                 'Type' => 'Projet',
-                'CodePlanningRessource' => $row['Code'],
-                'PoleActivite' => $row['DesignationPoleActivite'],
-                'ChargeAffaire' => $row['ChargeAffaire'],
-                'ChefChantier' => $row['ChefChantier'],
-                'Etat' => $row['Etat'],
-                'Identifiant' => $row['Identifiant'],
-                'DateOS' => $row['DateOS'] ? new \DateTime($row['DateOS'])->format('d/m/Y') : null,
-                'DateFin' => $row['DateFin'] ? new \DateTime($row['DateFin'])->format('d/m/Y') : null,
-                'TM' => $row['TM'],
-                'HR' => $row['HR'],
-                'SH' => $row['SH'],
-                'DPF' => $row['DPF'],
-                'RPF' => $row['RPF'],
-                'AP' => $row['AP'],
-                'SP' => $row['SP'],
+                'CodePlanningRessource' => $row['Code'] ?? null,
+                'PoleActivite' => $row['DesignationPoleActivite'] ?? null,
+                'ChargeAffaire' => $row['ChargeAffaire'] ?? null,
+                'ChefChantier' => $row['ChefChantier'] ?? null,
+                'Etat' => $row['Etat'] ?? null,
+                'Identifiant' => $row['Identifiant'] ?? null,
+                'DateOS' => !empty($row['DateOS'])
+                    ? new \DateTime($row['DateOS'])->format('d/m/Y')
+                    : null,
+                'DateFin' => !empty($row['DateFin'])
+                    ? new \DateTime($row['DateFin'])->format('d/m/Y')
+                    : null,
+                'TM' => $row['TM'] ?? null,
+                'HR' => $row['HR'] ?? null,
+                'SH' => $row['SH'] ?? null,
+                'DPF' => $row['DPF'] ?? null,
+                'RPF' => $row['RPF'] ?? null,
+                'AP' => $row['AP'] ?? null,
+                'SP' => $row['SP'] ?? null,
             ];
         }
 
