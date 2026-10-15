@@ -336,6 +336,26 @@ class PlanningVueController extends AbstractController
     }
 
 
+
+    #[Route('/chantier/setLastVue', name: 'api_set_last_chantier_vue', methods: ['POST'])]
+    #[OA\Response(response: 200, description: 'Met à jour la dernière vue chantier d\'un utilisateur ')]
+    #[OA\Response(response: 400, description: 'Paramètre idVue manquant ou invalide')]
+    #[OA\Response(response: 500, description: 'Erreur serveur')]
+    public function setLastChantierVue(#[CurrentUser] Session $user, Request $request) :JsonResponse{
+
+        $data = $request->toArray();
+
+        if($data['idVue'] !== null && !is_numeric($data['idVue']) || $data['idVue'] < 0) {
+            $this->logger->debug('Le paramètre idVue doit être un entier positif. Valeur reçue: {idVue}', [
+                'idVue' => $data['idVue'],
+            ]);
+            throw new BadRequestHttpException('Id du planning manquant');
+        }
+        $this->planningVueRepository->setLastChantierVue($user, $data['idVue']);
+        return $this->json(['message' => 'La dernière vue a été mise à jour avec succès.']);
+    }
+
+
     /**
      * @throws Exception
      */
@@ -619,6 +639,33 @@ class PlanningVueController extends AbstractController
     }
 
 
+
+    #[Route('/chantier/vue/{id}', name: 'api_chantier_vue_delete', methods: ['DELETE'])]
+    #[IsGranted('VUE_EDIT', message: 'Vous n\'avez pas la permission de supprimer cette vue.')]
+    public function deleteChantierVue(int $id, LoggerInterface $logger, Request $request,  #[CurrentUser] Session $user): JsonResponse{
+        $idPlanning = $request->headers->get('X-Planning-Id');
+        if (!$idPlanning) {
+            throw new BadRequestHttpException('Id du planning manquant');
+        }
+
+
+        $result = $this->planningVueRepository->deleteChantierVue($id, $logger);
+
+        if (!$result) {
+            return $this->json(['message' => 'Aucune vue n\'a été supprimée (ID introuvable)'], 404);
+        }
+
+
+        $this->notifier->notifyPlanningChange(
+            $idPlanning,
+            'DELETE_CHANTIER_VUE',
+            $user->getIdpersonnel(),
+            ['IdPlanningVue' => $id]
+        );
+
+        return $this->json($result);
+
+    }
 
 
 }

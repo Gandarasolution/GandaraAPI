@@ -882,4 +882,39 @@ class PlanningVueRepository extends ServiceEntityRepository
 
         return $vueObjet;
     }
+
+    public function setLastChantierVue(Session $user, float|int|string $idVue)
+    {
+        $sql = 'EXEC ps_ParametreSessionInsertUpdate @IdParametre = \'TableauChantier.DerniereVue\', @IdPersonnel = :IdPersonnel, @ValeurParametreSession = :ValeurParametreSession';
+        $conn = $this->getEntityManager()->getConnection();
+
+        $conn->executeQuery($sql, [
+            'IdPersonnel' => $user->getIdpersonnel(),
+            'ValeurParametreSession' => $idVue,
+        ]);
+    }
+
+    public function deleteChantierVue(int $id, LoggerInterface $logger)
+    {
+        $conn = $this->getEntityManager()->getConnection();
+        $sql = 'EXEC ps_PlanningChantierVueDelete @IdPlanningChantierVue = :IdPlanningChantierVue';
+        $params = [
+            'IdPlanningChantierVue' => $id,
+        ];
+
+        $result = $conn->fetchAssociative($sql, $params);
+
+        if (!$result) throw new \RuntimeException("Erreur lors de la suppression de la vue chantier (ID : $id). Aucune réponse de la procédure stockée.", 500);
+
+        $nbLignes = $result['LignesAffectees'];
+
+        if ($nbLignes === 0) {
+            $logger->warning("Aucune vue chantier n'a été supprimée (ID introuvable : $id)");
+            return [];
+        } else {
+            $logger->info("$nbLignes vue(s) chantier supprimée(s) avec succès.");
+
+            return ['message' => 'Vue chantier supprimée avec succès.'];
+        }
+    }
 }
