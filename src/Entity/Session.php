@@ -66,18 +66,6 @@ class Session implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(name: 'LicenceMobileInventaireTournant', type: 'boolean')]
     private bool $licencemobileinventairetournant;
 
-    #[ORM\Column(name: 'FreeLicenceMobileMagasin', type: 'boolean', nullable: true)]
-    private ?bool $freelicencemobilemagasin = null;
-
-    #[ORM\Column(name: 'FreeLicenceMobilePhoto', type: 'boolean', nullable: true)]
-    private ?bool $freelicencemobilephoto = null;
-
-    #[ORM\Column(name: 'FreeLicenceMobileCommande', type: 'boolean', nullable: true)]
-    private ?bool $freelicencemobilecommande = null;
-
-    #[ORM\Column(name: 'FreeLicenceMobileInventaireTournant', type: 'boolean', nullable: true)]
-    private ?bool $freelicencemobileinventairetournant = null;
-
     public function getIdpersonnel(): int
     {
         return $this->idpersonnel;
@@ -273,50 +261,6 @@ class Session implements UserInterface, PasswordAuthenticatedUserInterface
     public function setLicencemobileinventairetournant(bool $licencemobileinventairetournant): static
     {
         $this->licencemobileinventairetournant = $licencemobileinventairetournant;
-        return $this;
-    }
-
-    public function getFreelicencemobilemagasin(): ?bool
-    {
-        return $this->freelicencemobilemagasin;
-    }
-
-    public function setFreelicencemobilemagasin(?bool $freelicencemobilemagasin): static
-    {
-        $this->freelicencemobilemagasin = $freelicencemobilemagasin;
-        return $this;
-    }
-
-    public function getFreelicencemobilephoto(): ?bool
-    {
-        return $this->freelicencemobilephoto;
-    }
-
-    public function setFreelicencemobilephoto(?bool $freelicencemobilephoto): static
-    {
-        $this->freelicencemobilephoto = $freelicencemobilephoto;
-        return $this;
-    }
-
-    public function getFreelicencemobilecommande(): ?bool
-    {
-        return $this->freelicencemobilecommande;
-    }
-
-    public function setFreelicencemobilecommande(?bool $freelicencemobilecommande): static
-    {
-        $this->freelicencemobilecommande = $freelicencemobilecommande;
-        return $this;
-    }
-
-    public function getFreelicencemobileinventairetournant(): ?bool
-    {
-        return $this->freelicencemobileinventairetournant;
-    }
-
-    public function setFreelicencemobileinventairetournant(?bool $freelicencemobileinventairetournant): static
-    {
-        $this->freelicencemobileinventairetournant = $freelicencemobileinventairetournant;
         return $this;
     }
 
