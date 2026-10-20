@@ -49,7 +49,8 @@
         "twig/extra-bundle": "^2.12|^3.24",
         "twig/twig": "^2.12|^3.28.0",
         "ext-redis": "*",
-        "ext-gd": "*"
+        "ext-gd": "*",
+        "ext-intl": "*"
     },
     "config": {
         "allow-plugins": {
