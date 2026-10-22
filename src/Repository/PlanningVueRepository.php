@@ -425,7 +425,7 @@ class PlanningVueRepository extends ServiceEntityRepository
                 'DescriptionPlanningVue' => $planningVue['DescriptionPlanningVue'],
                 'LibellePlanningVue' => $planningVue['LibellePlanningVue'],
                 'ChampsPremierGroupePlanningVue' => $planningVue['Group']['ChampsPremierGroupePlanningVue'],
-                'ChampsDeuxiemeGroupePlanningVue' => $planningVue['Group']['ChampsDeuxiemeGroupePlanningVue'],
+                'ChampsDeuxiemeGroupePlanningVue' => $planningVue['Group']['ChampsDeuxiemeGroupePlanningVue'] ?? NULL,
                 'FiltreChantierPlanningVue' => $planningVue['chantierEvenement'] ? 1 : 0,
                 'FiltreSocialPlanningVue' => $planningVue['paieEvenement'] ? 1 : 0,
                 'FiltreAutresPlanningVue' => $planningVue['persoEvenement'] ? 1 : 0,
@@ -514,7 +514,7 @@ class PlanningVueRepository extends ServiceEntityRepository
         $sql = 'SELECT IdPersonnel AS Id, V.Nom
                 FROM Session
                 INNER JOIN v_Personnel V ON V.Id = Session.IdPersonnel
-                WHERE IdPersonnel > 0;';
+                WHERE IdPersonnel > 0 AND V.Actif = 1;';
         $result = $conn->executeQuery($sql)->fetchAllAssociative();
 
         return $result;
@@ -695,7 +695,7 @@ class PlanningVueRepository extends ServiceEntityRepository
             }
         }else{
             $sqlCheck = 'SELECT ValeurParametre AS idPlanningChantierVue FROM Parametre WHERE IdParametre = \'Planning.VueChantierGeneral\'';
-            $idVueDefault= $conn->executeQuery($sqlCheck)->fetchAssociative();
+            $idVueDefault = $conn->executeQuery($sqlCheck)->fetchAssociative();
 
             return $idVueDefault;
         }
@@ -719,7 +719,20 @@ class PlanningVueRepository extends ServiceEntityRepository
             throw new NotFoundHttpException('Aucune vue chantier trouvée pour cet ID: ' . $id);
         }
 
-        return $this->structuredChantierVue($result);
+
+
+        $sql = '
+                SELECT S.Id, S.Nom
+                FROM PlanningChantierVueAttribution
+                LEFT JOIN v_Personnel S ON S.Id = PlanningChantierVueAttribution.IdSession
+                WHERE IdPlanningChantierVue =  :IdPlanningVue AND S.Actif = 1
+                    ';
+        $params = [
+            'IdPlanningVue' => $id,
+        ];
+        $utilisateursAutorises = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+        return ['planningChantierVue' => $this->structuredChantierVue($result), 'utilisateursAutorises' => $utilisateursAutorises];
     }
 
     public function createChantierVue(mixed $planningVue, mixed $utilisateursAutorises, string $idPlanning, int $getIdpersonnel, LoggerInterface $logger)
@@ -785,7 +798,9 @@ class PlanningVueRepository extends ServiceEntityRepository
                         'id'         => $vueId,
                         'libelle'    => $row['LibellePlanningVue'],
                         'filtres'    => json_decode($row['FiltresJSON'] ?? '[]', true),
-                        'colonnes'   => []
+                        'colonnes'   => [],
+                        'isLocked'   => (bool) $row['IsLocked'],
+                        'isPrivate'  => (bool) $row['IsPrivate']
                     ];
                 }
 
@@ -866,7 +881,8 @@ class PlanningVueRepository extends ServiceEntityRepository
             'id' => (int)$firstRow['IdPlanningChantierVue'],
             'libelle' => $firstRow['LibellePlanningVue'],
             'filtres' => json_decode($firstRow['FiltresJSON'], true),
-            'colonnes' => []
+            'colonnes' => [],
+            'isLocked' => (bool)$firstRow['IsLocked']
         ];
 
         // 3. Agrégation des colonnes
@@ -916,5 +932,23 @@ class PlanningVueRepository extends ServiceEntityRepository
 
             return ['message' => 'Vue chantier supprimée avec succès.'];
         }
+    }
+
+    public function getAvailableColumns(mixed $viewType, LoggerInterface $logger)
+    {
+        $conn = $this->getEntityManager()->getConnection();
+
+        $sql = 'EXEC ps_PlanningChantierVueColonneSelect @ClePage = :ViewType';
+        $params = [
+            'ViewType' => $viewType,
+        ];
+
+        $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+        if (!$result) {
+            throw new NotFoundHttpException('Aucune colonne disponible pour le type de vue: ' . $viewType);
+        }
+
+        return $result;
     }
 }

@@ -71,6 +71,18 @@ class PlanningVueController extends AbstractController
 
     }
 
+    #[Route('/vue/available-columns', name: 'api_config_available_columns', methods: ['GET'])]
+    #[OA\Parameter(name: 'viewType', in: 'query', description: 'Type de vue', schema: new OA\Schema(type: 'string'))]
+    #[OA\Response(response: 200, description: 'Récupère les colonnes disponibles pour une vue spécifique')]
+    #[IsGranted('VUE_VIEW', message: 'Vous n\'avez pas la permission de visualiser cette vue.')]
+    public function getAvailableColumns(Request $request) :JsonResponse {
+
+        $viewType = $request->query->get('viewType');
+
+        $result = $this->planningVueRepository->getAvailableColumns($viewType, $this->logger);
+
+        return $this->json(['data' => $result]);
+    }
 
 
     #[Route('/chantier/getLastVue', name: 'api_last_config_user_chantier', methods: ['GET'])]
@@ -128,6 +140,8 @@ class PlanningVueController extends AbstractController
 
         return $this->json(['data' => $result]);
     }
+
+
 
 
     /**
@@ -419,7 +433,7 @@ class PlanningVueController extends AbstractController
             $idPlanning,
             'ADD_VUE',
             $user->getIdpersonnel(),
-            ['vue' => $result['data']]
+            ['vue' => $result]
         );
 
         return $this->json($result);
