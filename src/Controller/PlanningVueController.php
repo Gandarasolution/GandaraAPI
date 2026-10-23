@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Session;
+use App\Repository\PlanningTypesJourRepository;
 use App\Repository\PlanningVueRepository;
 use App\Service\MercureNotificationService;
 use Doctrine\DBAL\Exception;
@@ -29,6 +30,7 @@ class PlanningVueController extends AbstractController
 
     public function __construct(
         private readonly LoggerInterface $logger,
+        private readonly PlanningTypesJourRepository $typesJourRepository,
         private MercureNotificationService $notifier,
         private PlanningVueRepository $planningVueRepository,
         private CacheInterface $cache
@@ -150,7 +152,7 @@ class PlanningVueController extends AbstractController
     #[Route('/chantier/vue/user/{userId}', name: 'api_configs_chantier_user', methods: ['GET'])]
     #[OA\Parameter(name: 'userId', in: 'path', description: 'ID de l\'utilisateur', schema: new OA\Schema(type: 'integer'))]
     #[OA\Parameter(name: 'idPlanning', in: 'query', description: 'ID de planning', schema: new OA\Schema(type: 'integer'))]
-    #[OA\Response(response: 200, description: 'Liste des configurations de l\'utilisateur et des jours non travaillé du planning')]
+    #[OA\Response(response: 200, description: 'Liste des configurations de l\'utilisateur pour les chantiers')]
     public function getUserChantierConfigs(int $userId, Request $request): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
@@ -177,7 +179,7 @@ class PlanningVueController extends AbstractController
     #[Route('/vue/user/{userId}', name: 'api_configs_user', methods: ['GET'])]
     #[OA\Parameter(name: 'userId', in: 'path', description: 'ID de l\'utilisateur', schema: new OA\Schema(type: 'integer'))]
     #[OA\Parameter(name: 'idPlanning', in: 'query', description: 'ID de planning', schema: new OA\Schema(type: 'integer'))]
-    #[OA\Response(response: 200, description: 'Liste des configurations de l\'utilisateur et des jours non travaillé du planning')]
+    #[OA\Response(response: 200, description: 'Liste des configurations de l\'utilisateur')]
     public function getUserConfigs(int $userId, Request $request): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
@@ -233,9 +235,17 @@ class PlanningVueController extends AbstractController
             throw new BadRequestHttpException('Id du planning manquant');
         }
 
-        $result = $this->planningVueRepository->getNonWorkingDates($idPlanning);
+        $nonWorkingDates = $this->planningVueRepository->getNonWorkingDates($idPlanning);
 
-        return $this->json(['data' => $result]);
+        $typesNonWorkingDates = $this->typesJourRepository->getAllTypesJour();
+
+
+        return $this->json([
+            'data' => [
+                'nonWorkingDates' => $nonWorkingDates,
+                'typesNonWorkingDates' => $typesNonWorkingDates
+            ]
+        ]);
 
     }
 
@@ -392,7 +402,7 @@ class PlanningVueController extends AbstractController
             $idPlanning,
             'ADD_NON_WORKING_DAY',
             $user->getIdpersonnel(),
-            ['date' => $data['nonWorkingDate'], 'id' => $result]
+            ['date' => $data['nonWorkingDate'], 'id' => $result, 'typeJourCode' => $data['typeJourCode']]
         );
 
         return $this->json(['message' => 'Jours non travaillés ajoutés avec succès.', 'data' => $result]);

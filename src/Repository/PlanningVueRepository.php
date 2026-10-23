@@ -115,10 +115,11 @@ class PlanningVueRepository extends ServiceEntityRepository
         $date = new \DateTime()->setTimestamp((int)($data['nonWorkingDate'] / 1000));
 
         $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningJourNonTravailleInsert @IdPlanning = :IdPlanning, @DatePlanningJourNontravaille = :DatePlanningJourNontravaille';
+        $sql = 'EXEC ps_PlanningJourNonTravailleInsert @IdPlanning = :IdPlanning, @DatePlanningJourNontravaille = :DatePlanningJourNontravaille, @TypeJourCode = :TypeJourCode';
         $dbResult = $conn->executeQuery($sql, [
             'IdPlanning' => $IdPlanning,
             'DatePlanningJourNontravaille' => $date->format('Y-m-d\TH:i:s'), // Plus sûr en SQL
+            'TypeJourCode' => $data['typeJourCode'],
         ])->fetchAllAssociative();
 
         if (empty($dbResult)) {
