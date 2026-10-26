@@ -91,14 +91,15 @@ class PlanningVueRepository extends ServiceEntityRepository
     /**
      * @throws Exception
      */
-    public function getNonWorkingDates(int $idPlanning): array
+    public function getNonWorkingDates(int $idPlanning, string|null $years): array
     {
 
         $conn = $this->getEntityManager()->getConnection();
 
-        $sql = 'EXEC ps_PlanningJourNonTravailleSelect @IdPlanning = :IdPlanning';
+        $sql = 'EXEC ps_PlanningJourNonTravailleSelect @IdPlanning = :IdPlanning, @Years = :Years';
         $params = [
             'IdPlanning' => $idPlanning,
+            'Years' => $years,
         ];
         $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
@@ -115,7 +116,7 @@ class PlanningVueRepository extends ServiceEntityRepository
         $date = new \DateTime()->setTimestamp((int)($data['nonWorkingDate'] / 1000));
 
         $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningJourNonTravailleInsert @IdPlanning = :IdPlanning, @DatePlanningJourNontravaille = :DatePlanningJourNontravaille, @TypeJourCode = :TypeJourCode';
+        $sql = 'EXEC ps_PlanningJourNontravailleUpdateInsert @IdPlanning = :IdPlanning, @DatePlanningJourNontravaille = :DatePlanningJourNontravaille, @TypeJourCode = :TypeJourCode';
         $dbResult = $conn->executeQuery($sql, [
             'IdPlanning' => $IdPlanning,
             'DatePlanningJourNontravaille' => $date->format('Y-m-d\TH:i:s'), // Plus sûr en SQL
@@ -949,6 +950,42 @@ class PlanningVueRepository extends ServiceEntityRepository
         if (!$result) {
             throw new NotFoundHttpException('Aucune colonne disponible pour le type de vue: ' . $viewType);
         }
+
+        return $result;
+    }
+
+    public function getAvailableYears()
+    {
+        $conn = $this->getEntityManager()->getConnection();
+
+        $sql = 'SELECT DISTINCT(YEAR(DatePlanningJourNontravaille)) AS Annee FROM PlanningJourNontravaille ORDER BY Annee DESC';
+        $result = $conn->executeQuery($sql)->fetchAllAssociative();
+
+        if (!$result) {
+            throw new NotFoundHttpException('Aucune année disponible pour les événements.');
+        }
+
+        $anneesDisponibles = [];
+        foreach ($result as $row) {
+            $anneesDisponibles[] = (int)$row['Annee'];
+        }
+
+        return $anneesDisponibles;
+    }
+
+    public function setDate(int $id, array $data, int $idPlanning, LoggerInterface $logger)
+    {
+        $conn = $this->getEntityManager()->getConnection();
+
+        $sql = 'EXEC ps_PlanningJourNontravailleUpdateInsert @IdPlanning = :IdPlanning, @IdPlanningJourNontravaille = :IdPlanningJourNontravaille, @DatePlanningJourNontravaille = :DatePlanningJourNontravaille, @TypeJourCode = :TypePlanningJourNontravaille';
+        $params = [
+            'IdPlanning' => $idPlanning,
+            'IdPlanningJourNontravaille' => $id,
+            'DatePlanningJourNontravaille' => $data['nonWorkingDate'],
+            'TypePlanningJourNontravaille' => $data['typeJourCode'],
+        ];
+
+        $result = $conn->executeQuery($sql, $params)->fetchAssociative();
 
         return $result;
     }

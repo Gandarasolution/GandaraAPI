@@ -235,7 +235,9 @@ class PlanningVueController extends AbstractController
             throw new BadRequestHttpException('Id du planning manquant');
         }
 
-        $nonWorkingDates = $this->planningVueRepository->getNonWorkingDates($idPlanning);
+        $years = $request->query->get('years');
+
+        $nonWorkingDates = $this->planningVueRepository->getNonWorkingDates($idPlanning, $years);
 
         $typesNonWorkingDates = $this->typesJourRepository->getAllTypesJour();
 
@@ -248,6 +250,18 @@ class PlanningVueController extends AbstractController
         ]);
 
     }
+
+    #[Route('/non-working-dates/available-years', name: 'api_non_working_dates_available_years', methods: ['GET'])]
+    #[OA\Response(response: 200, description: 'Liste des années disponibles pour les jours non travaillés du planning')]
+    public function getAvailableYears(Request $request): JsonResponse
+    {
+
+        $anneesDisponibles = $this->planningVueRepository->getAvailableYears();
+
+
+        return $this->json($anneesDisponibles);
+    }
+
 
     /**
      * @throws Exception
@@ -590,6 +604,30 @@ class PlanningVueController extends AbstractController
         }
 
         return $this->json([ 'message' => 'Vue mise à jour avec succès.', 'data' => $result]);
+
+    }
+
+
+
+    #[Route('/non-working-dates/{id}', name: 'api_non_working_dates_put', methods: ['PUT'])]
+    #[IsGranted('VUE_EDIT_DATE', message: 'Vous n\'avez pas la permission de modifier cette date.')]
+    public function setDates(int $id, LoggerInterface $logger, Request $request): JsonResponse
+    {
+        $idPlanning = $request->headers->get('X-Planning-Id');
+        if (!$idPlanning) {
+            throw new BadRequestHttpException('Id du planning manquant');
+        }
+
+        $data = $request->toArray();
+
+        $logger->debug('Données reçues pour la mise à jour de la date non travaillée {id}: {data}', [
+            'id' => $id,
+            'data' => $data,
+        ]);
+
+       $this->planningVueRepository->setDate($id, $data, $idPlanning, $logger);
+
+        return $this->json([ 'message' => 'Vue mise à jour avec succès.'], 200);
 
     }
 
