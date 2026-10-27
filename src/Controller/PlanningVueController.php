@@ -37,18 +37,7 @@ class PlanningVueController extends AbstractController
     )
     {}
 
-    /**
-     * @throws \Exception
-     * @throws Exception
-     */
-    #[Route('/vue/users', name: 'vueUsers', methods: ['GET'])]
-    #[OA\Response(response: 200, description: 'Récupère les utilisateurs')]
-    public function getVueUsers(): JsonResponse
-    {
-        $result = $this->planningVueRepository->getUsers();
-        return $this->json(['data' => $result]);
 
-    }
 
 
     /**

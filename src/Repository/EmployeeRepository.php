@@ -38,7 +38,7 @@ class EmployeeRepository extends ServiceEntityRepository
 
         foreach ($resultSet as $row) {
             $structuredData[] = [
-                'IdPersonnel' => $row['Id'], // Adapte selon le nom de ton ID
+                'IdPersonnel' => $row['Id'],
                 'Nom' => $row['Nom'],
                 'Prenom' => $row['Prenom'],
                 'Actif' => (int)$row['Actif'] === 1,
@@ -121,6 +121,23 @@ class EmployeeRepository extends ServiceEntityRepository
         }
 
         return $result[0]['LignesModifiees'];
+    }
+
+
+    /**
+     * @throws Exception
+     */
+    public function getUsers()
+    {
+        $conn = $this->getEntityManager()->getConnection();
+
+        $sql = 'SELECT V.Id AS IdPersonnel, V.Nom AS Nom
+                FROM v_Personnel V
+                WHERE Id > 0 AND V.Actif = 1;';
+        $result = $conn->executeQuery($sql)->fetchAllAssociative();
+
+        return $result;
+
     }
 
 

@@ -321,20 +321,25 @@ class PlanningEvenementRepository extends ServiceEntityRepository
             throw new \RuntimeException("La procédure stockée n'a retourné aucun résultat pour l'événement $id.");
         }
 
-        $structuredData = [
-            'IdPlanningEvenement' => (int)$result[0]['IdPlanningEvenement'],
-            'DebutPlanningEvenement' => (int)$result[0]['DebutPlanningEvenement'],
-            'FinPlanningEvenement' => (int)$result[0]['FinPlanningEvenement'],
-            'AnnotationPlanningEvenement' => $result[0]['AnnotationPlanningEvenement'],
-            'Etiquette' => [
-                'IdPlanningEtiquette' => $result[0]['IdPlanningEtiquette'] ?? null,
-                'LibelleLongPlanningEtiquette' => $result[0]['LibelleLongPlanningEtiquette'],
-                'LibelleCourtPlanningEtiquette' => $result[0]['LibelleCourtPlanningEtiquette']
-            ],
-            'IdPlanningRessource' => (int)$result[0]['IdPlanningRessource'],
-            'IdEmploye' => (int)$result[0]['IdEmployee'],
-            'PlanningEvenementPriorite' => (int)$result[0]['PlanningEvenementPriorite']
-        ];
+        $structuredData = [];
+        foreach ($result as $row) {
+            $structuredData[] = [
+                'IdPlanningEvenement' => (int)$row['IdPlanningEvenement'],
+                'DebutPlanningEvenement' => (int)$row['DebutPlanningEvenement'],
+                'FinPlanningEvenement' => (int)$row['FinPlanningEvenement'],
+                'AnnotationPlanningEvenement' => $row['AnnotationPlanningEvenement'],
+                'Etiquette' => [
+                    'IdPlanningEtiquette' => $row['IdPlanningEtiquette'] ?? null,
+                    'LibelleLongPlanningEtiquette' => $row['LibelleLongPlanningEtiquette'],
+                    'LibelleCourtPlanningEtiquette' => $row['LibelleCourtPlanningEtiquette']
+                ],
+                'IdPlanningRessource' => (int)$row['IdPlanningRessource'],
+                'IdEmploye' => (int)$row['IdEmployee'],
+                'PlanningEvenementPriorite' => (int)$row['PlanningEvenementPriorite']
+            ];
+        }
+
+
         return ['LignesModifiees' => $result[0]['LignesModifiees'], 'data' => $structuredData];
     }
 
@@ -483,7 +488,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
         ];
 
 
-        return $conn->executeQuery($sql, $params)->fetchAllAssociative();
+        return $conn->executeQuery($sql, $params)->fetchAssociative();
 
     }
 }

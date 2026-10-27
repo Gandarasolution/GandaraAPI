@@ -255,7 +255,7 @@ class PlanningEvenementController extends AbstractController
         required: true,
         content: new OA\JsonContent(type: 'object')
     )]
-    #[OA\Response(response: 201, description: 'Événement mis à jour avec succès')]
+    #[OA\Response(response: 200, description: 'Événement mis à jour avec succès')]
     #[IsGranted('UPDATE_EVENEMENT',  subject: 'evenement', message: 'Vous n\'avez pas la permission de modifier cet événement.')]
     public function update(Planningevenement $evenement, Request $request, #[CurrentUser] Session $user, LoggerInterface $logger): JsonResponse
      {
@@ -315,7 +315,7 @@ class PlanningEvenementController extends AbstractController
              $result['data']
          );
 
-         return $this->json(['message' => 'Événement mis à jour avec succès'], 201);
+         return $this->json(['message' => 'Événement mis à jour avec succès', 'data' => $result['data']], 200);
      }
 
 
@@ -597,7 +597,9 @@ class PlanningEvenementController extends AbstractController
     }
 
 
-
+    /**
+     * @throws \DateMalformedStringException
+     */
     #[Route('/transfer', name: 'api_evenement_transfer', methods: ['POST'])]
     #[OA\Tag(name: 'Opérations complexes événement')]
     #[OA\RequestBody(

@@ -509,23 +509,6 @@ class PlanningVueRepository extends ServiceEntityRepository
     /**
      * @throws Exception
      */
-    public function getUsers()
-    {
-        $conn = $this->getEntityManager()->getConnection();
-
-        $sql = 'SELECT IdPersonnel AS Id, V.Nom
-                FROM Session
-                INNER JOIN v_Personnel V ON V.Id = Session.IdPersonnel
-                WHERE IdPersonnel > 0 AND V.Actif = 1;';
-        $result = $conn->executeQuery($sql)->fetchAllAssociative();
-
-        return $result;
-
-    }
-
-    /**
-     * @throws Exception
-     */
     public function getAffichageMobile(int $idPersonnel, LoggerInterface $logger): array
     {
         $conn = $this->getEntityManager()->getConnection();

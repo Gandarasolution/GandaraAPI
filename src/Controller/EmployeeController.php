@@ -32,8 +32,9 @@ class EmployeeController extends AbstractController
     /**
      * @throws Exception
      */
-    #[Route('', name: 'api_employees_list', methods: ['GET'])]
+    #[Route('/planning', name: 'api_employees_list', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Liste de tous les employés (Salariés et Intérimaires)')]
+    #[IsGranted('LIST_PLANNING', message: 'Vous n\'avez pas la permission de récupérer les employées.')]
     public function list(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
         $droit = $this->securityRepository->getPermission($user, $logger);
@@ -55,14 +56,13 @@ class EmployeeController extends AbstractController
     }
 
     /**
+     * @throws \Exception
      * @throws Exception
      */
-    #[Route('/search', name: 'api_employees_list_search', methods: ['GET'])]
-    #[OA\Parameter(name: 'limit', in: 'query', description: 'Limite de résultats', schema: new OA\Schema(type: 'integer', default: 20))]
-    #[OA\Parameter(name: 'pageNum', in: 'query', description: 'Numéro de page pour la pagination', schema: new OA\Schema(type: 'integer', default: 1))]
-    #[OA\Parameter(name: 'q', in: 'query', description: '', schema: new OA\Schema(type: 'string', default: ''))]
-    #[OA\Response(response: 200, description: 'Liste de tous les employés (Salariés et Intérimaires)')]
-    public function search(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
+    #[Route('', name: 'api_employee', methods: ['GET'])]
+    #[OA\Response(response: 200, description: 'Récupère les utilisateurs')]
+    #[IsGranted('LIST_EMPLOYEE', message: 'Vous n\'avez pas la permission de récupérer les employées.')]
+    public function getEmployees(#[CurrentUser] Session $user, LoggerInterface $logger): JsonResponse
     {
         $droit = $this->securityRepository->getPermission($user, $logger);
 
@@ -72,6 +72,22 @@ class EmployeeController extends AbstractController
             ], 403);
         }
 
+        $result = $this->employeeRepository->getUsers();
+        return $this->json(['data' => $result]);
+
+    }
+
+    /**
+     * @throws Exception
+     */
+    #[Route('/search', name: 'api_employees_list_search', methods: ['GET'])]
+    #[OA\Parameter(name: 'limit', in: 'query', description: 'Limite de résultats', schema: new OA\Schema(type: 'integer', default: 20))]
+    #[OA\Parameter(name: 'pageNum', in: 'query', description: 'Numéro de page pour la pagination', schema: new OA\Schema(type: 'integer', default: 1))]
+    #[OA\Parameter(name: 'q', in: 'query', description: '', schema: new OA\Schema(type: 'string', default: ''))]
+    #[OA\Response(response: 200, description: 'Liste de tous les employés (Salariés et Intérimaires)')]
+    #[IsGranted('LIST_EMPLOYEE', message: 'Vous n\'avez pas la permission de récupérer les employées.')]
+    public function search(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
+    {
         $hasSearchParameters =
             $request->query->has('limit')
             || $request->query->has('pageNum')
@@ -149,15 +165,9 @@ class EmployeeController extends AbstractController
     #[OA\Response(response: 200, description: 'Employé mis à jour avec succès')]
     #[OA\Response(response: 400, description: 'Requête invalide')]
     #[OA\Response(response: 404, description: 'Employé introuvable')]
+    #[IsGranted('EDIT_EMPLOYEE', message: 'Vous n\'avez pas la permission de modifier les employées.')]
     public function update(int $id, Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
-        $droit = $this->securityRepository->getPermission($user, $logger);
-
-        if ($droit != 23) {
-            throw new AccessDeniedHttpException('Vous n\'avez pas la permission de voir les projets.');
-        }
-
-
         $data = $request->toArray();
 
         if (!array_key_exists('IdEquipe', $data)) {
