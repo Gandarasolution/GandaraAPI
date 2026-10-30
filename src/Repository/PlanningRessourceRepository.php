@@ -189,6 +189,7 @@ class PlanningRessourceRepository extends ServiceEntityRepository
 
         $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
         $baseImageUrl = str_replace('999999', '', $baseImageUrl);
+        $logger->debug('Résultat de la requête getProjet', ['result' => $result]);
 
         $structuredData = [];
         foreach($result as $row) {

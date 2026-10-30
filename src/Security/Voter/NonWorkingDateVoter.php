@@ -36,7 +36,7 @@ class NonWorkingDateVoter extends Voter
             return false;
         }
 
-        $sql = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id';
+        $sql = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id, @IdDroits = 214';
         try {
             $planningDroit = $this->connection->fetchAssociative($sql, ['id' => $user->getIdpersonnel()]);
         } catch (Exception $e) {

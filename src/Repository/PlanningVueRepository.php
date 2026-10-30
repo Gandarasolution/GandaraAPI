@@ -674,16 +674,16 @@ class PlanningVueRepository extends ServiceEntityRepository
         if ($prefResult && isset($prefResult['ValeurParametre'])) {
             $sqlCheck = 'SELECT IdPlanningChantierVue FROM PlanningChantierVue WHERE IdPlanningChantierVue = :idPlanningVue';
             $existingVue = $conn->executeQuery($sqlCheck, ['idPlanningVue' => $prefResult['ValeurParametre']])->fetchAssociative();
-            // Si elle existe, on retourne directement le résultat (Fin de la fonction)
+            // Si elle existe, on retourne directement le résultat
             if ($existingVue) {
                 return $existingVue;
             }
-        }else{
-            $sqlCheck = 'SELECT ValeurParametre AS idPlanningChantierVue FROM Parametre WHERE IdParametre = \'Planning.VueChantierGeneral\'';
-            $idVueDefault = $conn->executeQuery($sqlCheck)->fetchAssociative();
-
-            return $idVueDefault;
         }
+
+        $sqlCheck = 'SELECT ValeurParametre AS idPlanningChantierVue FROM Parametre WHERE IdParametre = \'Planning.VueChantierGeneral\'';
+        $idVueDefault = $conn->executeQuery($sqlCheck)->fetchAssociative();
+
+        return $idVueDefault;
 
     }
 

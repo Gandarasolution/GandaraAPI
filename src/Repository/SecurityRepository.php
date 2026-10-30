@@ -29,7 +29,17 @@ class SecurityRepository extends ServiceEntityRepository
         $employeInfos = $conn->fetchAssociative($sqlEmploye, ['id' => $user->getIdpersonnel()]);
 
         $sqlDroit = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id';
-        $planningDroit = $conn->fetchAssociative($sqlDroit, ['id' => $user->getIdpersonnel()]);
+        $planningDroit = $conn->fetchAllAssociative($sqlDroit, ['id' => $user->getIdpersonnel()]);
+
+        $droits = [];
+        foreach ($planningDroit as $droit) {
+            $droits[] = [
+                'idDroit' => $droit['IdDroit'],
+                'idDroitNiveau' => $droit['IdDroitNiveau'],
+                'gestionParNiveau' => (bool)$droit['GestionParNiveau']
+            ];
+        }
+
 
         $sqlPlannings = '
             SELECT P.IdPlanning, NomPlanning, IdPlanningImage
@@ -49,7 +59,7 @@ class SecurityRepository extends ServiceEntityRepository
                 'Prenom'      => $employeInfos ? $employeInfos['PrenomEmployee'] : null,
                 'Image'       => $employeInfos['Trombinoscope'] === 1 ? $baseImageUrl . $user->getIdpersonnel() : null,
             ],
-            'permissions' => $planningDroit ? (int)$planningDroit['IdDroitNiveau'] : 21,
+            'droits' => $droits,
             'planning'    => array_map(function($row) {
                 return [
                     'IdPlanning'  => $row['IdPlanning'],

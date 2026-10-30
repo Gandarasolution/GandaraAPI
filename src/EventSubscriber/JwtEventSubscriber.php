@@ -67,10 +67,21 @@ final class JwtEventSubscriber implements EventSubscriberInterface
         ]);
 
         $sql = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id';
-        $planningDroit = $this->connection->fetchAssociative($sql, [
+        $planningDroit = $this->connection->fetchAllAssociative($sql, [
             'id' => $user->getIdpersonnel()
         ]);
+        $droits = [];
+        foreach ($planningDroit as $droit) {
+            $droits[] = [
+                'idDroit' => (int)$droit['IdDroit'],
+                'idDroitNiveau' => (int)$droit['IdDroitNiveau'],
+                'gestionParNiveau' => (bool)$droit['GestionParNiveau']
+            ];
+        }
         $this->logger->debug("Requête pour récupérer les droits de l'utilisateur", ['IdPersonnel' => $user->getIdpersonnel(), 'PlanningDroit' => $planningDroit]);
+
+
+
 
         $sql = 'SELECT P.IdPlanning, NomPlanning, IdPlanningImage
                     FROM Planning P
@@ -93,7 +104,7 @@ final class JwtEventSubscriber implements EventSubscriberInterface
             $data['user']['Prenom'] = $employeInfos['PrenomEmployee'];
         }
 
-        $data['permissions'] = (int) ($planningDroit['IdDroitNiveau'] ?? 21);
+        $data['droits'] = $droits;
 
         $data['planning'] = array_map(function ($row) {
             // Default the image URL to null

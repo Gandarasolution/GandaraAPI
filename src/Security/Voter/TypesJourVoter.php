@@ -37,7 +37,7 @@ class TypesJourVoter extends Voter
         }
 
         // Récupération du niveau de l'utilisateur
-        $sql = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id';
+        $sql = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id, @IdDroits = 214';
         try {
             $planningDroit = $this->connection->fetchAssociative($sql, ['id' => $user->getIdpersonnel()]);
         } catch (Exception $e) {

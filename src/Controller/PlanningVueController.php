@@ -142,8 +142,12 @@ class PlanningVueController extends AbstractController
     #[OA\Parameter(name: 'userId', in: 'path', description: 'ID de l\'utilisateur', schema: new OA\Schema(type: 'integer'))]
     #[OA\Parameter(name: 'idPlanning', in: 'query', description: 'ID de planning', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Liste des configurations de l\'utilisateur pour les chantiers')]
-    public function getUserChantierConfigs(int $userId, Request $request): JsonResponse
+    public function getUserChantierConfigs(int $userId, Request $request, #[CurrentUser] Session $user): JsonResponse
     {
+        if ($user->getIdpersonnel() !== $userId) {
+            throw new BadRequestHttpException('Vous ne pouvez pas accéder aux configurations d\'un autre utilisateur.');
+        }
+
         $idPlanning = $request->headers->get('X-Planning-Id');
 
         if ($idPlanning === null) {
@@ -169,8 +173,12 @@ class PlanningVueController extends AbstractController
     #[OA\Parameter(name: 'userId', in: 'path', description: 'ID de l\'utilisateur', schema: new OA\Schema(type: 'integer'))]
     #[OA\Parameter(name: 'idPlanning', in: 'query', description: 'ID de planning', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Liste des configurations de l\'utilisateur')]
-    public function getUserConfigs(int $userId, Request $request): JsonResponse
+    public function getUserConfigs(int $userId, Request $request, #[CurrentUser] Session $user): JsonResponse
     {
+        if ($user->getIdpersonnel() !== $userId) {
+            throw new BadRequestHttpException('Vous ne pouvez pas accéder aux configurations d\'un autre utilisateur.');
+        }
+
         $idPlanning = $request->headers->get('X-Planning-Id');
 
         if ($idPlanning === null) {
@@ -416,7 +424,7 @@ class PlanningVueController extends AbstractController
      * @throws \Throwable
      */
     #[Route('/vue', name: 'api_vue_create', methods: ['POST'])]
-    #[IsGranted('VUE_CREATE', message: 'Vous n\'avez pas la permission de créer de vue.')]
+    #[IsGranted('PLANNING_MANAGE', message: 'Vous n\'avez pas la permission de créer de vue.')]
     public function addVue(#[CurrentUser] Session $user, Request $request): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
@@ -459,7 +467,7 @@ class PlanningVueController extends AbstractController
      * @throws \Throwable
      */
     #[Route('/chantier/vue', name: 'api_chantier_vue_create', methods: ['POST'])]
-    #[IsGranted('VUE_CREATE', message: 'Vous n\'avez pas la permission de créer de vue.')]
+    #[IsGranted('CHANTIER_MANAGE', message: 'Vous n\'avez pas la permission de créer de vue.')]
     public function addChantierVue(#[CurrentUser] Session $user, Request $request): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
@@ -519,7 +527,7 @@ class PlanningVueController extends AbstractController
     }
 
     #[Route('/vue/{id}/lock', methods: ['POST'])]
-    #[IsGranted('VUE_LOCK', message: 'Vous n\'avez pas la permission de lock cette vue.')]
+    #[IsGranted('PLANNING_MANAGE', message: 'Vous n\'avez pas la permission de lock cette vue.')]
     public function quickLock(int $id, #[CurrentUser] Session $user, LoggerInterface $logger, Request $request): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
@@ -556,7 +564,7 @@ class PlanningVueController extends AbstractController
      * @throws \Throwable
      */
     #[Route('/vue/{id}', name: 'api_vue', methods: ['PUT'])]
-    #[IsGranted('VUE_EDIT', message: 'Vous n\'avez pas la permission de modifier cette vue.')]
+    #[IsGranted('PLANNING_MANAGE', message: 'Vous n\'avez pas la permission de modifier cette vue.')]
     public function setvue(int $id, LoggerInterface $logger, Request $request): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
@@ -625,7 +633,7 @@ class PlanningVueController extends AbstractController
      * @throws \Throwable
      */
     #[Route('/chantier/vue/{id}', name: 'api_chantier_vue_set', methods: ['PUT'])]
-    #[IsGranted('VUE_EDIT', message: 'Vous n\'avez pas la permission de créer de vue.')]
+    #[IsGranted('CHANTIER_MANAGE', message: 'Vous n\'avez pas la permission de créer de vue.')]
     public function setChantierVue(int $id, #[CurrentUser] Session $user, Request $request): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
@@ -663,7 +671,7 @@ class PlanningVueController extends AbstractController
      * @throws Exception
      */
     #[Route('/vue/{id}', name: 'api_vue_delete', methods: ['DELETE'])]
-    #[IsGranted('VUE_EDIT', message: 'Vous n\'avez pas la permission de supprimer cette vue.')]
+    #[IsGranted('PLANNING_DELETE', message: 'Vous n\'avez pas la permission de supprimer cette vue.')]
     public function deleteVue(int $id, LoggerInterface $logger, Request $request,  #[CurrentUser] Session $user): JsonResponse{
         $idPlanning = $request->headers->get('X-Planning-Id');
         if (!$idPlanning) {
@@ -692,7 +700,7 @@ class PlanningVueController extends AbstractController
 
 
     #[Route('/chantier/vue/{id}', name: 'api_chantier_vue_delete', methods: ['DELETE'])]
-    #[IsGranted('VUE_EDIT', message: 'Vous n\'avez pas la permission de supprimer cette vue.')]
+    #[IsGranted('CHANTIER_DELETE', message: 'Vous n\'avez pas la permission de supprimer cette vue.')]
     public function deleteChantierVue(int $id, LoggerInterface $logger, Request $request,  #[CurrentUser] Session $user): JsonResponse{
         $idPlanning = $request->headers->get('X-Planning-Id');
         if (!$idPlanning) {
