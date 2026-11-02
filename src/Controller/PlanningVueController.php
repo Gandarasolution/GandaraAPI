@@ -700,7 +700,7 @@ class PlanningVueController extends AbstractController
 
 
     #[Route('/chantier/vue/{id}', name: 'api_chantier_vue_delete', methods: ['DELETE'])]
-    #[IsGranted('CHANTIER_DELETE', message: 'Vous n\'avez pas la permission de supprimer cette vue.')]
+    #[IsGranted('CHANTIER_DELETE', message: 'Vous n\'avez pas la permission de supprimer cette vue.', subject: 'id')]
     public function deleteChantierVue(int $id, LoggerInterface $logger, Request $request,  #[CurrentUser] Session $user): JsonResponse{
         $idPlanning = $request->headers->get('X-Planning-Id');
         if (!$idPlanning) {
