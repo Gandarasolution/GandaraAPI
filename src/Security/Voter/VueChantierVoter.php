@@ -12,7 +12,10 @@ use Symfony\Component\Security\Core\Authorization\Voter\Voter;
 
 class VueChantierVoter extends Voter
 {
-    // Ajout / modification des vues Chantier
+
+    //Ajout des vues Chantier
+    public const CHANTIER_ADD = 'CHANTIER_VUE_ADD';
+    //modification des vues Chantier
     public const CHANTIER_MANAGE = 'CHANTIER_MANAGE';
 
     // Suppression des vues Chantier
@@ -25,6 +28,7 @@ class VueChantierVoter extends Voter
      */
     private const DROITS = [
         self::VIEW => 214,
+        self::CHANTIER_ADD => 220,
         self::CHANTIER_MANAGE => 220,
         self::CHANTIER_DELETE => 219,
     ];
@@ -55,31 +59,33 @@ class VueChantierVoter extends Voter
         $idDroit = self::DROITS[$attribute];
 
         try {
-            // 1. Récupération du statut de la vue (Publique, Privée autorisée, Privée refusée)
-            $sqlVue = '
-                SELECT
-                    CASE
-                        WHEN COUNT(*) = 0 THEN 0
-                        WHEN COUNT(CASE WHEN IdSession = :idSession THEN 1 END) > 0 THEN 1
-                        ELSE 2
-                    END AS StatutAcces
-                FROM PlanningChantierVueAttribution
-                WHERE IdPlanningChantierVue = :idPlanningChantierVue;
-            ';
+            if ($attribute !== self::CHANTIER_ADD) {
+                // 1. Récupération du statut de la vue (Publique, Privée autorisée, Privée refusée)
+                $sqlVue = '
+                    SELECT
+                        CASE
+                            WHEN COUNT(*) = 0 THEN 0
+                            WHEN COUNT(CASE WHEN IdSession = :idSession THEN 1 END) > 0 THEN 1
+                            ELSE 2
+                        END AS StatutAcces
+                    FROM PlanningChantierVueAttribution
+                    WHERE IdPlanningChantierVue = :idPlanningChantierVue;
+                ';
 
-            $statutAcces = $this->connection->fetchOne($sqlVue, [
-                'idSession' => $user->getIdpersonnel(),
-                'idPlanningChantierVue' => (int) $subject
-            ]);
+                $statutAcces = $this->connection->fetchOne($sqlVue, [
+                    'idSession' => $user->getIdpersonnel(),
+                    'idPlanningChantierVue' => (int)$subject
+                ]);
 
-            // Si la vue est privée et que l'utilisateur n'y a pas accès -> Accès strictement refusé
-            if ($statutAcces === 2) {
-                return false;
-            }
+                // Si la vue est privée et que l'utilisateur n'y a pas accès -> Accès strictement refusé
+                if ($statutAcces === 2) {
+                    return false;
+                }
 
-            // Si la vue est privée et que l'utilisateur y a accès -> Accès accordé directement
-            if ($statutAcces === 1) {
-                return true;
+                // Si la vue est privée et que l'utilisateur y a accès -> Accès accordé directement
+                if ($statutAcces === 1) {
+                    return true;
+                }
             }
 
             // 2. Si la vue est Publique, on contrôle les droits globaux SQL de l'utilisateur
@@ -119,7 +125,7 @@ class VueChantierVoter extends Voter
             'idDroit' => $idDroit,
             'niveau' => $niveau,
             'gestionParNiveau' => $gestionParNiveau,
-            'statutAcces' => $statutAcces
+            'statutAcces' => $attribute !== self::CHANTIER_ADD ? $statutAcces : null,
         ]);
 
         if (!$gestionParNiveau) {

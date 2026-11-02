@@ -467,7 +467,7 @@ class PlanningVueController extends AbstractController
      * @throws \Throwable
      */
     #[Route('/chantier/vue', name: 'api_chantier_vue_create', methods: ['POST'])]
-    #[IsGranted('CHANTIER_MANAGE', message: 'Vous n\'avez pas la permission de créer de vue.')]
+    #[IsGranted('CHANTIER_VUE_ADD', message: 'Vous n\'avez pas la permission de créer de vue.')]
     public function addChantierVue(#[CurrentUser] Session $user, Request $request): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
