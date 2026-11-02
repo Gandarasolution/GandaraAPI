@@ -710,7 +710,7 @@ class PlanningVueRepository extends ServiceEntityRepository
                 SELECT S.Id, S.Nom
                 FROM PlanningChantierVueAttribution
                 LEFT JOIN v_Personnel S ON S.Id = PlanningChantierVueAttribution.IdSession
-                WHERE IdPlanningChantierVue =  :IdPlanningVue AND S.Actif = 1
+                WHERE IdPlanningChantierVue =  :IdPlanningVue /*AND S.Actif = 1*/
                     ';
         $params = [
             'IdPlanningVue' => $id,
