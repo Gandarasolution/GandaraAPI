@@ -45,11 +45,12 @@ class PlanningTypesJourRepository
         return $this->getAllTypesJour();
     }
 
-    public function removeTypeJour(string $id): array
+    public function removeTypeJour(string $id, int $numberDayCheck): array
     {
-        $sql = 'EXEC ps_PlanningTypeJourDelete @Code = ?';
-        $this->connection->executeQuery($sql, [$id]);
+        $sql = 'EXEC ps_PlanningTypeJourDelete @Code = ?, @NombreJour = ?';
+        $this->connection->executeQuery($sql, [$id, $numberDayCheck]);
         return $this->getAllTypesJour();
+
     }
 
 
@@ -73,5 +74,20 @@ class PlanningTypesJourRepository
         }
 
         return $camel;
+    }
+
+    public function getDeleteImpact(string $id): ?string
+    {
+        $sql = '
+            SELECT COUNT(IdPlanningJourNontravaille) AS nombreJours FROM PlanningJourNontravaille
+            WHERE TypeJourCode = ?
+        ';
+        $result = $this->connection->fetchAssociative($sql, [$id]);
+
+        $nombreJours = $result['nombreJours'] ?? 0;
+        if ($nombreJours > 0) {
+            return 'Ce type contient ' . $nombreJours . ' jours. Pour confirmer la suppression de ce type merci de ressaisir le nombre de jours si dessous.';
+        }
+        return null;
     }
 }

@@ -38,6 +38,24 @@ class PlanningTypesJourController extends AbstractController
 
     }
 
+    #[Route('/{id}/delete-impact', name: 'api_types_day_delete_impact', methods: ['GET'])]
+    #[OA\Response(response: 200, description: 'Liste des types de jour')]
+    #[IsGranted('TYPES_JOUR_VIEW', message: 'Vous n\'avez pas la permission de récupérer les types de jour.')]
+    public function getDeleteImpact(string $id, Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
+    {
+        $logger->debug("Récupération du nombre de jour affecté d'un type de jour (ID: $id)");
+        $result = $this->typesJourRepository->getDeleteImpact($id);
+
+        if ($result === null){
+            return $this->json([
+                'checkRequired' => false
+            ]);
+        }
+
+        return $this->json(['checkRequired' => true, 'message' => $result]);
+
+    }
+
     #[IsGranted('TYPES_JOUR_CREATE', message: 'Vous n\'avez pas la permission d\'ajouter un type de jour.')]
     #[Route('', name: 'api_types_day_add', methods: ['POST'])]
     #[OA\Response(response: 200, description: 'Ajout d\'un type de jour')]
@@ -86,11 +104,13 @@ class PlanningTypesJourController extends AbstractController
     #[IsGranted('TYPES_JOUR_DELETE', message: 'Vous n\'avez pas la permission de supprimer un type de jour.')]
     #[Route('/{id}', name: 'api_types_day_remove', methods: ['DELETE'])]
     #[OA\Response(response: 200, description: 'Suppression d\'un type de jour')]
-    public function remove(string $id, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
+    public function remove(string $id, LoggerInterface $logger, #[CurrentUser] Session $user, Request $request): JsonResponse
     {
 
+        $data = $request->toArray();
+
         $logger->debug("Suppression d'un type de jour (ID: $id)");
-        $result = $this->typesJourRepository->removeTypeJour($id);
+        $result = $this->typesJourRepository->removeTypeJour($id, $data['numberDayCheck']);
 
         return $this->json(['data' => $result]);
 
