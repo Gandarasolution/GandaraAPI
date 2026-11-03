@@ -2,7 +2,6 @@
 
 namespace App\Security\Voter;
 
-use App\Entity\Planningjournontravaille;
 use App\Entity\Session;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception;
@@ -13,40 +12,89 @@ use Symfony\Component\Security\Core\Authorization\Voter\Voter;
 
 class NonWorkingDateVoter extends Voter
 {
-
-    public const EDIT_DATE = 'VUE_EDIT_DATE';
+    public const VIEW_DATE   = 'VUE_VIEW_DATE';
     public const CREATE_DATE = 'VUE_CREATE_DATE';
+    public const EDIT_DATE   = 'VUE_EDIT_DATE';
+    public const DELETE_DATE = 'VUE_DELETE_DATE';
 
+    /**
+     * Correspondance entre les autorisations Symfony et les identifiants des droits SQL.
+     */
+    private const DROITS = [
+        self::VIEW_DATE   => 214,
+        self::CREATE_DATE => 223,
+        self::EDIT_DATE   => 223,
+        self::DELETE_DATE => 223,
+    ];
 
-    public function __construct(private Connection $connection, private LoggerInterface $logger) {}
-
+    public function __construct(
+        private Connection $connection,
+        private LoggerInterface $logger
+    ) {}
 
     protected function supports(string $attribute, mixed $subject): bool
     {
-        if (in_array($attribute, [self::CREATE_DATE, self::EDIT_DATE])) {
-            return true;
-        }
-        return false;
+        return isset(self::DROITS[$attribute]);
     }
 
-    protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token, ?Vote $vote = null): bool
-    {
+    protected function voteOnAttribute(
+        string $attribute,
+        mixed $subject,
+        TokenInterface $token,
+        ?Vote $vote = null
+    ): bool {
         $user = $token->getUser();
+
+        // Vérification de la session utilisateur
         if (!$user instanceof Session) {
             return false;
         }
 
-        $sql = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id, @IdDroits = 214';
+        $idDroit = self::DROITS[$attribute];
+
         try {
-            $planningDroit = $this->connection->fetchAssociative($sql, ['id' => $user->getIdpersonnel()]);
+            // Récupération du droit correspondant
+            $sql = '
+                EXEC ps_PlanningDroitSelect
+                    @IdPersonnel = :idPersonnel,
+                    @IdDroits = :idDroit
+            ';
+
+            $droit = $this->connection->fetchAssociative($sql, [
+                'idPersonnel' => $user->getIdpersonnel(),
+                'idDroit'     => (string) $idDroit,
+            ]);
         } catch (Exception $e) {
+            $this->logger->error('Erreur récupération droit NonWorkingDateVoter', [
+                'attribute'   => $attribute,
+                'idPersonnel' => $user->getIdpersonnel(),
+                'exception'   => $e->getMessage(),
+            ]);
+
             return false;
         }
-        $level = (int)($planningDroit['IdDroitNiveau'] ?? 21);
 
-        return match ($attribute) {
-            self::EDIT_DATE, self::CREATE_DATE => $level === 23,
-            default => false,
-        };
+        if (!$droit) {
+            return false;
+        }
+
+        // Récupération des informations du droit
+        $niveau          = (int) $droit['IdDroitNiveau'];
+        $gestionParNiveau = (bool) $droit['GestionParNiveau'];
+
+        $this->logger->debug('NonWorkingDateVoter - Vérification du droit', [
+            'attribute'        => $attribute,
+            'idPersonnel'      => $user->getIdpersonnel(),
+            'idDroit'          => $idDroit,
+            'niveau'           => $niveau,
+            'gestionParNiveau' => $gestionParNiveau,
+        ]);
+
+        if (!$gestionParNiveau) {
+            return true;
+        }
+
+        // Vérification du niveau requis pour les droits avec gestion par niveau (ex: VIEW -> 214)
+        return $niveau > 22;
     }
 }

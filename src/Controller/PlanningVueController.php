@@ -221,6 +221,7 @@ class PlanningVueController extends AbstractController
      */
     #[Route('/non-working-dates', name: 'api_non_working_dates', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Liste des jours non travaillé du planning')]
+    #[IsGranted('VUE_VIEW_DATE', message: 'Vous n\'avez pas la permission de visualiser les jours non travaillés.')]
     public function getNonWorkingDates(Request $request): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
@@ -250,6 +251,7 @@ class PlanningVueController extends AbstractController
 
     #[Route('/non-working-dates/available-years', name: 'api_non_working_dates_available_years', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Liste des années disponibles pour les jours non travaillés du planning')]
+    #[IsGranted('VUE_VIEW_DATE', message: 'Vous n\'avez pas la permission de visualiser les jours non travaillés.')]
     public function getAvailableYears(Request $request): JsonResponse
     {
 
@@ -504,7 +506,7 @@ class PlanningVueController extends AbstractController
      * @throws Exception
      */
     #[Route('/{idDate}/non-working-dates', name: 'api_non-working-dates', methods: ['DELETE'])]
-    #[IsGranted('VUE_EDIT_DATE', message: 'Vous n\'avez pas la permission de supprimer cette journée.')]
+    #[IsGranted('VUE_DELETE_DATE', message: 'Vous n\'avez pas la permission de supprimer cette journée.')]
     public function deleteNonWorkingDates(Request $request, int $idDate, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');

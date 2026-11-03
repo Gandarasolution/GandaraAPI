@@ -113,14 +113,15 @@ class PlanningEvenementRepository extends ServiceEntityRepository
                     'LibellePlanningRessource'        => $row['Libelle'] ?? 'Congés / Indisponibilité',
                     'CodePlanningRessource'           => $row['Code'] ?? null,
                     'ChargeAffaire'                   => $row['ChargeAffaire'] ?? null,
+                    'ChefChantier'                    => $row['ChefChantier'] ?? null,
                     'Image'                           => $image,
                     'CouleurBordurePlanningRessource' => $row['CouleurBordurePlanningRessource'] ?? '#dc3545',
                     'CouleurFondPlanningRessource'    => $row['CouleurFondPlanningRessource'] ?? '#f8d7da',
                     'CouleurTextePlanningRessource'   => $row['CouleurTextePlanningRessource'] ?? '#721c24',
                     'Actif'                           => isset($row['Actif']) ? (int)$row['Actif'] === 1 : true,
                     'Type'                            => $typeEvenement,
-                    'Adresse'                         => $row['Adresse'] ?? null,
-                    'Identifiant'                    => $row['Identifiant'] ?? null,
+                    'AdresseChantier'                 => $row['AdresseChantier'] ?? null,
+                    'Identifiant'                     => $row['Identifiant'] ?? null,
                 ];
             }
         }
@@ -144,7 +145,6 @@ class PlanningEvenementRepository extends ServiceEntityRepository
         ?int $idPlanningVue,
         int|array|null $idEmploye
     ): array {
-        $startTotal = microtime(true);
 
         $startOfDay = (clone $dateStart)->setTime(0, 0, 0);
         $endOfDay = (clone $dateEnd)->setTime(23, 59, 59);
@@ -178,39 +178,15 @@ class PlanningEvenementRepository extends ServiceEntityRepository
             'IdEmploye' => $idEmployeParam,
         ];
 
-        $startSql = microtime(true);
+
 
         $result = $conn
             ->executeQuery($sql, $params)
             ->fetchAllAssociative();
 
-        $sqlDuration = microtime(true) - $startSql;
 
-        error_log(sprintf(
-            '[EVENTS] SQL = %.2f ms | rows = %d | vue = %s | employees = %s',
-            $sqlDuration * 1000,
-            count($result),
-            $idPlanningVue ?? 'NULL',
-            $idEmployeParam ?? 'NULL'
-        ));
+        return $this->structuredData($result, $idPlanning);
 
-        $startStructured = microtime(true);
-
-        $structured = $this->structuredData($result, $idPlanning);
-
-        $structuredDuration = microtime(true) - $startStructured;
-
-        error_log(sprintf(
-            '[EVENTS] structuredData = %.2f ms',
-            $structuredDuration * 1000
-        ));
-
-        error_log(sprintf(
-            '[EVENTS] TOTAL repository = %.2f ms',
-            (microtime(true) - $startTotal) * 1000
-        ));
-
-        return $structured;
     }
 
 

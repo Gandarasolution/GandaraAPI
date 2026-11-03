@@ -26,7 +26,7 @@ class FilterConfigRepository extends ServiceEntityRepository
         $conn = $this->getEntityManager()->getConnection();
 
         $sql = '
-    EXEC dbo.ps_GetDynamicFilterOptions
+    EXEC dbo.ps_PlanningGetDynamicFilterOptions
         @Keys = :Keys,
         @ViewType = :ViewType,
         @IdPersonnel = :IdPersonnel
@@ -40,6 +40,9 @@ class FilterConfigRepository extends ServiceEntityRepository
 
         $resultSet = $conn->executeQuery($sql, $params)
             ->fetchAllAssociative();
+
+
+        $logger->debug('Résultat de la requête SQL pour les filtres dynamiques : ' . json_encode($resultSet, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE));
 
         $structuredData = [];
         $activeFilter = new \stdClass();
@@ -61,15 +64,22 @@ class FilterConfigRepository extends ServiceEntityRepository
             $key = $row['FilterKey'];
             $value = $row['FilterValue'];
             $label = $row['FilterLabel'];
+            $actif = $row['FilterActif'];
 
             if (!isset($structuredData[$key])) {
                 $structuredData[$key] = [];
             }
 
-            $structuredData[$key][] = [
+            $data = [
                 'value' => $value,
-                'label' => $label
+                'label' => $label,
             ];
+
+            if ($actif !== null) {
+                $data['isActif'] = $actif === 1;
+            }
+
+            $structuredData[$key][] = $data;
         }
 
         return [
