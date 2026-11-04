@@ -226,7 +226,7 @@ class PlanningVueController extends AbstractController
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
 
-        if ($idPlanning !== null && !is_numeric($idPlanning) || $idPlanning < 0) {
+        if ($idPlanning === null || ($idPlanning !== null && (!is_numeric($idPlanning) || $idPlanning < 0))) {
             $this->logger->debug('Le paramètre idPlanning doit être un entier positif. Valeur reçue: {idPlanning}', [
                 'idPlanning' => $idPlanning,
             ]);
