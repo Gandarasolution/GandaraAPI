@@ -550,40 +550,53 @@ class PlanningVueRepository extends ServiceEntityRepository
         $params = ['IdPersonnel' => $idPersonnel];
         $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
-        $fieldsMap = [];
+
         $primaryConfigRaw = [];
         $secondaryConfigRaw = [];
 
         foreach ($result as $row) {
             $fieldValue = $row['CodeChamp'];
 
-            // 1. Construction de la liste des champs disponibles (utilisation de la clé pour éviter les doublons)
-            if (!isset($fieldsMap[$fieldValue])) {
-                $fieldsMap[$fieldValue] = [
-                    'CodeChamp' => $fieldValue,
-                    'Libelle' => $row['Libelle'],
-                    'Ordre' => (int)$row['Ordre']
-                ];
-            }
-
             // 2. Répartition dans les zones de configuration si le champ y est affecté
             if ($row['ZoneAffichage'] === 'primaire') {
-                $primaryConfigRaw[] = ['CodeChamp' => $fieldValue, 'Position' => (int)$row['Position']];
+                $primaryConfigRaw[] = [
+                    'CodeChamp' => $fieldValue,
+                    'Ligne' => (int)$row['Ligne'],
+                    'Position' => (int)$row['Position']
+                ];
             } elseif ($row['ZoneAffichage'] === 'secondaire') {
-                $secondaryConfigRaw[] = ['CodeChamp' => $fieldValue, 'Position' => (int)$row['Position']];
+                $secondaryConfigRaw[] = [
+                    'CodeChamp' => $fieldValue,
+                    'Ligne' => (int)$row['Ligne'],
+                    'Position' => (int)$row['Position']
+                ];
             }
         }
 
-        // 3. Tri des configurations selon l'ordre de positionnement défini en base
-        usort($primaryConfigRaw, fn($a, $b) => $a['Position'] <=> $b['Position']);
-        usort($secondaryConfigRaw, fn($a, $b) => $a['Position'] <=> $b['Position']);
+        $sql = 'SELECT
+                    IdPlanningAffichageMobileChamps AS Id,
+                    LibellePlanningAffichageMobileChamps AS Libelle,
+                    CodePlanningAffichageMobileChamps AS Code,
+                    EstCaractereSpecial AS CaractereSpecial
+                FROM PlanningAffichageMobileChamps
+                WHERE ActifPlanningAffichageMobileChamps = 1
+                ORDER BY Libelle
+       ';
+
+        $availableFields = array_map(function($field) {
+            $field['CaractereSpecial'] = (bool) $field['CaractereSpecial'];
+            return $field;
+        }, $conn->executeQuery($sql)->fetchAllAssociative());
+
+
+
 
         // 4. Assemblage final au format JSON attendu par le front-end
         $formattedOutput = [
-            'fields' => array_values($fieldsMap),
+            'fields' => $availableFields,
             'config' => [
-                'primaryFields' => array_column($primaryConfigRaw, 'CodeChamp'),
-                'secondaryFields' => array_column($secondaryConfigRaw, 'CodeChamp')
+                'primaryFields' => $primaryConfigRaw,
+                'secondaryFields' => $secondaryConfigRaw
             ]
         ];
 
