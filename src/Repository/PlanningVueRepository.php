@@ -527,13 +527,24 @@ class PlanningVueRepository extends ServiceEntityRepository
         ];
 
         foreach ($result as $row) {
-            $logger->debug('result' . json_encode($result));
-            if ($row['ZoneAffichage'] === 'primaire') {
-                $formattedData['primaryFields'][] = $row['CodeChamp'];
-            } elseif ($row['ZoneAffichage'] === 'secondaire') {
-                $formattedData['secondaryFields'][] = $row['CodeChamp'];
+            $zone = $row['ZoneAffichage'];
+            $ligne = $row['Ligne'];
+
+            $champData = [
+                'code' => $row['CodeChamp'],
+                'estCaractereSpecial' => (bool)$row['EstCaractereSpecial']
+            ];
+
+            if ($zone === 'primaire') {
+                $formattedData['primaryFields'][$ligne][] = $champData;
+            } elseif ($zone === 'secondaire') {
+                $formattedData['secondaryFields'][$ligne][] = $champData;
             }
         }
+
+        // Réindexation numérique propre des tableaux de lignes (ex: indices 0, 1, 2...)
+        $formattedData['primaryFields'] = array_values($formattedData['primaryFields']);
+        $formattedData['secondaryFields'] = array_values($formattedData['secondaryFields']);
 
         return $formattedData;
     }

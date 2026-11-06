@@ -4,37 +4,46 @@ namespace App\Security\Voter;
 
 use App\Entity\Planningressource;
 use App\Entity\Session;
-use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Exception;
+use App\Service\PlanningPermissionHelper;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+use Symfony\Component\Security\Core\Authorization\Voter\Vote;
 use Symfony\Component\Security\Core\Authorization\Voter\Voter;
-use \Symfony\Component\Security\Core\Authorization\Voter\Vote;
 
 class ResourceVoter extends Voter
 {
-    // On définit des "actions" possibles
     public const VIEW = 'RESOURCE_VIEW';
     public const EDIT = 'RESOURCE_EDIT';
     public const SEARCH = 'RESOURCE_SEARCH';
-
     public const CREATE = 'RESOURCE_CREATE';
-
     public const MANAGE_PERMISSIONS = 'MANAGE_PERMISSIONS';
 
+    // Nouvel attribut spécifique pour la modification d'image
+    public const EDIT_IMAGE_CHANTIER = 'RESOURCE_EDIT_IMAGE_CHANTIER';
+    public const EDIT_IMAGE_RUBRIQUE = 'RESOURCE_EDIT_IMAGE_RUBRIQUE';
 
 
-    public function __construct(private Connection $connection, private LoggerInterface $logger) {}
+    /**
+     * Mapping des attributs de droits vers leurs IdDroits SQL
+     */
+    private const DROITS_SPECIFIQUES = [
+        self::EDIT_IMAGE_CHANTIER => 225,
+        self::EDIT_IMAGE_RUBRIQUE => 226,
+    ];
+
+    public function __construct(
+        private readonly PlanningPermissionHelper $permissionHelper,
+        private readonly LoggerInterface $logger
+    ) {}
 
     protected function supports(string $attribute, mixed $subject): bool
     {
-        if ($attribute === 'RESOURCE_CREATE' || $attribute === 'MANAGE_PERMISSIONS') {
+        if (in_array($attribute, [self::CREATE, self::MANAGE_PERMISSIONS], true)) {
             return true;
         }
 
-        // Ce voter ne s'active QUE si on demande l'action VIEW ou EDIT sur un objet Ressource
-        return in_array($attribute, [self::VIEW, self::EDIT, self::SEARCH])
-            && $subject instanceof PlanningRessource; // Vérifie que c'est bien l'entité attendue
+        return in_array($attribute, [self::VIEW, self::EDIT, self::SEARCH, self::EDIT_IMAGE_CHANTIER, self::EDIT_IMAGE_RUBRIQUE], true)
+            && $subject instanceof Planningressource;
     }
 
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token, ?Vote $vote = null): bool
@@ -44,55 +53,34 @@ class ResourceVoter extends Voter
             return false;
         }
 
-        // 1. On récupère le niveau de l'utilisateur (on en a toujours besoin)
-        $sql = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id, @IdDroits = 214';
-        try {
-            $planningDroit = $this->connection->fetchAssociative($sql, ['id' => $user->getIdpersonnel()]);
-        } catch (Exception $e) {
-            return false;
+        // =========================================================
+        // 1. CAS SPÉCIFIQUE : ATTRIBUTS AVEC IDDROIT DÉDIÉS (ex: Image 225/226)
+        // =========================================================
+        if ($attribute === self::EDIT_IMAGE_CHANTIER) {
+            $permissionDetails = $this->permissionHelper->getPermissionDetails($user, self::DROITS_SPECIFIQUES[self::EDIT_IMAGE_CHANTIER]);
+            return $permissionDetails['hasRight'];
         }
-        $level = (int)($planningDroit['IdDroitNiveau'] ?? 21);
 
-        // 2. Vérification des actions GLOBALES (Pas besoin d'une ressource existante)
-        if ($attribute === self::CREATE || $attribute === self::MANAGE_PERMISSIONS) {
+        if ($attribute === self::EDIT_IMAGE_RUBRIQUE) {
+            $permissionDetails = $this->permissionHelper->getPermissionDetails($user, self::DROITS_SPECIFIQUES[self::EDIT_IMAGE_RUBRIQUE]);
+            return $permissionDetails['hasRight'];
+        }
+
+        // =========================================================
+        // 2. CAS GÉNÉRATION PAR NIVEAU / TYPE DE RESSOURCE (Droit standard 214)
+        // =========================================================
+        $defaultPermission = $this->permissionHelper->getPermissionDetails($user, 214);
+        $level = $defaultPermission['level'];
+
+        if (in_array($attribute, [self::CREATE, self::MANAGE_PERMISSIONS], true)) {
             return $level === 23;
         }
 
-        // 3. À partir d'ici, on a OBLIGATOIREMENT besoin de l'objet ressource
-        if (!$subject instanceof PlanningRessource) {
+        if (!$subject instanceof Planningressource) {
             return false;
         }
 
-        // Seulement maintenant, on interroge le type de la ressource !
-        $sqlType = "SELECT
-                        CASE
-                            WHEN P.IdPlanningRessource IS NOT NULL THEN 'Projet'
-                            WHEN S.IdPlanningRessource IS NOT NULL THEN 'Paie'
-                            WHEN PRP.IdPlanningRessource IS NOT NULL THEN 'Rubrique Perso'
-                            ELSE 'Aucune'
-                        END AS TypeRessource
-                    FROM PlanningRessource PR
-                    LEFT JOIN Projet P ON P.IdPlanningRessource = PR.IdPlanningRessource
-                    LEFT JOIN SocialRubriquePaie S ON S.IdPlanningRessource = PR.IdPlanningRessource
-                    LEFT JOIN PlanningRubriquePersonnalise PRP ON PRP.IdPlanningRessource = PR.IdPlanningRessource
-                    WHERE PR.IdPlanningRessource = :idRessource";
-
-        try {
-            $type = $this->connection->fetchOne($sqlType, ['idRessource' => $subject->getIdplanningressource()]);
-        } catch (Exception $e) {
-            return false;
-        }
-
-        // 4. Vérification des actions SPÉCIFIQUES à un objet
-        switch ($attribute) {
-            case self::VIEW:
-            case self::SEARCH:
-            case self::EDIT:
-                if ($type === 'Projet') return $level === 22 || $level === 23;
-                if ($type === 'Paie' || $type === 'Rubrique Perso') return $level === 23;
-                return false;
-        }
-
-        return false;
+        $type = $this->permissionHelper->getResourceType($subject->getIdplanningressource());
+        return $this->permissionHelper->hasAccessByResourceType($type, $level);
     }
 }

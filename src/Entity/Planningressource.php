@@ -21,9 +21,8 @@ class Planningressource
     #[ORM\Column(name: 'IdPlanningRessource', type: 'bigint')]
     private int $idplanningressource;
 
-    #[ORM\ManyToOne(targetEntity: Image::class)]
-    #[ORM\JoinColumn(name: 'IdPlanningImage', referencedColumnName: 'IdImage')]
-    private ?Image $idplanningimage = null;
+    #[ORM\Column(name: 'IdPlanningImage', type: 'bigint', nullable: true)]
+    private ?int $idplanningimage = null;
 
     #[ORM\Column(name: 'CouleurFondPlanningRessource', type: 'string', nullable: true, length: 255)]
     private ?string $couleurfondplanningressource = null;
@@ -49,7 +48,7 @@ class Planningressource
         return $this;
     }
 
-    public function getIdplanningimage(): ?Image
+    public function getIdplanningimage(): int
     {
         return $this->idplanningimage;
     }

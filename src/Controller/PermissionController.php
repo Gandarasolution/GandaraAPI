@@ -29,7 +29,7 @@ class PermissionController extends AbstractController
     /**
      * @throws Exception
      */
-    #[Route('/', name: 'app_permissions', methods: ['GET'])]
+    #[Route('', name: 'app_permissions', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Liste des permissions pour utilisateur')]
     public function getPermissions(): JsonResponse
     {

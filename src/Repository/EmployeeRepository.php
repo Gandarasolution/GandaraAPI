@@ -12,7 +12,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 class EmployeeRepository extends ServiceEntityRepository
 {
 
-    public function __construct(ManagerRegistry $registry, private UrlGeneratorInterface $router)
+    public function __construct(ManagerRegistry $registry, private UrlGeneratorInterface $router, private LoggerInterface $logger)
     {
         parent::__construct($registry, PlanningEvenement::class);
     }
@@ -23,6 +23,8 @@ class EmployeeRepository extends ServiceEntityRepository
      */
     public function getEmployeelist(?int $idPlanningVue, ?int $id = null): array
     {
+        $startTime = microtime(true);
+
         $conn = $this->getEntityManager()->getConnection();
         $sql = 'EXEC ps_PlanningEmployeeSelect @Id = :Id, @IdPlanningVue = :IdPlanningVue';
         $params = [
@@ -30,12 +32,17 @@ class EmployeeRepository extends ServiceEntityRepository
             'IdPlanningVue' => $idPlanningVue,
         ];
 
+        // 1. Mesure du temps d'exécution SQL
+        $sqlStartTime = microtime(true);
         $resultSet = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+        $sqlDurationMs = round((microtime(true) - $sqlStartTime) * 1000, 2);
 
         $structuredData = [];
         $baseImageUrl = $this->router->generate('api_serve_image_file_user', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
         $baseImageUrl = str_replace('999999', '', $baseImageUrl);
 
+        // 2. Mesure du temps de transformation / boucle
+        $loopStartTime = microtime(true);
         foreach ($resultSet as $row) {
             $structuredData[] = [
                 'IdPersonnel' => $row['Id'],
@@ -48,6 +55,21 @@ class EmployeeRepository extends ServiceEntityRepository
                 'Image' => $row['Trombinoscope'] === 1 ? $baseImageUrl . $row['Id'] : null,
             ];
         }
+        $loopDurationMs = round((microtime(true) - $loopStartTime) * 1000, 2);
+
+        $totalDurationMs = round((microtime(true) - $startTime) * 1000, 2);
+
+        // 3. Écriture dans le log si le logger est disponible
+
+        $this->logger->info('Performance getEmployeelist', [
+            'row_count' => count($resultSet),
+            'sql_duration_ms' => $sqlDurationMs,
+            'loop_duration_ms' => $loopDurationMs,
+            'total_duration_ms' => $totalDurationMs,
+            'params' => $params,
+        ]);
+
+
         return $structuredData;
 
     }

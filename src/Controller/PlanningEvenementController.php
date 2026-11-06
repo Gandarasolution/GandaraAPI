@@ -8,6 +8,7 @@ use App\Repository\PlanningRessourceRepository;
 use App\Repository\SecurityRepository;
 use App\Service\MercureNotificationService;
 use App\Entity\Session;
+use App\Service\PlanningPermissionHelper;
 use Doctrine\DBAL\Exception;
 use Psr\Cache\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
@@ -30,12 +31,13 @@ class PlanningEvenementController extends AbstractController
 {
 
     public function __construct(
-        private readonly MercureNotificationService $notifier,
+        private readonly MercureNotificationService          $notifier,
         private readonly PlanningEvenementRepository         $planningEvenementRepository,
         private readonly PlanningRessourceRepository         $planningRessourceRepository,
         private readonly SecurityRepository                   $securityRepository,
         private readonly CacheInterface                      $cache,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface                     $logger,
+        private readonly PlanningPermissionHelper            $permissionHelper
     ){}
 
 
@@ -408,6 +410,26 @@ class PlanningEvenementController extends AbstractController
     #[IsGranted('UPDATE_EVENEMENT', subject: 'evenement', message: 'Vous n\'avez pas la permission de modifier cet événement.')]
     public function updateWithProcedure(Planningevenement $evenement, Request $request, LoggerInterface $logger, #[CurrentUser] ?Session $user): JsonResponse
     {
+
+        $this->denyAccessUnlessGranted('UPDATE_EVENEMENT', $evenement, 'Vous n\'avez pas la permission de modifier cet événement.');
+
+        $ressource = $evenement->getIdplanningressource();
+        $data = json_decode($request->getContent(), true);
+
+        $IdImage = $ressource->getIdplanningimage();
+
+        $typeRessource = $this->permissionHelper->getResourceType($ressource->getIdplanningressource());
+
+
+        if (isset($data['Ressource']['IdPlanningImage']) && intval($data['Ressource']['IdPlanningImage']) !== $IdImage) {
+            $this->denyAccessUnlessGranted(
+                $typeRessource === 'Projet' ? 'RESOURCE_EDIT_IMAGE_CHANTIER' : 'RESOURCE_EDIT_IMAGE_RUBRIQUE',
+                $ressource,
+                'Vous n\'avez pas les droits pour modifier l\'image de cette ressource.'
+            );
+        }
+
+
         $id = $evenement->getIdplanningevenement();
         $idPlanning = $request->headers->get('X-Planning-Id');
 

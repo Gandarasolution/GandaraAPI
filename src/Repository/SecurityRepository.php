@@ -94,7 +94,17 @@ class SecurityRepository extends ServiceEntityRepository
     public function getPermissions(LoggerInterface $logger): array
     {
         $conn = $this->getEntityManager()->getConnection();
-        $sqlEmployeeDroit = 'EXEC ps_PlanningDroitSelect';
+        $sqlEmployeeDroit = '
+            SELECT
+                Id,
+                NomPersonnel,
+                PrenomPersonnel,
+                IdDroitNiveau
+            FROM v_Personnel
+            LEFT JOIN ListeDroitUtilisateur ON ListeDroitUtilisateur.IdSalarie = v_Personnel.Id AND ListeDroitUtilisateur.IdDroit = 214
+            WHERE Actif = 1
+            ORDER BY Nom
+        ';
         $sqlListDroit = '
             SELECT
                 IdDroitNiveau,
@@ -116,7 +126,7 @@ class SecurityRepository extends ServiceEntityRepository
                     'IdPersonnel' => (int)$row['Id'],
                     'NomPersonnel' => $row['NomPersonnel'],
                     'PrenomPersonnel' => $row['PrenomPersonnel'],
-                    'IdDroit' => (int)$row['IdDroitNiveau'],
+                    'IdDroit' => (int)($row['IdDroitNiveau'] ?? 21), // Niveau par défaut si aucun droit trouvé
                 ];
             }
         }
