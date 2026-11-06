@@ -1,7 +1,9 @@
-# --- 1. ÉTAPE DE BASE ---
-FROM php:8.4-fpm AS base
+# ==========================================
+# 1. BUILDER (Compilation & Dépendances)
+# ==========================================
+FROM php:8.4-fpm AS builder
 
-# 1.1 Installation des dépendances système (gnupg2 et curl sont requis pour la clé MS)
+# Paquets requis uniquement pour la compilation des extensions et l'installation de Composer
 RUN apt-get update && apt-get install -y \
     gnupg2 \
     curl \
@@ -15,16 +17,14 @@ RUN apt-get update && apt-get install -y \
     libwebp-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 1.2 Ajout du dépôt officiel Microsoft (Debian 12 - Bookworm)
+# Dépôt Microsoft et driver ODBC
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
-    && curl -fsSL https://packages.microsoft.com/config/debian/12/prod.list > /etc/apt/sources.list.d/mssql-release.list
-
-# 1.3 Installation des drivers SQL Server (msodbcsql18)
-RUN apt-get update \
+    && curl -fsSL https://packages.microsoft.com/config/debian/12/prod.list > /etc/apt/sources.list.d/mssql-release.list \
+    && apt-get update \
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 mssql-tools18 \
     && rm -rf /var/lib/apt/lists/*
 
-# 1.4 Installation des extensions PHP
+# Extensions PHP
 RUN docker-php-ext-install intl opcache \
     && pecl install redis sqlsrv pdo_sqlsrv \
     && docker-php-ext-enable redis sqlsrv pdo_sqlsrv \
@@ -33,34 +33,60 @@ RUN docker-php-ext-install intl opcache \
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install -j$(nproc) gd
 
-# 1.5 Installation de Composer
+# Installation de Composer et téléchargement des dépendances
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 
-# --- 2. DÉVELOPPEMENT ---
-FROM base AS dev
-ENV APP_ENV=dev
-# Installe les dépendances au démarrage uniquement si le dossier vendor est absent
-CMD ["sh", "-c", "composer install --no-interaction --prefer-dist && exec php-fpm"]
-
-# --- 3. PRODUCTION (Défaut) ---
-FROM base AS prod
-ENV APP_ENV=prod
-# Copier uniquement les fichiers Composer pour utiliser le cache Docker
-COPY composer.json composer.lock symfony.lock .env ./
-COPY bin/ bin/
-COPY config/ config/
-COPY public/ public/
+COPY composer.json composer.lock symfony.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader --no-interaction
 
-# Copier le reste du projet
 COPY . .
+RUN APP_ENV=prod composer install --no-dev --optimize-autoloader --classmap-authoritative --no-interaction
 
 
-# Activer le php.ini de production
+# ==========================================
+# 2. BASE D'EXÉCUTION (Runtime minimal)
+# ==========================================
+FROM php:8.4-fpm AS base_runtime
+
+# Utilisation des dépendances sans figer les numéros de révision de la bibliothèque Debian
+RUN apt-get update && apt-get install -y \
+    libicu-dev \
+    libpng-dev \
+    libjpeg62-turbo \
+    libfreetype6 \
+    libwebp-dev \
+    unixodbc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Driver SQL Server (msodbcsql18)
+COPY --from=builder /usr/share/keyrings/microsoft-prod.gpg /usr/share/keyrings/microsoft-prod.gpg
+COPY --from=builder /etc/apt/sources.list.d/mssql-release.list /etc/apt/sources.list.d/mssql-release.list
+RUN apt-get update && ACCEPT_EULA=Y apt-get install -y msodbcsql18 && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
+COPY --from=builder /usr/local/etc/php/conf.d/ /usr/local/etc/php/conf.d/
+
+WORKDIR /var/www/html
+
+
+# ==========================================
+# 3. DÉVELOPPEMENT
+# ==========================================
+FROM builder AS dev
+ENV APP_ENV=dev
+CMD ["sh", "-c", "composer install --no-interaction --prefer-dist && exec php-fpm"]
+
+
+# ==========================================
+# 4. PRODUCTION (Sécurisée)
+# ==========================================
+FROM base_runtime AS prod
+ENV APP_ENV=prod
+
+# Configuration PHP / OPcache
 RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
-# Configurer OPcache pour des performances maximales
 RUN echo "opcache.enable=1\n\
 opcache.enable_cli=1\n\
 opcache.memory_consumption=256\n\
@@ -70,20 +96,19 @@ opcache.validate_timestamps=0\n\
 opcache.jit_buffer_size=100M\n\
 opcache.jit=tracing" > $PHP_INI_DIR/conf.d/docker-php-ext-opcache.ini
 
+# Copie de l'application préparée depuis l'étape builder
+COPY --chown=www-data:www-data --from=builder /var/www/html /var/www/html
 
-# Générer l'autoloader optimisé et exécuter les scripts
-RUN composer install --no-dev --optimize-autoloader --classmap-authoritative --no-interaction
-RUN chown -R www-data:www-data var/
+# Passage à un utilisateur non-root
+USER www-data
+
+CMD ["php-fpm"]
 
 
-
-
-# ---------------------------------
-# NGINX PRODUCTION
-# ---------------------------------
-
+# ==========================================
+# 5. NGINX PRODUCTION
+# ==========================================
 FROM nginx:alpine AS nginx_prod
 
 COPY --from=prod /var/www/html/public /var/www/html/public
-
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
