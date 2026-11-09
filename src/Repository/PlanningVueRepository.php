@@ -19,7 +19,13 @@ use Symfony\Contracts\Cache\CacheInterface;
 class PlanningVueRepository extends ServiceEntityRepository
 {
 
-    public function __construct(ManagerRegistry $registry, private CacheInterface $cache, private Security $security, private UrlGeneratorInterface $router,)
+    public function __construct(
+        ManagerRegistry $registry,
+        private CacheInterface $cache,
+        private Security $security,
+        private UrlGeneratorInterface $router,
+        private LoggerInterface $logger
+    )
     {
         parent::__construct($registry, PlanningVue::class);
     }
@@ -995,5 +1001,59 @@ class PlanningVueRepository extends ServiceEntityRepository
         $result = $conn->executeQuery($sql, $params)->fetchAssociative();
 
         return $result;
+    }
+
+    public function getSettingsDefault()
+    {
+        $conn = $this->getEntityManager()->getConnection();
+
+        $sql = '
+                SELECT IdParametre,ValeurParametre
+                FROM Parametre
+                WHERE IdParametre = \'Planning.CouleurBordureParDefaut\'
+                    OR IdParametre = \'Planning.CouleurFondParDefaut\'
+                    OR IdParametre = \'Planning.CouleurTexteParDefaut\'
+                    OR IdParametre = \'Planning.ImageParDefaut\'
+                ORDER BY IdParametre';
+        $result = $conn->executeQuery($sql)->fetchAllAssociative();
+
+        $structuredResult = [];
+        foreach ($result as $row) {
+            $row['IdParametre'] = str_replace('Planning.', '', $row['IdParametre']);
+            if ($row['IdParametre'] === 'ImageParDefaut' && $row['ValeurParametre'] !== null) {
+                $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+                $baseImageUrl = str_replace('999999', '', $baseImageUrl);
+                $structuredResult[$row['IdParametre']] = [
+                    'url' => $baseImageUrl . $row['ValeurParametre'],
+                    'id' => $row['ValeurParametre']
+                ];
+            }else{
+                $structuredResult[$row['IdParametre']] = $row['ValeurParametre'] ?? '';
+            }
+        }
+
+        return $structuredResult;
+
+    }
+
+    public function setDisplaySettings(array $data, LoggerInterface $logger)
+    {
+        $conn = $this->getEntityManager()->getConnection();
+
+        foreach ($data as $key => $value) {
+            $paramKey = 'Planning.' . $key;
+            $sql = '
+                UPDATE Parametre
+                SET ValeurParametre = :ValeurParametre
+                WHERE IdParametre = :IdParametre';
+            $params = [
+                'IdParametre' => $paramKey,
+                'ValeurParametre' => $value,
+            ];
+            $conn->executeQuery($sql, $params);
+            $logger->info("Mise à jour du paramètre '$paramKey' avec la valeur '$value'.");
+        }
+
+        return ['message' => 'Paramètres de configuration mis à jour avec succès.'];
     }
 }

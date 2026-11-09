@@ -40,6 +40,19 @@ class PlanningVueController extends AbstractController
 
 
 
+
+
+    #[Route('/display-settings', name: 'api_get_display_settings', methods: ['GET'])]
+    #[OA\Response(response: 200, description: 'Récupère les paramètres d\'affichage par défaut pour le planning')]
+    #[OA\Response(response: 500, description: 'Erreur serveur')]
+    public function getSettingsDefault() :JsonResponse
+    {
+        $result = $this->planningVueRepository->getSettingsDefault();
+        return $this->json(['data' => $result]);
+    }
+
+
+
     /**
      * @throws Exception
      */
@@ -663,6 +676,35 @@ class PlanningVueController extends AbstractController
             'SET_CHANTIER_VUE',
             $user->getIdpersonnel(),
             ['vue' => $result]
+        );
+
+        return $this->json($result);
+
+    }
+
+
+
+    #[Route('/display-settings', name: 'api_display_settings_set', methods: ['PUT'])]
+    #[IsGranted('DISPLAY_SETTINGS_MANAGE', message: 'Vous n\'avez pas la permission de défauts d\'affichage.')]
+    public function setDisplaySettings(#[CurrentUser] Session $user, Request $request): JsonResponse
+    {
+        $idPlanning =  $request->headers->get('X-Planning-Id');
+
+        if (!$idPlanning) {
+            throw new BadRequestHttpException('Id du planning manquant');
+        }
+
+        if ($idPlanning !== null && !is_numeric($idPlanning) || $idPlanning < 0) {
+            $this->logger->debug('Le paramètre idPlanning doit être un entier positif. Valeur reçue: {idPlanning}', [
+                'idPlanning' => $idPlanning,
+            ]);
+            throw new BadRequestHttpException('Le paramètre idPlanning doit être un entier positif.');
+        }
+
+        $data = $request->toArray();
+
+        $result = $this->planningVueRepository->setDisplaySettings(
+            $data, $this->logger
         );
 
         return $this->json($result);
