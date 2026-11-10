@@ -535,10 +535,12 @@ class PlanningVueRepository extends ServiceEntityRepository
         foreach ($result as $row) {
             $zone = $row['ZoneAffichage'];
             $ligne = $row['Ligne'];
+            $libelle = $row['Libelle'];
 
             $champData = [
                 'code' => $row['CodeChamp'],
-                'estCaractereSpecial' => (bool)$row['EstCaractereSpecial']
+                'estCaractereSpecial' => (bool)$row['EstCaractereSpecial'],
+                'libelle' => $libelle
             ];
 
             if ($zone === 'primaire') {

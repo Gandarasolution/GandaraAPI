@@ -279,7 +279,7 @@ class PlanningVueController extends AbstractController
      * @throws Exception
      */
     #[Route('/mobile/display', name: 'api_mobile_get', methods: ['GET'])]
-    #[OA\Response(response: 200, description: 'Affichage des évenement sur mobile')]
+    #[OA\Response(response: 200, description: 'Récupération de la configuration mobile')]
     public function getAffichageMobile(#[CurrentUser] Session $user) :JsonResponse{
         $idPersonnel = $user->getIdpersonnel();
 
@@ -294,7 +294,7 @@ class PlanningVueController extends AbstractController
      * @throws Exception
      */
     #[Route('/mobile/settings', name: 'api_mobile_settings_get', methods: ['GET'])]
-    #[OA\Response(response: 200, description: 'Affichage des évenement sur mobile')]
+    #[OA\Response(response: 200, description: 'Récupération des paramètres d\'affichage mobile')]
     public function getAffichageSettingsMobileSettings(#[CurrentUser] Session $user) :JsonResponse{
 
         $idPersonnel = $user->getIdpersonnel();
