@@ -472,7 +472,7 @@ class PlanningVueController extends AbstractController
             ['vue' => $result]
         );
 
-        return $this->json($result);
+        return $this->json(['data' => $result]);
 
     }
 
