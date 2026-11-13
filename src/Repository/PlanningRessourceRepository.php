@@ -63,8 +63,8 @@ class PlanningRessourceRepository extends ServiceEntityRepository
 
         $data = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
-        $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
-        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
+//$baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+        $baseImageUrl = 'https://gandara-scheduler.vercel.app/demo/images/999999';        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
 
 
 
@@ -132,8 +132,8 @@ class PlanningRessourceRepository extends ServiceEntityRepository
         unset($row['LignesModifiees']);
 
 
-        $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
-        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
+//$baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+        $baseImageUrl = 'https://gandara-scheduler.vercel.app/demo/images/999999';        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
 
         $image = null;
         if (!empty($row['IdPlanningImage'])) {
@@ -187,8 +187,8 @@ class PlanningRessourceRepository extends ServiceEntityRepository
         $result = $conn->executeQuery($sql,$params)->fetchAllAssociative();
 
 
-        $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
-        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
+//$baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+        $baseImageUrl = 'https://gandara-scheduler.vercel.app/demo/images/999999';        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
         $logger->debug('Résultat de la requête getProjet', ['result' => $result]);
 
         $structuredData = [];
@@ -260,8 +260,8 @@ class PlanningRessourceRepository extends ServiceEntityRepository
 
         $structuredData = [];
 
-        $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
-        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
+//$baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+        $baseImageUrl = 'https://gandara-scheduler.vercel.app/demo/images/999999';        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
 
         foreach($result as $row) {
             $image = null;
@@ -314,7 +314,8 @@ class PlanningRessourceRepository extends ServiceEntityRepository
 
         $structuredData = [];
 
-        $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+//$baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+        $baseImageUrl = 'https://gandara-scheduler.vercel.app/demo/images/999999';
         $baseImageUrl = str_replace('999999', '', $baseImageUrl);
 
         foreach($result as $row) {

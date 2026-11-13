@@ -64,7 +64,6 @@ class PlanningEvenementRepository extends ServiceEntityRepository
         $this->logger->debug('Locks retrieved from cache: ' . json_encode($locks));
 
         //$baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
-
         $baseImageUrl = 'https://gandara-scheduler.vercel.app/demo/images/999999';
         $baseImageUrl = str_replace('999999', '', $baseImageUrl);
 

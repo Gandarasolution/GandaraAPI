@@ -50,8 +50,8 @@ class PlanningVueRepository extends ServiceEntityRepository
 
         $structuredData = [];
 
-        $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
-        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
+//$baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+        $baseImageUrl = 'https://gandara-scheduler.vercel.app/demo/images/999999';        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
 
         foreach ($result as $row) {
             $idVue = (int)$row['IdPlanningVue'];
@@ -284,7 +284,8 @@ class PlanningVueRepository extends ServiceEntityRepository
         ];
         $result = $conn->executeQuery($sql, $params)->fetchAssociative();
 
-        $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+//$baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+        $baseImageUrl = 'https://gandara-scheduler.vercel.app/demo/images/999999';
         $baseImageUrl = str_replace('999999', '', $baseImageUrl);
 
         $image = null;
@@ -384,7 +385,8 @@ class PlanningVueRepository extends ServiceEntityRepository
                 throw new NotFoundHttpException("Impossible de relire la vue après sa mise à jour.");
             }
 
-            $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+//$baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+            $baseImageUrl = 'https://gandara-scheduler.vercel.app/demo/images/999999';
             $baseImageUrl = str_replace('999999', '', $baseImageUrl);
 
             $image = null;
@@ -1023,8 +1025,8 @@ class PlanningVueRepository extends ServiceEntityRepository
         foreach ($result as $row) {
             $row['IdParametre'] = str_replace('Planning.', '', $row['IdParametre']);
             if ($row['IdParametre'] === 'ImageParDefaut' && $row['ValeurParametre'] !== null) {
-                $baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
-                $baseImageUrl = str_replace('999999', '', $baseImageUrl);
+                //$baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+                $baseImageUrl = 'https://gandara-scheduler.vercel.app/demo/images/999999';                $baseImageUrl = str_replace('999999', '', $baseImageUrl);
                 $structuredResult[$row['IdParametre']] = [
                     'url' => $baseImageUrl . $row['ValeurParametre'],
                     'id' => $row['ValeurParametre']
