@@ -296,7 +296,7 @@ class PlanningRessourceController extends abstractController
 
 
     #[Route('/application/display-settings', name: 'api_display_settings_application', methods: ['PUT'])]
-    #[IsGranted('DISPLAY_SETTINGS_MANAGE', message: 'Vous n\'avez pas la permission de défauts d\'affichage.')]
+    #[IsGranted('DISPLAY_SETTINGS_MANAGE', message: 'Vous n\'avez pas la permission de gérer les paramètres d\'affichage.')]
     public function applicationDisplaySettings(#[CurrentUser] Session $user, Request $request): JsonResponse
     {
         $idPlanning =  $request->headers->get('X-Planning-Id');
@@ -316,7 +316,7 @@ class PlanningRessourceController extends abstractController
             $this->logger
         );
 
-        return $this->json($result);
+        return $this->json(201);
 
     }
 
