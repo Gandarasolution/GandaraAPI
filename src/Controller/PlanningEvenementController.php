@@ -25,7 +25,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
-#[Route('/api/event')]
+#[Route('/demo/event')]
 #[OA\Tag(name: 'Planning Événements')]
 class PlanningEvenementController extends AbstractController
 {
@@ -497,7 +497,6 @@ class PlanningEvenementController extends AbstractController
             'message' => 'Événement mis à jour avec succès',
         ]);
     }
-
 
     /**
      * @throws InvalidArgumentException

@@ -12,7 +12,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use OpenApi\Attributes as OA;
 
 
-#[Route('/api/etiquettes')]
+#[Route('/demo/etiquettes')]
 #[OA\Tag(name: 'Étiquettes')]
 class PlanningEtiquetteController extends AbstractController
 {

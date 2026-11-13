@@ -15,7 +15,7 @@ use Nelmio\ApiDocBundle\Annotation\Model;
 use OpenApi\Attributes as OA;
 use function PHPUnit\Framework\throwException;
 
-#[Route('/api/pole-activites')]
+#[Route('/demo/pole-activites')]
 #[OA\Tag(name: 'Pôles d\'activité')]
 class PoleActiviteController extends AbstractController
 {

@@ -18,7 +18,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Nelmio\ApiDocBundle\Annotation\Model;
 use OpenApi\Attributes as OA;
 
-#[Route('/api')]
+#[Route('/demo')]
 
 #[OA\Tag(name: 'Sécurité et Authentification')]
 class SecurityController extends AbstractController

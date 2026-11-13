@@ -32,7 +32,7 @@ final class ApiExceptionSubscriber implements EventSubscriberInterface
         $request = $event->getRequest();
 
         // On n'intercepte que les requêtes de l'API
-        if (!str_starts_with($request->getPathInfo(), '/api/')) {
+        if (!str_starts_with($request->getPathInfo(), '/demo/')) {
             return;
         }
 

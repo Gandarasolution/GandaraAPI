@@ -23,7 +23,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
-#[Route('/api/planning')]
+#[Route('/demo/planning')]
 #[OA\Tag(name: 'Configurations/Vues')]
 class PlanningVueController extends AbstractController
 {

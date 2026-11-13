@@ -16,7 +16,7 @@ use Nelmio\ApiDocBundle\Annotation\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
-#[Route('/api/images')]
+#[Route('/demo/images')]
 #[OA\Tag(name: 'Images')]
 class ImageController extends AbstractController
 {

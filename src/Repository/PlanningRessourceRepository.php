@@ -419,5 +419,18 @@ class PlanningRessourceRepository extends ServiceEntityRepository
         return (int)$result[0]['Count'] > 0;
     }
 
+    public function applicationDisplaySettings(LoggerInterface $logger)
+    {
+        $conn = $this->getEntityManager()->getConnection();
+        $sql = 'EXEC ps_PlanningRessourceApplicationDisplaySettings';
+        $result = $conn->executeQuery($sql)->fetchAllAssociative();
+
+        if (empty($result)) {
+            throw new \RuntimeException("La procédure stockée n'a retourné aucun résultat pour les paramètres d'affichage de l'application.");
+        }
+
+        return $result[0];
+    }
+
 
 }

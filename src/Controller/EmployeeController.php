@@ -17,7 +17,7 @@ use Nelmio\ApiDocBundle\Annotation\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
-#[Route('/api/employees')]
+#[Route('/demo/employees')]
 #[OA\Tag(name: 'Employés')]
 class EmployeeController extends AbstractController
 {

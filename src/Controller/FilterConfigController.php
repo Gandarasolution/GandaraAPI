@@ -14,7 +14,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 
 
-#[Route("/api/filters-options")]
+#[Route("/demo/filters-options")]
 #[OA\Tag(name: 'Filtres dynamiques')]
 class FilterConfigController extends AbstractController
 {

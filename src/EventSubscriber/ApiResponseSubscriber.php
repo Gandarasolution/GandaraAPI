@@ -28,7 +28,7 @@ final class ApiResponseSubscriber implements EventSubscriberInterface
         $response = $event->getResponse();
 
         if (
-            !str_starts_with($request->getPathInfo(), '/api')
+            !str_starts_with($request->getPathInfo(), '/demo')
             || !$response instanceof JsonResponse
             || $response->getStatusCode() === 204
         ) {

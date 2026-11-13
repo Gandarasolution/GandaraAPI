@@ -14,7 +14,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 
-#[Route('/api/planning/day-type')]
+#[Route('/demo/planning/day-type')]
 #[OA\Tag(name: 'Types de jour')]
 class PlanningTypesJourController extends AbstractController
 {

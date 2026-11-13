@@ -19,10 +19,10 @@ security:
             security: false
 
         login:
-            pattern: ^/api/login
+            pattern: ^/demo/login
             stateless: true
             json_login:
-                check_path: /api/login # Route interne gérée par le bundle
+                check_path: /demo/login # Route interne gérée par le bundle
                 username_path: login
                 password_path: password
                 success_handler: lexik_jwt_authentication.handler.authentication_success
@@ -30,7 +30,7 @@ security:
 
         # Protection de tout le reste de l'API
         main:
-            pattern: ^/api
+            pattern: ^/demo
             stateless: true # IMPORTANT : On ne veut pas de session/cookie
             jwt: ~ # Active la vérification du token JWT sur chaque requête
 
@@ -43,10 +43,10 @@ security:
 
     # Note: Only the *first* matching rule is applied
     access_control:
-        - { path: ^/api/login,  roles: PUBLIC_ACCESS }
-        - { path: ^/api/test,   roles: PUBLIC_ACCESS }
-        - { path: ^/api/doc,    roles: PUBLIC_ACCESS}
-        - { path: ^/api,        roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/demo/login,  roles: PUBLIC_ACCESS }
+        - { path: ^/demo/test,   roles: PUBLIC_ACCESS }
+        - { path: ^/demo/doc,    roles: PUBLIC_ACCESS}
+        - { path: ^/demo,        roles: IS_AUTHENTICATED_FULLY }
 
 when@test:
     security:

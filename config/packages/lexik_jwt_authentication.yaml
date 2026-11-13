@@ -13,7 +13,7 @@ lexik_jwt_authentication:
             enabled: true
             name: '%env(JWT_NAME)%'
     set_cookies:
-        BEARER:
+        '%env(JWT_NAME)%':
             lifetime: '%env(JWT_TTL)%'
             samesite: none
             secure: true

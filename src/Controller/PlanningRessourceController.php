@@ -20,7 +20,7 @@ use OpenApi\Attributes as OA;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route("/api/ressources")]
+#[Route("/demo/ressources")]
 #[OA\Tag(name: 'Ressources')]
 class PlanningRessourceController extends abstractController
 {
@@ -28,7 +28,8 @@ class PlanningRessourceController extends abstractController
     public function __construct(
         private MercureNotificationService $notifier,
         private PlanningRessourceRepository $planningRessourceRepository,
-        private SecurityRepository $securityRepository
+        private SecurityRepository $securityRepository,
+        private LoggerInterface $logger
     )
     {
     }
@@ -290,6 +291,32 @@ class PlanningRessourceController extends abstractController
         // Appel à la méthode de création dans le repository
         $result = $this->planningRessourceRepository->createRessource($data);
         return $this->json(['data' => $result]);
+
+    }
+
+
+    #[Route('/application/display-settings', name: 'api_display_settings_application', methods: ['PUT'])]
+    #[IsGranted('DISPLAY_SETTINGS_MANAGE', message: 'Vous n\'avez pas la permission de défauts d\'affichage.')]
+    public function applicationDisplaySettings(#[CurrentUser] Session $user, Request $request): JsonResponse
+    {
+        $idPlanning =  $request->headers->get('X-Planning-Id');
+
+        if (!$idPlanning) {
+            throw new BadRequestHttpException('Id du planning manquant');
+        }
+
+        if ($idPlanning !== null && !is_numeric($idPlanning) || $idPlanning < 0) {
+            $this->logger->debug('Le paramètre idPlanning doit être un entier positif. Valeur reçue: {idPlanning}', [
+                'idPlanning' => $idPlanning,
+            ]);
+            throw new BadRequestHttpException('Le paramètre idPlanning doit être un entier positif.');
+        }
+
+        $result = $this->planningRessourceRepository->applicationDisplaySettings(
+            $this->logger
+        );
+
+        return $this->json($result);
 
     }
 

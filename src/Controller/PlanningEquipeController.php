@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use OpenApi\Attributes as OA;
 
-#[Route('/api/equipes')]
+#[Route('/demo/equipes')]
 #[OA\Tag(name: 'Équipes/Ressources')]
 class PlanningEquipeController extends AbstractController
 {

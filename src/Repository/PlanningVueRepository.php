@@ -1042,20 +1042,23 @@ class PlanningVueRepository extends ServiceEntityRepository
     {
         $conn = $this->getEntityManager()->getConnection();
 
-        foreach ($data as $key => $value) {
-            $paramKey = 'Planning.' . $key;
-            $sql = '
-                UPDATE Parametre
-                SET ValeurParametre = :ValeurParametre
-                WHERE IdParametre = :IdParametre';
-            $params = [
-                'IdParametre' => $paramKey,
-                'ValeurParametre' => $value,
-            ];
-            $conn->executeQuery($sql, $params);
-            $logger->info("Mise à jour du paramètre '$paramKey' avec la valeur '$value'.");
-        }
+        $conn->transactional(function ($conn) use ($data, $logger) {
 
+            foreach ($data as $key => $value) {
+                $paramKey = 'Planning.' . $key;
+                $sql = '
+                    UPDATE Parametre
+                    SET ValeurParametre = :ValeurParametre
+                    WHERE IdParametre = :IdParametre';
+                $params = [
+                    'IdParametre' => $paramKey,
+                    'ValeurParametre' => $value,
+                ];
+                $conn->executeQuery($sql, $params);
+                $logger->info("Mise à jour du paramètre '$paramKey' avec la valeur '$value'.");
+            }
+
+        });
         return ['message' => 'Paramètres de configuration mis à jour avec succès.'];
     }
 }

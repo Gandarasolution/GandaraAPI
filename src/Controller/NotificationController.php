@@ -16,7 +16,7 @@ use Nelmio\ApiDocBundle\Annotation\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
-#[Route('/api/notifications', name: 'api_notifications_')]
+#[Route('/demo/notifications', name: 'api_notifications_')]
 #[OA\Tag(name: 'Notifications')]
 class NotificationController extends AbstractController
 {
