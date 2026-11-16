@@ -234,7 +234,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
     /**
      * @throws Exception
      */
-    public function createEvent(array $data, LoggerInterface $logger, int $idPlanning): array
+    public function createEvent(array $data, LoggerInterface $logger, int $idPlanning, int $idUser): array
     {
         $timezone = new \DateTimeZone('Europe/Paris');
 
@@ -250,6 +250,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
                 @IdPlanningRessource = :IdPlanningRessource,
                 @IdPlanningEtiquette = :IdPlanningEtiquette,
                 @PlanningEvenementPriorite = :PlanningEvenementPriorite
+                @IdUser = :IdUser
         ';
         $params = [
             'IdEmploye' => $data['IdEmploye'],
@@ -259,6 +260,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
             'IdPlanningRessource' => $data['IdPlanningRessource'],
             'IdPlanningEtiquette' => $data['IdPlanningEtiquette'] ?? null,
             'PlanningEvenementPriorite' => $data['PlanningEvenementPriorite'] ?? null,
+            'IdUser' => $idUser
         ];
 
         $logger->debug('Executing SQL: ' . $sql . ' with params: ' . json_encode($params));
@@ -273,7 +275,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
     /**
      * @throws Exception
      */
-    public function updateEvent(int $id, array $data): array
+    public function updateEvent(int $id, array $data, int $idUser): array
     {
 
         $debutObj = new \DateTime()->setTimestamp((int)($data['DebutPlanningEvenement'] / 1000))->setTimezone(new \DateTimeZone('Europe/Paris'));
@@ -281,7 +283,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
 
 
         $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningEvenementUpdate @IdEvenement = :IdEvenement, @IdEmploye = :IdEmploye, @DebutPlanningEvenement = :DebutPlanningEvenement, @FinPlanningEvenement = :FinPlanningEvenement, @AnnotationPlanningEvenement = :AnnotationPlanningEvenement, @IdPlanningRessource = :IdPlanningRessource, @IdPlanningEtiquette = :IdPlanningEtiquette, @Priorite = :Priorite';
+        $sql = 'EXEC ps_PlanningEvenementUpdate @IdEvenement = :IdEvenement, @IdEmploye = :IdEmploye, @DebutPlanningEvenement = :DebutPlanningEvenement, @FinPlanningEvenement = :FinPlanningEvenement, @AnnotationPlanningEvenement = :AnnotationPlanningEvenement, @IdPlanningRessource = :IdPlanningRessource, @IdPlanningEtiquette = :IdPlanningEtiquette, @Priorite = :Priorite, @IdUser = :IdUser';
         $params = [
             'IdEvenement' => $id,
             'IdEmploye' => $data['IdEmploye'] ?? null,
@@ -290,7 +292,8 @@ class PlanningEvenementRepository extends ServiceEntityRepository
             'AnnotationPlanningEvenement' => $data['AnnotationPlanningEvenement'] ?? null,
             'IdPlanningRessource' => $data['IdPlanningRessource'] ?? ($data['Ressource']['IdPlanningRessource'] ?? null) ?? null,
             'IdPlanningEtiquette' => $data['IdPlanningEtiquette'] ?? null,
-            'Priorite' => $data['PlanningEvenementPriorite']
+            'Priorite' => $data['PlanningEvenementPriorite'],
+            'IdUser' => $idUser
         ];
         $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
@@ -324,12 +327,13 @@ class PlanningEvenementRepository extends ServiceEntityRepository
     /**
      * @throws Exception
      */
-    public function deleteEvent(int $id) : bool
+    public function deleteEvent(int $id, int $idUser) : bool
     {
         $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningEvenementDelete @IdEvenement = :IdEvenement';
+        $sql = 'EXEC ps_PlanningEvenementDelete @IdEvenement = :IdEvenement, @IdUser = :IdUser';
         $params = [
             'IdEvenement' => $id,
+            'IdUser' => $idUser
         ];
         $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
@@ -343,7 +347,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
     /**
      * @throws Exception
      */
-    public function divideEvent(int $id, array $data, LoggerInterface $logger): array
+    public function divideEvent(int $id, array $data, LoggerInterface $logger, int $idUser): array
     {
         $timezone = new \DateTimeZone('Europe/Paris');
 
@@ -351,10 +355,11 @@ class PlanningEvenementRepository extends ServiceEntityRepository
 
         $logger->debug('Dividing event with ID: ' . $id . ' at date: ' . $debutObj->format('Y-m-d\TH:i:s'));
         $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningEvenementDivide @IdEvenement = :IdEvenement, @DateCoupure = :DateCoupure';
+        $sql = 'EXEC ps_PlanningEvenementDivide @IdEvenement = :IdEvenement, @DateCoupure = :DateCoupure, @IdUser = :IdUser';
         $params = [
             'IdEvenement' => $id,
             'DateCoupure' => $debutObj->format('Y-m-d\TH:i:s'),
+            'IdUser' => $idUser
         ];
         $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
@@ -384,7 +389,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
      * @throws Exception
      * @throws \Throwable
      */
-    public function repeatEvent(array $data, int $idPlanning): array
+    public function repeatEvent(array $data, int $idPlanning, int $idUser): array
     {
         $conn = $this->getEntityManager()->getConnection();
 
@@ -392,7 +397,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
         $idRessource = $data['IdPlanningRessource'];
         $annotation = $data['AnnotationPlanningEvenement'] ?? null;
 
-        return $conn->transactional(function ($conn) use ($idPlanning, $data, $idEmploye, $idRessource, $annotation) {
+        return $conn->transactional(function ($conn) use ($idPlanning, $data, $idEmploye, $idRessource, $annotation, $idUser) {
             $createdIds = [];
             $results = [];
 
@@ -405,13 +410,23 @@ class PlanningEvenementRepository extends ServiceEntityRepository
                 $fin = new \DateTime()->setTimestamp((int)($periode['FinPlanningEvenement'] / 1000))->setTimezone($timezone)->format('Y-m-d\TH:i:s');
 
 
-                $sql = 'EXEC ps_PlanningEvenementInsert @IdEmploye = :IdEmployee, @DebutPlanningEvenement = :DebutPlanningEvenement, @FinPlanningEvenement = :FinPlanningEvenement, @AnnotationPlanningEvenement = :AnnotationPlanningEvenement, @IdPlanningRessource = :IdPlanningRessource';
+                $sql = 'EXEC ps_PlanningEvenementInsert
+                    @IdEmploye = :IdEmployee,
+                    @DebutPlanningEvenement = :DebutPlanningEvenement,
+                    @FinPlanningEvenement = :FinPlanningEvenement,
+                    @AnnotationPlanningEvenement = :AnnotationPlanningEvenement,
+                    @IdPlanningRessource = :IdPlanningRessource,
+                    @IdUser = :IdUser,
+                    @MessageLog = :MessageLog'
+                ;
                 $params = [
                     'IdEmployee' => $idEmploye,
                     'DebutPlanningEvenement' => $debut,
                     'FinPlanningEvenement' => $fin,
                     'AnnotationPlanningEvenement' => $annotation,
-                    'IdPlanningRessource' => $idRessource
+                    'IdPlanningRessource' => $idRessource,
+                    'IdUser' => $idUser,
+                    'MessageLog' => 'Répétition d\'un événement'
                 ];
                 $dbResult = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
@@ -431,15 +446,15 @@ class PlanningEvenementRepository extends ServiceEntityRepository
     /**
      * @throws \Throwable
      */
-    public function deleteEvents(array $ids): bool
+    public function deleteEvents(array $ids, int $idUser): bool
     {
         $conn = $this->getEntityManager()->getConnection();
 
-        return $conn->transactional(function ($conn) use ($ids) {
+        return $conn->transactional(function ($conn) use ($ids, $idUser) {
 
             foreach ($ids as $id) {
-                $sql = 'EXEC ps_PlanningEvenementDelete @IdEvenement = :IdEvenement';
-                $result = $conn->executeStatement($sql, ['IdEvenement' => $id]);
+                $sql = 'EXEC ps_PlanningEvenementDelete @IdEvenement = :IdEvenement, @IdUser = :IdUser';
+                $result = $conn->executeStatement($sql, ['IdEvenement' => $id, 'IdUser' => $idUser]);
 
                 // Si la suppression échoue, on LÈVE UNE EXCEPTION pour annuler toute la transaction
                 if ($result === 0) {
@@ -453,16 +468,17 @@ class PlanningEvenementRepository extends ServiceEntityRepository
     /**
      * @throws \DateMalformedStringException
      */
-    public function transferEvent(mixed $sourceEmployeeId, mixed $targetEmployeeId, mixed $startDate, mixed $endDate, LoggerInterface $logger)
+    public function transferEvent(mixed $sourceEmployeeId, mixed $targetEmployeeId, mixed $startDate, mixed $endDate, LoggerInterface $logger, int $idUser)
     {
 
         $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningEvenementTransfer @SourceEmployeeId = :SourceEmployeeId, @TargetEmployeeId = :TargetEmployeeId, @StartDate = :StartDate, @EndDate = :EndDate';
+        $sql = 'EXEC ps_PlanningEvenementTransfer @SourceEmployeeId = :SourceEmployeeId, @TargetEmployeeId = :TargetEmployeeId, @StartDate = :StartDate, @EndDate = :EndDate, @IdUser = :IdUser';
         $params = [
             'SourceEmployeeId' => $sourceEmployeeId,
             'TargetEmployeeId' => $targetEmployeeId,
             'StartDate' => new \DateTime($startDate)->format('Y-m-d\TH:i:s'),
             'EndDate' => new \DateTime($endDate)->format('Y-m-d\TH:i:s'),
+            'IdUser' => $idUser
         ];
 
 

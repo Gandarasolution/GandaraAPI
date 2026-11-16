@@ -289,7 +289,7 @@ class PlanningRessourceController extends abstractController
             throw new BadRequestHttpException('Les champs Libelle et Code sont requis');
         }
         // Appel à la méthode de création dans le repository
-        $result = $this->planningRessourceRepository->createRessource($data);
+        $result = $this->planningRessourceRepository->createRessource($data, $user->getIdpersonnel());
         return $this->json(['data' => $result]);
 
     }
@@ -312,7 +312,8 @@ class PlanningRessourceController extends abstractController
             throw new BadRequestHttpException('Le paramètre idPlanning doit être un entier positif.');
         }
 
-        $result = $this->planningRessourceRepository->applicationDisplaySettings(
+        $this->planningRessourceRepository->applicationDisplaySettings(
+            $user->getIdpersonnel(),
             $this->logger
         );
 
@@ -357,7 +358,7 @@ class PlanningRessourceController extends abstractController
 
         $logger->debug(sprintf('Mise à jour de la ressource ID %d avec les données: %s', $id, json_encode($data)));
         // Appel à la méthode de mise à jour dans le repository
-        $result = $this->planningRessourceRepository->updateRessource($id, $data, $logger);
+        $result = $this->planningRessourceRepository->updateRessource($id, $data, $logger, $user->getIdpersonnel());
 
         if ($result['LignesModifiees'] > 0) {
 

@@ -232,7 +232,7 @@ class PlanningEvenementController extends AbstractController
             return $this->json(['message' => 'Les champs DebutPlanningEvenement, FinPlanningEvenement sont obligatoires.'], 400);
         }
 
-        $result = $this->planningEvenementRepository->createEvent($data, $logger, $idPlanning);
+        $result = $this->planningEvenementRepository->createEvent($data, $logger, $idPlanning, $user->getIdpersonnel());
 
         $this->notifier->notifyPlanningChange(
             $idPlanning,
@@ -295,7 +295,7 @@ class PlanningEvenementController extends AbstractController
 
          $logger->debug('Appel de la mise à jour de l\'événement', ['payload' => $data]);
 
-         $result = $this->planningEvenementRepository->updateEvent($id, $data);
+         $result = $this->planningEvenementRepository->updateEvent($id, $data, $user->getIdpersonnel());
 
          $logger->debug('Résultat de la mise à jour de l\'événement', ['result' => $result]);
          if ($result['LignesModifiees'] === 0) {
@@ -337,7 +337,7 @@ class PlanningEvenementController extends AbstractController
             return $this->json(['message' => 'Id du planning manquant'], 400);
         }
 
-        $lignesSupprimees = $this->planningEvenementRepository->deleteEvent($id);
+        $lignesSupprimees = $this->planningEvenementRepository->deleteEvent($id, $user->getIdpersonnel());
 
         if (!$lignesSupprimees) {
             return $this->json(['message' => 'Événement introuvable.'], 404);
@@ -374,7 +374,7 @@ class PlanningEvenementController extends AbstractController
             return $this->json(['message' => 'Id du planning manquant'], 400);
         }
 
-        $lignesSupprimees = $this->planningEvenementRepository->deleteEvents($data['ids']);
+        $lignesSupprimees = $this->planningEvenementRepository->deleteEvents($data['ids'], $user->getIdpersonnel());
 
         $this->notifier->notifyPlanningChange(
             $idPlanning,
@@ -460,7 +460,7 @@ class PlanningEvenementController extends AbstractController
 
         $returnData = [];
 
-        $eventResult = $this->planningEvenementRepository->updateEvent($id, $data);
+        $eventResult = $this->planningEvenementRepository->updateEvent($id, $data, $user->getIdpersonnel());
 
         $logger->debug('Résultat de la mise à jour de l\'événement via PS', ['result' => $eventResult]);
 
@@ -473,7 +473,7 @@ class PlanningEvenementController extends AbstractController
         // Si le payload contient des données de ressource, tenter de mettre à jour la ressource associée
         $ressourceId = $data['IdPlanningRessource'] ?? ($data['Ressource']['IdPlanningRessource'] ?? null);
         if ($ressourceId !== null && isset($data['Ressource']) && is_array($data['Ressource'])) {
-            $ressourceResult = $this->planningRessourceRepository->updateRessource((int)$ressourceId, $data['Ressource'], $logger);
+            $ressourceResult = $this->planningRessourceRepository->updateRessource((int)$ressourceId, $data['Ressource'], $logger, $user->getIdpersonnel());
 
             if ($ressourceResult['LignesModifiees'] === 0) {
                 return $this->json(['message' => 'Ressource introuvable ou aucune modification effectuée.'], 404);
@@ -537,7 +537,7 @@ class PlanningEvenementController extends AbstractController
             $data['DateCoupure'] = (int) $data['DateCoupure'];
         }
 
-        $result = $this->planningEvenementRepository->divideEvent($id, $data, $logger);
+        $result = $this->planningEvenementRepository->divideEvent($id, $data, $logger, $user->getIdpersonnel());
 
         $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
         $this->cache->delete($cacheKey);
@@ -597,7 +597,7 @@ class PlanningEvenementController extends AbstractController
         }
 
 
-        $result = $this->planningEvenementRepository->repeatEvent($data, $idPlanning);
+        $result = $this->planningEvenementRepository->repeatEvent($data, $idPlanning, $user->getIdpersonnel());
 
         $cacheKey = 'edit_rdv_' . $idPlanning . '_' . $id;
         $this->cache->delete($cacheKey);
@@ -648,7 +648,7 @@ class PlanningEvenementController extends AbstractController
 
         $logger->debug('Appel de la procédure de transfert d\'événements', ['sourceEmployeeId' => $sourceEmployeeId, 'targetEmployeeId' => $targetEmployeeId, 'startDate' => $startDate, 'endDate' => $endDate]);
 
-        $result = $this->planningEvenementRepository->transferEvent($sourceEmployeeId, $targetEmployeeId, $startDate, $endDate, $logger);
+        $result = $this->planningEvenementRepository->transferEvent($sourceEmployeeId, $targetEmployeeId, $startDate, $endDate, $logger, $user->getIdpersonnel());
 
         return $this->json(['message' => 'Transfert effectué avec succès', 'data' => $result], 201);
 

@@ -93,7 +93,7 @@ class PlanningRessourceRepository extends ServiceEntityRepository
     /**
      * @throws Exception
      */
-    public function updateRessource(int $id, mixed $data, LoggerInterface $logger): array
+    public function updateRessource(int $id, mixed $data, LoggerInterface $logger, int $idUser): array
     {
         $logger->debug('Données reçues pour la mise à jour de la ressource', ['id' => $id, 'data' => $data]);
         $conn = $this->getEntityManager()->getConnection();
@@ -106,7 +106,8 @@ class PlanningRessourceRepository extends ServiceEntityRepository
                 @IdImage = :IdImage,
                 @CodePlanningRessource = :CodePlanningRessource,
                 @Actif = :Actif,
-                @LibellePlanningRessource = :LibellePlanningRessource
+                @LibellePlanningRessource = :LibellePlanningRessource,
+                @IdUser = :IdUser
         ';
         $params = [
             'Id' => $id,
@@ -117,6 +118,7 @@ class PlanningRessourceRepository extends ServiceEntityRepository
             'CodePlanningRessource' => $data['CodePlanningRessource'] ?? null,
             'Actif' => (int)($data['Actif'] ?? 1),
             'LibellePlanningRessource' => $data['LibellePlanningRessource'] ?? null,
+            'IdUser' => $idUser
         ];
 
         $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
@@ -354,7 +356,7 @@ class PlanningRessourceRepository extends ServiceEntityRepository
     /**
      * @throws Exception
      */
-    public function createRessource(mixed $data)
+    public function createRessource(mixed $data, int $idUser)
     {
         $conn = $this->getEntityManager()->getConnection();
         $sql = 'EXEC ps_PlanningRessourceManuelInsert
@@ -364,7 +366,8 @@ class PlanningRessourceRepository extends ServiceEntityRepository
                 @IdImage = :IdImage,
                 @CouleurFondPlanningRessource = :CouleurFondPlanningRessource,
                 @CouleurBordurePlanningRessource = :CouleurBordurePlanningRessource,
-                @CouleurTextePlanningRessource = :CouleurTextePlanningRessource';
+                @CouleurTextePlanningRessource = :CouleurTextePlanningRessource,
+                @IdUser = :IdUser';
         $params = [
             'LibellePlanningRessource' => $data['LibellePlanningRessource'],
             'Actif' => $data['Actif'],
@@ -372,7 +375,8 @@ class PlanningRessourceRepository extends ServiceEntityRepository
             'IdImage' => $data['IdPlanningImage'] ?? null,
             'CouleurFondPlanningRessource' => $data['CouleurFondPlanningRessource'],
             'CouleurBordurePlanningRessource' => $data['CouleurBordurePlanningRessource'],
-            'CouleurTextePlanningRessource' => $data['CouleurTextePlanningRessource']
+            'CouleurTextePlanningRessource' => $data['CouleurTextePlanningRessource'],
+            'IdUser' => $idUser
         ];
 
         $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
@@ -420,11 +424,14 @@ class PlanningRessourceRepository extends ServiceEntityRepository
         return (int)$result[0]['Count'] > 0;
     }
 
-    public function applicationDisplaySettings(LoggerInterface $logger)
+    public function applicationDisplaySettings(int $idUser , LoggerInterface $logger): void
     {
         $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningRessourceApplicationDisplaySettings';
-        $conn->executeQuery($sql);
+        $sql = 'EXEC ps_PlanningRessourceApplicationDisplaySettings @IdUser = :IdUser';
+        $params = [
+            'IdUser' => $idUser
+        ];
+        $conn->executeQuery($sql, $params);
     }
 
 
