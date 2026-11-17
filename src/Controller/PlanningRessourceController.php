@@ -312,12 +312,32 @@ class PlanningRessourceController extends abstractController
             throw new BadRequestHttpException('Le paramètre idPlanning doit être un entier positif.');
         }
 
-        $this->planningRessourceRepository->applicationDisplaySettings(
+        $data = $request->toArray();
+
+        $visible = $data['visibleEvents'] ?? null;
+
+        if ($visible === null) {
+            throw new BadRequestHttpException('Le champ "visibleEvents" est requis.');
+        }
+
+        if (!is_array($visible) && !is_string($visible)) {
+            throw new BadRequestHttpException('Le champ "visibleEvents" doit être un tableau ou une chaîne de caractères.');
+        }
+
+        $visible = is_array($visible) ? implode(',', $visible) : $visible;
+
+
+
+        $result = $this->planningRessourceRepository->applicationDisplaySettings(
             $user->getIdpersonnel(),
+            $visible,
             $this->logger
         );
 
-        return $this->json(201);
+        return $this->json([
+            'message' => 'Paramètres d\'affichage mis à jour avec succès',
+            'data' => $result
+        ]);
 
     }
 

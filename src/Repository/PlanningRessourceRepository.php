@@ -424,14 +424,44 @@ class PlanningRessourceRepository extends ServiceEntityRepository
         return (int)$result[0]['Count'] > 0;
     }
 
-    public function applicationDisplaySettings(int $idUser , LoggerInterface $logger): void
+    public function applicationDisplaySettings(int $idUser, string $visible, LoggerInterface $logger)
     {
         $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningRessourceApplicationDisplaySettings @IdUser = :IdUser';
+        $sql = 'EXEC ps_PlanningRessourceApplicationDisplaySettings @IdUser = :IdUser, @Visible = :Visible';
         $params = [
-            'IdUser' => $idUser
+            'IdUser' => $idUser,
+            'Visible' => $visible
         ];
-        $conn->executeQuery($sql, $params);
+        $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+        $structuredData = [];
+        //$baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+        $baseImageUrl = 'https://gandara-scheduler.vercel.app/demo/images/999999';
+        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
+
+
+
+        foreach($result as &$row) {
+            $image = null;
+            if (!empty($row['IdPlanningImage'])) {
+                $image = [
+                    'image' => $baseImageUrl . $row['IdPlanningImage'],
+                    'id' => $row['IdPlanningImage']
+                ];
+            }
+
+             $structuredData[] = [
+                'IdPlanningRessource'             => $row['IdPlanningRessource'],
+                'CouleurFondPlanningRessource'    => $row['CouleurFondPlanningRessource'],
+                'CouleurBordurePlanningRessource' => $row['CouleurBordurePlanningRessource'],
+                'CouleurTextePlanningRessource'   => $row['CouleurTextePlanningRessource'],
+                'Image'                           => $image,
+            ];
+        }
+        unset($row);
+
+        $logger->debug('Résultat de la requête applicationDisplaySettings', ['result' => $structuredData]);
+        return $structuredData;
     }
 
 

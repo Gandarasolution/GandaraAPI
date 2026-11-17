@@ -249,7 +249,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
                 @AnnotationPlanningEvenement = :AnnotationPlanningEvenement,
                 @IdPlanningRessource = :IdPlanningRessource,
                 @IdPlanningEtiquette = :IdPlanningEtiquette,
-                @PlanningEvenementPriorite = :PlanningEvenementPriorite
+                @PlanningEvenementPriorite = :PlanningEvenementPriorite,
                 @IdUser = :IdUser
         ';
         $params = [
