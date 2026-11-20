@@ -127,8 +127,8 @@ class EmployeeRepository extends ServiceEntityRepository
     public function setEquipeEmployee(int $id, Array $data, LoggerInterface $logger): int
     {
         $conn = $this->getEntityManager()->getConnection();
-        $logger->debug("Appel de la procédure stockée ps_EmployeeUpdateEquipe avec les paramètres", ['Id' => $id, 'Type' => $data['Type'], 'IdEquipe' => $data['IdEquipe']]);
-        $sql = 'EXEC ps_EmployeeUpdateEquipe @Id = :Id, @Type = :Type, @IdEquipe = :IdEquipe';
+        $logger->debug("Appel de la procédure stockée ps_EmployeeEquipeUpdate avec les paramètres", ['Id' => $id, 'Type' => $data['Type'], 'IdEquipe' => $data['IdEquipe']]);
+        $sql = 'EXEC ps_EmployeeEquipeUpdate @Id = :Id, @Type = :Type, @IdEquipe = :IdEquipe';
         $params = [
             'Id' => $id,
             'Type' => $data['Type'],
@@ -138,7 +138,7 @@ class EmployeeRepository extends ServiceEntityRepository
         $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
         if (empty($result)) {
-            $logger->error("La procédure stockée ps_EmployeeUpdateEquipe n'a pas renvoyé de résultat pour l'employé avec l'ID: $id");
+            $logger->error("La procédure stockée ps_EmployeeEquipeUpdate n'a pas renvoyé de résultat pour l'employé avec l'ID: $id");
             throw new \RuntimeException("Erreur lors de la mise à jour de l'équipe pour l'employé avec l'ID: $id");
         }
 
@@ -155,7 +155,8 @@ class EmployeeRepository extends ServiceEntityRepository
 
         $sql = 'SELECT V.Id AS IdPersonnel, V.Nom AS Nom
                 FROM v_Personnel V
-                WHERE Id > 0 AND V.Actif = 1;';
+                WHERE Id > 0 AND V.Actif = 1
+                ORDER BY V.Nom ASC;';
         $result = $conn->executeQuery($sql)->fetchAllAssociative();
 
         return $result;
