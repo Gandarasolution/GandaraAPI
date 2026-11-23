@@ -87,10 +87,22 @@ class PlanningNotificationRepository extends ServiceEntityRepository
     public function markNotificationsAsRead(mixed $notificationIds)
     {
         $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningNotificationsUpdateRead @NotificationIds = :NotificationIds';
-        $params = ['NotificationIds' => implode(',', $notificationIds)];
+        $sql = 'EXEC ps_PlanningNotificationUpdateInsert @Type = :Type, @LueNotifications = 1, @IdPlanningNotification = :IdPlanningNotification';
 
-        return $conn->executeQuery($sql, $params)->fetchOne();
+        foreach ($notificationIds as $key => $id) {
+            if (!is_numeric($id)) {
+                throw new \InvalidArgumentException("L'ID de notification à l'index $key n'est pas un nombre valide.");
+            }
+            $params = [
+                'Type' => 'UPDATE',
+                'LueNotifications' => 1,
+                'IdPlanningNotification' => $id
+            ];
+
+            $conn->executeQuery($sql, $params);
+        }
+
+        return true;
 
     }
 }

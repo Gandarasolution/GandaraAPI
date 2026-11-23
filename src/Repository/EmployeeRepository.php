@@ -80,7 +80,7 @@ class EmployeeRepository extends ServiceEntityRepository
     public function getEmployeePagination(int $limit, int $pageNumber, string $query, string $codes, LoggerInterface $logger): array
     {
         $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningEmployeeSelectSearch @Limit = :Limit, @PageNumber = :PageNumber, @Query= :Query, @Codes= :Codes';
+        $sql = 'EXEC ps_PlanningEmployeeSearchSelect @Limit = :Limit, @PageNumber = :PageNumber, @Query= :Query, @Codes= :Codes';
         $params = [
             'Limit' => $limit,
             'PageNumber' => $pageNumber,
@@ -153,7 +153,7 @@ class EmployeeRepository extends ServiceEntityRepository
     {
         $conn = $this->getEntityManager()->getConnection();
 
-        $sql = 'SELECT V.Id AS IdPersonnel, V.Nom AS Nom
+        $sql = 'SELECT V.Id AS IdPersonnel, V.Nom AS Nom, IdEquipe AS Equipe
                 FROM v_Personnel V
                 WHERE Id > 0 AND V.Actif = 1
                 ORDER BY V.Nom ASC;';

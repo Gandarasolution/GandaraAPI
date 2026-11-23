@@ -656,7 +656,7 @@ class PlanningVueRepository extends ServiceEntityRepository
     {
         $conn = $this->getEntityManager()->getConnection();
 
-        $sql = 'EXEC ps_PlanningDernierePosition @IdPersonnel = :IdPersonnel, @IdPlanning = :IdPlanning';
+        $sql = 'EXEC ps_PlanningDernierePositionSelect @IdPersonnel = :IdPersonnel, @IdPlanning = :IdPlanning';
         $params = [
             'IdPersonnel' => $idPersonnel,
             'IdPlanning' => $idPlaninng

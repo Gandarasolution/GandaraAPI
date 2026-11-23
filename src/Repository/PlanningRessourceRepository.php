@@ -53,7 +53,7 @@ class PlanningRessourceRepository extends ServiceEntityRepository
     public function getRessources(mixed $query, mixed $limit, mixed $types, int $droitLevel): array
     {
         $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningRessourceSelectSearch @Query = :query, @Limit = :limit, @Types = :types, @DroitLevel = :droitLevel';
+        $sql = 'EXEC ps_PlanningRessourceSearchSelect @Query = :query, @Limit = :limit, @Types = :types, @DroitLevel = :droitLevel';
         $params = [
             'query' => $query,
             'limit' => $limit,
@@ -171,7 +171,7 @@ class PlanningRessourceRepository extends ServiceEntityRepository
     ): array
     {
         $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningRessourceSelectProjet
+        $sql = 'EXEC ps_PlanningRessourceProjetSelect
             @Limit= :Limit,
             @PageNumber= :PageNumber,
             @Query= :Query,
@@ -251,7 +251,7 @@ class PlanningRessourceRepository extends ServiceEntityRepository
     {
 
         $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningRessourceSelectRubriquePaie @Limit= :Limit, @PageNumber= :PageNumber, @Query= :Query, @Codes= :Codes';
+        $sql = 'EXEC ps_PlanningRessourceRubriquePaieSelect @Limit= :Limit, @PageNumber= :PageNumber, @Query= :Query, @Codes= :Codes';
         $params = [
             'Limit' => $limit ?? 20,
             'PageNumber' => $pageNumber ?? 1,
@@ -305,7 +305,7 @@ class PlanningRessourceRepository extends ServiceEntityRepository
     public function getRubriqueManuel(int $limit, int $pageNumber, string $query, string $codes, LoggerInterface $logger): array
     {
         $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningRessourceSelectRubriqueManuel @Limit= :Limit, @PageNumber= :PageNumber, @Query= :Query, @Codes= :Codes';
+        $sql = 'EXEC ps_PlanningRessourceRubriqueManuelSelect @Limit= :Limit, @PageNumber= :PageNumber, @Query= :Query, @Codes= :Codes';
         $params = [
             'Limit' => $limit ?? 20,
             'PageNumber' => $pageNumber ?? 1,
@@ -427,7 +427,7 @@ class PlanningRessourceRepository extends ServiceEntityRepository
     public function applicationDisplaySettings(int $idUser, string $visible, LoggerInterface $logger)
     {
         $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningRessourceApplicationDisplaySettings @IdUser = :IdUser, @Visible = :Visible';
+        $sql = 'EXEC ps_PlanningRessourceDisplaySettingsUpdate @IdUser = :IdUser, @Visible = :Visible';
         $params = [
             'IdUser' => $idUser,
             'Visible' => $visible

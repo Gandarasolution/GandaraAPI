@@ -26,11 +26,11 @@ class FilterConfigRepository extends ServiceEntityRepository
         $conn = $this->getEntityManager()->getConnection();
 
         $sql = '
-    EXEC dbo.ps_PlanningGetDynamicFilterOptions
-        @Keys = :Keys,
-        @ViewType = :ViewType,
-        @IdPersonnel = :IdPersonnel
-';
+            EXEC dbo.ps_PlanningFilterOptionsSelect
+                @Keys = :Keys,
+                @ViewType = :ViewType,
+                @IdPersonnel = :IdPersonnel
+        ';
 
         $params = [
             'Keys' => trim($keys, '"'),
