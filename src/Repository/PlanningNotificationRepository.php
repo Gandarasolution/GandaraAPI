@@ -68,7 +68,7 @@ class PlanningNotificationRepository extends ServiceEntityRepository
     public function getNotification(int $id): array
     {
         $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningNotificationsSelectBySession @IdPersonnel = :IdPersonnel';
+        $sql = 'EXEC ps_PlanningNotificationsBySessionSelect @IdPersonnel = :IdPersonnel';
         $params = ['IdPersonnel' => $id];
 
         $result = $conn->executeQuery($sql, $params)->fetchAllAssociative();

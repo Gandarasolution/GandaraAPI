@@ -631,8 +631,8 @@ class PlanningEvenementController extends AbstractController
     #[OA\Response(response: 201, description: 'Transfert effectué avec succès')]
     public function transferEvent(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
-        $droit = $this->securityRepository->getPermission($user, $logger);
-        if (!in_array($droit, [22, 23])) {
+        $droit = $this->permissionHelper->getPermissionDetails($user, 214, 22);
+        if (!$droit['hasRight']) {
             throw new AccessDeniedHttpException('Vous n\'avez pas la permission de faire un transfert.');
         }
 

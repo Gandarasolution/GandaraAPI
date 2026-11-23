@@ -3,6 +3,7 @@
 namespace App\Security\Voter;
 
 use App\Entity\Session;
+use App\Service\PlanningPermissionHelper;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception;
 use Psr\Log\LoggerInterface;
@@ -12,30 +13,37 @@ use Symfony\Component\Security\Core\Authorization\Voter\Voter;
 
 class VueChantierVoter extends Voter
 {
-
-    //Ajout des vues Chantier
-    public const CHANTIER_ADD = 'CHANTIER_VUE_ADD';
-    //modification des vues Chantier
+    public const CHANTIER_ADD    = 'CHANTIER_VUE_ADD';
     public const CHANTIER_MANAGE = 'CHANTIER_MANAGE';
-
-    // Suppression des vues Chantier
     public const CHANTIER_DELETE = 'CHANTIER_DELETE';
-
-    public const VIEW = 'VUE_VIEW';
+    public const VIEW            = 'CHANTIER_VUE_VIEW';
 
     /**
-     * Correspondance entre les autorisations Symfony et les identifiants des droits SQL.
+     * Correspondance entre les autorisations Symfony, l'identifiant du droit SQL et le niveau requis.
      */
     private const DROITS = [
-        self::VIEW => 214,
-        self::CHANTIER_ADD => 220,
-        self::CHANTIER_MANAGE => 220,
-        self::CHANTIER_DELETE => 219,
+        self::VIEW => [
+            'idDroit' => 214,
+            'niveau'  => 22,
+        ],
+        self::CHANTIER_ADD => [
+            'idDroit' => 220,
+            'niveau'  => 3,
+        ],
+        self::CHANTIER_MANAGE => [
+            'idDroit' => 220,
+            'niveau'  => 3,
+        ],
+        self::CHANTIER_DELETE => [
+            'idDroit' => 220,
+            'niveau'  => 3,
+        ],
     ];
 
     public function __construct(
-        private Connection $connection,
-        private LoggerInterface $logger
+        private readonly Connection $connection,
+        private readonly PlanningPermissionHelper $permissionHelper,
+        private readonly LoggerInterface $logger
     ) {}
 
     protected function supports(string $attribute, mixed $subject): bool
@@ -50,17 +58,15 @@ class VueChantierVoter extends Voter
         ?Vote $vote = null
     ): bool {
         $user = $token->getUser();
-
-        // Vérification de la session utilisateur
         if (!$user instanceof Session) {
             return false;
         }
 
-        $idDroit = self::DROITS[$attribute];
+        $statutAcces = null;
 
         try {
             if ($attribute !== self::CHANTIER_ADD) {
-                // 1. Récupération du statut de la vue (Publique, Privée autorisée, Privée refusée)
+                // 1. Récupération du statut de la vue (0: Publique, 1: Privée autorisée, 2: Privée refusée)
                 $sqlVue = '
                     SELECT
                         CASE
@@ -72,67 +78,49 @@ class VueChantierVoter extends Voter
                     WHERE IdPlanningChantierVue = :idPlanningChantierVue;
                 ';
 
-                $statutAcces = $this->connection->fetchOne($sqlVue, [
-                    'idSession' => $user->getIdpersonnel(),
-                    'idPlanningChantierVue' => (int)$subject
+                $statutAcces = (int) $this->connection->fetchOne($sqlVue, [
+                    'idSession'             => $user->getIdpersonnel(),
+                    'idPlanningChantierVue' => (int) $subject,
                 ]);
 
-                // Si la vue est privée et que l'utilisateur n'y a pas accès -> Accès strictement refusé
+                // Vue privée sans attribution -> refus strict
                 if ($statutAcces === 2) {
                     return false;
                 }
 
-                // Si la vue est privée et que l'utilisateur y a accès -> Accès accordé directement
+                // Vue privée avec attribution -> accès direct
                 if ($statutAcces === 1) {
                     return true;
                 }
             }
-
-            // 2. Si la vue est Publique, on contrôle les droits globaux SQL de l'utilisateur
-            $sqlDroit = '
-                EXEC ps_PlanningDroitSelect
-                    @IdPersonnel = :idPersonnel,
-                    @IdDroits = :idDroit
-            ';
-
-            $droit = $this->connection->fetchAssociative($sqlDroit, [
-                'idPersonnel' => $user->getIdpersonnel(),
-                'idDroit' => (string) $idDroit
-            ]);
-
         } catch (Exception $e) {
-            $this->logger->error('Erreur récupération droit VuePlanningVoter', [
-                'attribute' => $attribute,
+            $this->logger->error('Erreur récupération attribution vue dans VueChantierVoter', [
+                'attribute'   => $attribute,
                 'idPersonnel' => $user->getIdpersonnel(),
-                'exception' => $e->getMessage()
+                'exception'   => $e->getMessage(),
             ]);
 
             return false;
         }
 
-        // L'utilisateur ne possède pas le droit requis pour une vue publique
-        if (!$droit) {
-            return false;
-        }
+        // 2. Vue publique (ou ajout) : vérification via PlanningPermissionHelper
+        $configDroit = self::DROITS[$attribute];
+        $permissionDetails = $this->permissionHelper->getPermissionDetails(
+            $user,
+            $configDroit['idDroit'],
+            $configDroit['niveau']
+        );
 
-        // Récupération des informations du droit
-        $niveau = (int) $droit['IdDroitNiveau'];
-        $gestionParNiveau = (bool) $droit['GestionParNiveau'];
-
-        $this->logger->debug('VuePlanningVoter - Vérification du droit', [
-            'attribute' => $attribute,
-            'idPersonnel' => $user->getIdpersonnel(),
-            'idDroit' => $idDroit,
-            'niveau' => $niveau,
-            'gestionParNiveau' => $gestionParNiveau,
-            'statutAcces' => $attribute !== self::CHANTIER_ADD ? $statutAcces : null,
+        $this->logger->debug('VueChantierVoter - Vérification du droit', [
+            'attribute'    => $attribute,
+            'idPersonnel'  => $user->getIdpersonnel(),
+            'idDroit'      => $configDroit['idDroit'],
+            'niveau'       => $permissionDetails['level'],
+            'niveauRequis' => $configDroit['niveau'],
+            'hasRight'     => $permissionDetails['hasRight'],
+            'statutAcces'  => $statutAcces,
         ]);
 
-        if (!$gestionParNiveau) {
-            return true;
-        }
-
-        // Vérification du niveau requis
-        return $niveau > 22;
+        return $permissionDetails['hasRight'];
     }
 }

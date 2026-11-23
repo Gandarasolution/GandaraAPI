@@ -5,6 +5,9 @@ namespace App\Controller;
 use App\Entity\Session;
 use App\Repository\EmployeeRepository;
 use App\Repository\SecurityRepository;
+use App\Security\Voter\EmployeeVoter;
+use App\Security\Voter\EquipeVoter;
+use App\Service\PlanningPermissionHelper;
 use Doctrine\DBAL\Exception;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use \Symfony\Component\HttpFoundation\Request;
@@ -24,7 +27,8 @@ class EmployeeController extends AbstractController
     public function __construct(
         private readonly EmployeeRepository $employeeRepository,
         private readonly SecurityRepository $securityRepository,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly PlanningPermissionHelper $permissionHelper
     ){}
 
 
@@ -33,13 +37,13 @@ class EmployeeController extends AbstractController
      * @throws Exception
      */
     #[Route('/planning', name: 'api_employees_list', methods: ['GET'])]
+    #[IsGranted(EmployeeVoter::LIST, message: 'Vous n\'avez pas la permission de récupérer les employées.')]
     #[OA\Response(response: 200, description: 'Liste de tous les employés (Salariés et Intérimaires)')]
-    #[IsGranted('LIST_PLANNING', message: 'Vous n\'avez pas la permission de récupérer les employées.')]
     public function list(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
-        $droit = $this->securityRepository->getPermission($user, $logger);
+        $droit = $this->permissionHelper->getPermissionDetails($user, 214, 22);
 
-        if (!in_array($droit, [23, 22])) {
+        if (!$droit['hasRight']) {
             return $this->json([
                 'message' => 'Vous n\'avez pas la permission de récupérer les employées.'
             ], 403);
@@ -61,12 +65,12 @@ class EmployeeController extends AbstractController
      */
     #[Route('', name: 'api_employee', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Récupère les utilisateurs')]
-    #[IsGranted('LIST_EMPLOYEE', message: 'Vous n\'avez pas la permission de récupérer les employées.')]
+    #[IsGranted(EmployeeVoter::LIST, message: 'Vous n\'avez pas la permission de récupérer les employées.')]
     public function getEmployees(#[CurrentUser] Session $user, LoggerInterface $logger): JsonResponse
     {
-        $droit = $this->securityRepository->getPermission($user, $logger);
+        $droit = $this->permissionHelper->getPermissionDetails($user, 214, 22);
 
-        if (!in_array($droit, [23, 22])) {
+        if (!$droit['hasRight']) {
             return $this->json([
                 'message' => 'Vous n\'avez pas la permission de récupérer les employées.'
             ], 403);
@@ -85,7 +89,7 @@ class EmployeeController extends AbstractController
     #[OA\Parameter(name: 'pageNum', in: 'query', description: 'Numéro de page pour la pagination', schema: new OA\Schema(type: 'integer', default: 1))]
     #[OA\Parameter(name: 'q', in: 'query', description: '', schema: new OA\Schema(type: 'string', default: ''))]
     #[OA\Response(response: 200, description: 'Liste de tous les employés (Salariés et Intérimaires)')]
-    #[IsGranted('LIST_EMPLOYEE', message: 'Vous n\'avez pas la permission de récupérer les employées.')]
+    #[IsGranted(EmployeeVoter::LIST, message: 'Vous n\'avez pas la permission de récupérer les employées.')]
     public function search(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
         $hasSearchParameters =
@@ -131,9 +135,9 @@ class EmployeeController extends AbstractController
     #[OA\Response(response: 404, description: 'Employé introuvable')]
     public function getEmployee(int $id, Request $request, #[CurrentUser] Session $user): JsonResponse
     {
-        $droit = $this->securityRepository->getPermission($user, $this->logger);
+        $droit = $this->permissionHelper->getPermissionDetails($user, 214, 22);
 
-        if ((!in_array($droit, [22, 23], true)) || $user->getIdpersonnel() !== $id) {
+        if (!$droit['hasRight'] || $user->getIdpersonnel() !== $id) {
             throw new AccessDeniedHttpException('Vous n\'avez pas la permission.');
         }
 
@@ -165,7 +169,7 @@ class EmployeeController extends AbstractController
     #[OA\Response(response: 200, description: 'Employé mis à jour avec succès')]
     #[OA\Response(response: 400, description: 'Requête invalide')]
     #[OA\Response(response: 404, description: 'Employé introuvable')]
-    #[IsGranted('EDIT_EMPLOYEE', message: 'Vous n\'avez pas la permission de modifier les employées.')]
+    #[IsGranted(EquipeVoter::UPDATE, message: 'Vous n\'avez pas la permission de modifier les employées.')]
     public function update(int $id, Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
         $data = $request->toArray();

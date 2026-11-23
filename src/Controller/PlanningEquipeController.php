@@ -4,15 +4,16 @@ namespace App\Controller;
 
 use App\Entity\Session;
 use App\Repository\EquipeRepository;
+use App\Security\Voter\EquipeVoter;
 use Doctrine\DBAL\Exception;
-use Doctrine\ORM\EntityManagerInterface;
+use OpenApi\Attributes as OA;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
-use OpenApi\Attributes as OA;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 
 #[Route('/demo/equipes')]
@@ -47,52 +48,49 @@ class PlanningEquipeController extends AbstractController
     }
 
     #[Route('/{id}/personnel', name: 'equipe_planning_list_personnel', requirements: ['id' => '\d+'], methods: ['GET'])]
+    #[IsGranted(EquipeVoter::VIEW, message: 'Vous n\'avez pas la permission de récupérer le personnel de cette équipe.')]
     #[OA\Response(response: 200, description: 'Liste de tout le personnel d\'une équipe')]
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de l\'équipe', schema: new OA\Schema(type: 'integer'))]
     public function listPersonnel(int $id, #[CurrentUser] Session $user): JsonResponse
     {
-
         $equipes = $this->repository->getPersonnelEquipe($id, $user->getIdpersonnel(), $this->logger);
 
         return $this->json(['data' => $equipes]);
-
     }
 
-
-    #[Route('/{id}/check-delete', name: 'equipe_planning_check_delete' , requirements: ['id' => '\d+'], methods: ['GET'])]
+    #[Route('/{id}/check-delete', name: 'equipe_planning_check_delete', requirements: ['id' => '\d+'], methods: ['GET'])]
+    #[IsGranted(EquipeVoter::DELETE)]
     #[OA\Response(response: 200, description: 'Vérifie si une équipe peut être supprimée')]
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de l\'équipe', schema: new OA\Schema(type: 'integer'))]
     public function checkDelete(int $id, Request $request, #[CurrentUser] Session $user): JsonResponse
     {
-
         $result = $this->repository->getDeleteImpact($id);
 
-        if ($result === null){
+        if ($result === null) {
             return $this->json([
-                'checkRequired' => false
+                'checkRequired' => false,
             ]);
         }
 
         return $this->json(['checkRequired' => true, 'message' => $result]);
-
     }
 
     #[Route('', name: 'equipe_planning_create', methods: ['POST'])]
+    #[IsGranted(EquipeVoter::CREATE)]
     #[OA\RequestBody(
         description: 'Les informations pour créer une équipe',
         required: true,
         content: new OA\JsonContent(
             properties: [
-                new OA\Property(property: 'Nom', type: 'string', description: 'Le nom de l\'équipe')
+                new OA\Property(property: 'Nom', type: 'string', description: 'Le nom de l\'équipe'),
             ],
             type: 'object'
         )
     )]
     #[OA\Response(response: 200, description: 'Équipe créée avec succès')]
-    public function create(Request $request,  #[CurrentUser] Session $user): JsonResponse
+    public function create(Request $request, #[CurrentUser] Session $user): JsonResponse
     {
         $data = $request->toArray();
-
         $designationEquipe = $data['Nom'] ?? null;
 
         if (!$designationEquipe) {
@@ -102,18 +100,17 @@ class PlanningEquipeController extends AbstractController
         $this->repository->createEquipe($designationEquipe, $user->getIdpersonnel(), $this->logger);
 
         return $this->json(['message' => 'Équipe créée avec succès']);
-
     }
 
-    //PUT /api/equipes/:id- Modifier une équipe
     #[Route('/{id}', name: 'equipe_planning_update', requirements: ['id' => '\d+'], methods: ['PUT'])]
+    #[IsGranted(EquipeVoter::UPDATE)]
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de l\'équipe', schema: new OA\Schema(type: 'integer'))]
     #[OA\RequestBody(
         description: 'Les nouvelles informations de l\'équipe',
         required: true,
         content: new OA\JsonContent(
             properties: [
-                new OA\Property(property: 'Name', type: 'string', description: 'Le nouveau nom de l\'équipe')
+                new OA\Property(property: 'Nom', type: 'string', description: 'Le nouveau nom de l\'équipe'),
             ],
             type: 'object'
         )
@@ -132,13 +129,10 @@ class PlanningEquipeController extends AbstractController
         $this->repository->updateEquipe($id, $newName, $user->getIdpersonnel(), $this->logger);
 
         return $this->json(['message' => 'Équipe mise à jour avec succès']);
-
-
     }
 
-
-
     #[Route('/{id}', name: 'equipe_planning_delete', requirements: ['id' => '\d+'], methods: ['DELETE'])]
+    #[IsGranted(EquipeVoter::DELETE)]
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de l\'équipe', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Équipe supprimée avec succès')]
     public function delete(int $id, #[CurrentUser] Session $user, Request $request): JsonResponse

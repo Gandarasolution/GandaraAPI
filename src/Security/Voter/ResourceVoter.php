@@ -18,17 +18,18 @@ class ResourceVoter extends Voter
     public const CREATE = 'RESOURCE_CREATE';
     public const MANAGE_PERMISSIONS = 'MANAGE_PERMISSIONS';
 
-    // Nouvel attribut spécifique pour la modification d'image
     public const EDIT_IMAGE_CHANTIER = 'RESOURCE_EDIT_IMAGE_CHANTIER';
     public const EDIT_IMAGE_RUBRIQUE = 'RESOURCE_EDIT_IMAGE_RUBRIQUE';
 
-
-    /**
-     * Mapping des attributs de droits vers leurs IdDroits SQL
-     */
     private const DROITS_SPECIFIQUES = [
-        self::EDIT_IMAGE_CHANTIER => 225,
-        self::EDIT_IMAGE_RUBRIQUE => 226,
+        self::EDIT_IMAGE_CHANTIER => [
+            'idDroit' => 225,
+            'niveau'  => 3,
+        ],
+        self::EDIT_IMAGE_RUBRIQUE => [
+            'idDroit' => 226,
+            'niveau'  => 3,
+        ],
     ];
 
     public function __construct(
@@ -42,8 +43,13 @@ class ResourceVoter extends Voter
             return true;
         }
 
-        return in_array($attribute, [self::VIEW, self::EDIT, self::SEARCH, self::EDIT_IMAGE_CHANTIER, self::EDIT_IMAGE_RUBRIQUE], true)
-            && $subject instanceof Planningressource;
+        return in_array($attribute, [
+                self::VIEW,
+                self::EDIT,
+                self::SEARCH,
+                self::EDIT_IMAGE_CHANTIER,
+                self::EDIT_IMAGE_RUBRIQUE,
+            ], true) && $subject instanceof Planningressource;
     }
 
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token, ?Vote $vote = null): bool
@@ -53,24 +59,20 @@ class ResourceVoter extends Voter
             return false;
         }
 
-        // =========================================================
-        // 1. CAS SPÉCIFIQUE : ATTRIBUTS AVEC IDDROIT DÉDIÉS (ex: Image 225/226)
-        // =========================================================
-        if ($attribute === self::EDIT_IMAGE_CHANTIER) {
-            $permissionDetails = $this->permissionHelper->getPermissionDetails($user, self::DROITS_SPECIFIQUES[self::EDIT_IMAGE_CHANTIER]);
+        // 1. Attributs spécifiques (225 / 226) avec niveau requis délégué au helper
+        if (isset(self::DROITS_SPECIFIQUES[$attribute])) {
+            $configDroit = self::DROITS_SPECIFIQUES[$attribute];
+            $permissionDetails = $this->permissionHelper->getPermissionDetails(
+                $user,
+                $configDroit['idDroit'],
+                $configDroit['niveau']
+            );
+
             return $permissionDetails['hasRight'];
         }
 
-        if ($attribute === self::EDIT_IMAGE_RUBRIQUE) {
-            $permissionDetails = $this->permissionHelper->getPermissionDetails($user, self::DROITS_SPECIFIQUES[self::EDIT_IMAGE_RUBRIQUE]);
-            return $permissionDetails['hasRight'];
-        }
-
-        // =========================================================
-        // 2. CAS GÉNÉRATION PAR NIVEAU / TYPE DE RESSOURCE (Droit standard 214)
-        // =========================================================
-        $defaultPermission = $this->permissionHelper->getPermissionDetails($user, 214);
-        $level = $defaultPermission['level'];
+        // 2. Cas général par niveau / type de ressource (Droit standard 214)
+        $level = $this->permissionHelper->getUserLevel($user);
 
         if (in_array($attribute, [self::CREATE, self::MANAGE_PERMISSIONS], true)) {
             return $level === 23;

@@ -5,6 +5,10 @@ namespace App\Controller;
 use App\Entity\Session;
 use App\Repository\PlanningTypesJourRepository;
 use App\Repository\PlanningVueRepository;
+use App\Security\Voter\MobileDisplayVoter;
+use App\Security\Voter\NonWorkingDateVoter;
+use App\Security\Voter\VueChantierVoter;
+use App\Security\Voter\VuePlanningVoter;
 use App\Service\MercureNotificationService;
 use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
@@ -78,7 +82,7 @@ class PlanningVueController extends AbstractController
     #[Route('/vue/available-columns', name: 'api_config_available_columns', methods: ['GET'])]
     #[OA\Parameter(name: 'viewType', in: 'query', description: 'Type de vue', schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Récupère les colonnes disponibles pour une vue spécifique')]
-    #[IsGranted('VUE_VIEW', message: 'Vous n\'avez pas la permission de visualiser cette vue.')]
+    #[IsGranted(VuePlanningVoter::VIEW, message: 'Vous n\'avez pas la permission de visualiser cette vue.')]
     public function getAvailableColumns(Request $request) :JsonResponse {
 
         $viewType = $request->query->get('viewType');
@@ -116,7 +120,7 @@ class PlanningVueController extends AbstractController
     #[Route('/chantier/vue/{id}', name: 'api_config_chantier', methods: ['GET'])]
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la vue', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Récupère les détails d\'une vue chantier spécifique')]
-    #[IsGranted('VUE_VIEW', message: 'Vous n\'avez pas la permission de visualiser cette vue.')]
+    #[IsGranted(VueChantierVoter::VIEW, message: 'Vous n\'avez pas la permission de visualiser cette vue.')]
     public function getChantierVue(int $id, Request $request, #[CurrentUser] Session $user) :JsonResponse {
 
         $viewType = $request->query->get('viewType');
@@ -138,7 +142,7 @@ class PlanningVueController extends AbstractController
     #[Route('/vue/{id}', name: 'api_config', methods: ['GET'])]
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la vue', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Récupère les détails d\'une vue spécifique')]
-    #[IsGranted('VUE_VIEW', message: 'Vous n\'avez pas la permission de visualiser cette vue.')]
+    #[IsGranted(VuePlanningVoter::VIEW, message: 'Vous n\'avez pas la permission de visualiser cette vue.')]
     public function getVue(int $id) :JsonResponse {
         $result = $this->planningVueRepository->getVue($id, $this->logger);
 
@@ -234,7 +238,6 @@ class PlanningVueController extends AbstractController
      */
     #[Route('/non-working-dates', name: 'api_non_working_dates', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Liste des jours non travaillé du planning')]
-    #[IsGranted('VUE_VIEW_DATE', message: 'Vous n\'avez pas la permission de visualiser les jours non travaillés.')]
     public function getNonWorkingDates(Request $request): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
@@ -264,7 +267,6 @@ class PlanningVueController extends AbstractController
 
     #[Route('/non-working-dates/available-years', name: 'api_non_working_dates_available_years', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Liste des années disponibles pour les jours non travaillés du planning')]
-    #[IsGranted('VUE_VIEW_DATE', message: 'Vous n\'avez pas la permission de visualiser les jours non travaillés.')]
     public function getAvailableYears(Request $request): JsonResponse
     {
 
@@ -295,6 +297,7 @@ class PlanningVueController extends AbstractController
      */
     #[Route('/mobile/settings', name: 'api_mobile_settings_get', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Récupération des paramètres d\'affichage mobile')]
+    #[IsGranted(MobileDisplayVoter::UPDATE, message: 'Vous n\'avez pas la permission de récupérer les paramètres d\'affichage mobile pour les modifier.')]
     public function getAffichageSettingsMobileSettings(#[CurrentUser] Session $user) :JsonResponse{
 
         $idPersonnel = $user->getIdpersonnel();
@@ -347,6 +350,7 @@ class PlanningVueController extends AbstractController
      * @throws Exception
      */
     #[Route('/mobile/save', name: 'api_mobile_settings_post', methods: ['POST'])]
+    #[IsGranted(MobileDisplayVoter::UPDATE, message: 'Vous n\'avez pas la permission de modifier les paramètres d\'affichage mobile.')]
     public function getAffichageSettingsMobileSettingsSave(#[CurrentUser] Session $user, Request $request): JsonResponse
     {
         $idPersonnel = $user->getIdpersonnel();
@@ -410,7 +414,7 @@ class PlanningVueController extends AbstractController
      * @throws Exception
      */
     #[Route('/non-working-dates', name: 'api_add_non-working-dates', methods: ['POST'])]
-    #[IsGranted('VUE_CREATE_DATE', message: 'Vous n\'avez pas la permission de créer cette journée.')]
+    #[IsGranted(NonWorkingDateVoter::CREATE_DATE, message: 'Vous n\'avez pas la permission de créer cette journée.')]
     public function addNonWorkingDates(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
 
@@ -439,7 +443,7 @@ class PlanningVueController extends AbstractController
      * @throws \Throwable
      */
     #[Route('/vue', name: 'api_vue_create', methods: ['POST'])]
-    #[IsGranted('PLANNING_MANAGE', message: 'Vous n\'avez pas la permission de créer de vue.')]
+    #[IsGranted(VuePlanningVoter::CREATE, message: 'Vous n\'avez pas la permission de créer de vue.')]
     public function addVue(#[CurrentUser] Session $user, Request $request): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
@@ -482,7 +486,7 @@ class PlanningVueController extends AbstractController
      * @throws \Throwable
      */
     #[Route('/chantier/vue', name: 'api_chantier_vue_create', methods: ['POST'])]
-    #[IsGranted('CHANTIER_VUE_ADD', message: 'Vous n\'avez pas la permission de créer de vue.')]
+    #[IsGranted(VueChantierVoter::CHANTIER_ADD, message: 'Vous n\'avez pas la permission de créer de vue.')]
     public function addChantierVue(#[CurrentUser] Session $user, Request $request): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
@@ -519,7 +523,7 @@ class PlanningVueController extends AbstractController
      * @throws Exception
      */
     #[Route('/{idDate}/non-working-dates', name: 'api_non-working-dates', methods: ['DELETE'])]
-    #[IsGranted('VUE_DELETE_DATE', message: 'Vous n\'avez pas la permission de supprimer cette journée.')]
+    #[IsGranted(NonWorkingDateVoter::DELETE_DATE, message: 'Vous n\'avez pas la permission de supprimer cette journée.')]
     public function deleteNonWorkingDates(Request $request, int $idDate, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
@@ -542,7 +546,7 @@ class PlanningVueController extends AbstractController
     }
 
     #[Route('/vue/{id}/lock', methods: ['POST'])]
-    #[IsGranted('PLANNING_MANAGE', message: 'Vous n\'avez pas la permission de lock cette vue.')]
+    #[IsGranted(VuePlanningVoter::UPDATE, message: 'Vous n\'avez pas la permission de lock cette vue.')]
     public function quickLock(int $id, #[CurrentUser] Session $user, LoggerInterface $logger, Request $request): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
@@ -579,7 +583,7 @@ class PlanningVueController extends AbstractController
      * @throws \Throwable
      */
     #[Route('/vue/{id}', name: 'api_vue', methods: ['PUT'])]
-    #[IsGranted('PLANNING_MANAGE', message: 'Vous n\'avez pas la permission de modifier cette vue.')]
+    #[IsGranted(VuePlanningVoter::UPDATE, message: 'Vous n\'avez pas la permission de modifier cette vue.')]
     public function setvue(int $id, LoggerInterface $logger, Request $request): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
@@ -622,7 +626,7 @@ class PlanningVueController extends AbstractController
 
 
     #[Route('/non-working-dates/{id}', name: 'api_non_working_dates_put', methods: ['PUT'])]
-    #[IsGranted('VUE_EDIT_DATE', message: 'Vous n\'avez pas la permission de modifier cette date.')]
+    #[IsGranted(NonWorkingDateVoter::EDIT_DATE, message: 'Vous n\'avez pas la permission de modifier cette date.')]
     public function setDates(int $id, LoggerInterface $logger, Request $request): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
@@ -648,7 +652,7 @@ class PlanningVueController extends AbstractController
      * @throws \Throwable
      */
     #[Route('/chantier/vue/{id}', name: 'api_chantier_vue_set', methods: ['PUT'])]
-    #[IsGranted('CHANTIER_MANAGE', message: 'Vous n\'avez pas la permission de créer de vue.', subject: 'id')]
+    #[IsGranted(VueChantierVoter::CHANTIER_MANAGE, message: 'Vous n\'avez pas la permission de créer de vue.', subject: 'id')]
     public function setChantierVue(int $id, #[CurrentUser] Session $user, Request $request): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
@@ -685,7 +689,7 @@ class PlanningVueController extends AbstractController
 
 
     #[Route('/display-settings', name: 'api_display_settings_set', methods: ['PUT'])]
-    #[IsGranted('DISPLAY_SETTINGS_MANAGE', message: 'Vous n\'avez pas la permission de défauts d\'affichage.')]
+    #[IsGranted(MobileDisplayVoter::UPDATE, message: 'Vous n\'avez pas la permission de défauts d\'affichage.')]
     public function setDisplaySettings(#[CurrentUser] Session $user, Request $request): JsonResponse
     {
         $idPlanning =  $request->headers->get('X-Planning-Id');
@@ -715,7 +719,7 @@ class PlanningVueController extends AbstractController
      * @throws Exception
      */
     #[Route('/vue/{id}', name: 'api_vue_delete', methods: ['DELETE'])]
-    #[IsGranted('PLANNING_DELETE', message: 'Vous n\'avez pas la permission de supprimer cette vue.')]
+    #[IsGranted(VuePlanningVoter::DELETE, message: 'Vous n\'avez pas la permission de supprimer cette vue.')]
     public function deleteVue(int $id, LoggerInterface $logger, Request $request,  #[CurrentUser] Session $user): JsonResponse{
         $idPlanning = $request->headers->get('X-Planning-Id');
         if (!$idPlanning) {
@@ -744,7 +748,7 @@ class PlanningVueController extends AbstractController
 
 
     #[Route('/chantier/vue/{id}', name: 'api_chantier_vue_delete', methods: ['DELETE'])]
-    #[IsGranted('CHANTIER_DELETE', message: 'Vous n\'avez pas la permission de supprimer cette vue.', subject: 'id')]
+    #[IsGranted(VueChantierVoter::CHANTIER_DELETE, message: 'Vous n\'avez pas la permission de supprimer cette vue.', subject: 'id')]
     public function deleteChantierVue(int $id, LoggerInterface $logger, Request $request,  #[CurrentUser] Session $user): JsonResponse{
         $idPlanning = $request->headers->get('X-Planning-Id');
         if (!$idPlanning) {

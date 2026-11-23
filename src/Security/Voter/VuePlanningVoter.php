@@ -3,8 +3,7 @@
 namespace App\Security\Voter;
 
 use App\Entity\Session;
-use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Exception;
+use App\Service\PlanningPermissionHelper;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Vote;
@@ -12,39 +11,40 @@ use Symfony\Component\Security\Core\Authorization\Voter\Voter;
 
 class VuePlanningVoter extends Voter
 {
-    // Ajout / modification des vues Planning
-    public const PLANNING_MANAGE = 'PLANNING_MANAGE';
-
-    // Suppression des vues Planning
-    public const PLANNING_DELETE = 'PLANNING_DELETE';
-
-    public const VIEW = 'VUE_VIEW';
+    public const VIEW   = 'PLANNING_VUE_VIEW';
+    public const CREATE = 'PLANNING_VUE_CREATE';
+    public const UPDATE = 'PLANNING_VUE_UPDATE';
+    public const DELETE = 'PLANNING_VUE_DELETE';
 
 
-    /**
-     * Correspondance entre les autorisations Symfony
-     * et les identifiants des droits SQL.
-     *
-     * À remplacer par tes véritables IdDroit.
-     */
     private const DROITS = [
-        self::VIEW => 214,
-        self::PLANNING_MANAGE => 214,
-        self::PLANNING_DELETE => 214,
+        self::VIEW => [
+            'idDroit' => 221,
+            'niveau'  => 2,
+        ],
+        self::CREATE => [
+            'idDroit' => 221,
+            'niveau'  => 3,
+        ],
+        self::UPDATE => [
+            'idDroit' => 221,
+            'niveau'  => 3,
+        ],
+        self::DELETE => [
+            'idDroit' => 221,
+            'niveau'  => 3,
+        ],
     ];
 
-
     public function __construct(
-        private Connection $connection,
-        private LoggerInterface $logger
+        private readonly PlanningPermissionHelper $permissionHelper,
+        private readonly LoggerInterface $logger
     ) {}
-
 
     protected function supports(string $attribute, mixed $subject): bool
     {
         return isset(self::DROITS[$attribute]);
     }
-
 
     protected function voteOnAttribute(
         string $attribute,
@@ -52,64 +52,27 @@ class VuePlanningVoter extends Voter
         TokenInterface $token,
         ?Vote $vote = null
     ): bool {
-
         $user = $token->getUser();
-
-        // Vérification de la session utilisateur
         if (!$user instanceof Session) {
             return false;
         }
 
-        $idDroit = self::DROITS[$attribute];
-
-        try {
-
-            // Récupération du droit correspondant
-            $sql = '
-                EXEC ps_PlanningDroitSelect
-                    @IdPersonnel = :idPersonnel,
-                    @IdDroits = :idDroit
-            ';
-
-            $droit = $this->connection->fetchAssociative($sql, [
-                'idPersonnel' => $user->getIdpersonnel(),
-                'idDroit' => (string) $idDroit
-            ]);
-
-        } catch (Exception $e) {
-
-            $this->logger->error('Erreur récupération droit VuePlanningVoter', [
-                 'attribute' => $attribute,
-                'idPersonnel' => $user->getIdpersonnel(),
-                'exception' => $e->getMessage()
-            ]);
-
-            return false;
-        }
-
-        if (!$droit) {
-            return false;
-        }
-
-        // Récupération des informations du droit
-        $niveau = (int) $droit['IdDroitNiveau'];
-
-        $gestionParNiveau = (bool) $droit['GestionParNiveau'];
+        $configDroit = self::DROITS[$attribute];
+        $permissionDetails = $this->permissionHelper->getPermissionDetails(
+            $user,
+            $configDroit['idDroit'],
+            $configDroit['niveau']
+        );
 
         $this->logger->debug('VuePlanningVoter - Vérification du droit', [
-            'attribute' => $attribute,
-            'idPersonnel' => $user->getIdpersonnel(),
-            'idDroit' => $idDroit,
-            'niveau' => $niveau,
-            'gestionParNiveau' => $gestionParNiveau
+            'attribute'    => $attribute,
+            'idPersonnel'  => $user->getIdpersonnel(),
+            'idDroit'      => $configDroit['idDroit'],
+            'niveau'       => $permissionDetails['level'],
+            'niveauRequis' => $configDroit['niveau'],
+            'hasRight'     => $permissionDetails['hasRight'],
         ]);
 
-
-        if (!$gestionParNiveau) {
-            return true;
-        }
-
-        // Vérification du niveau requis
-        return $niveau > 22;
+        return $permissionDetails['hasRight'];
     }
 }

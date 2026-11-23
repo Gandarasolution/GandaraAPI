@@ -10,67 +10,50 @@ use Psr\Log\LoggerInterface;
 class PlanningPermissionHelper
 {
     public function __construct(
-        private Connection $connection,
-        private LoggerInterface $logger
+        private readonly Connection $connection,
+        private readonly LoggerInterface $logger
     ) {}
 
     /**
-     * Récupère le niveau de droit et si le droit est actif pour un IdDroit spécifique.
+     * Récupère les détails du droit et vérifie si le niveau de l'utilisateur atteint le niveau requis.
      */
-    public function getPermissionDetails(Session $user, int $idDroit): array
+    public function getPermissionDetails(Session $user, int $idDroit, ?int $requiredLevel = null): array
     {
+        $this->logger->debug("Fetching permission details for User ID: {$user->getIdpersonnel()}, Right ID: $idDroit, Required Level: " . ($requiredLevel ?? 'None'));
         $sql = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id, @IdDroits = :idDroit';
-        try {
-            $result = $this->connection->fetchAssociative($sql, [
-                'id' => $user->getIdpersonnel(),
-                'idDroit' => (string) $idDroit,
-            ]);
 
-            if (!$result) {
-                return ['level' => 21, 'gestionParNiveau' => true, 'hasRight' => false];
-            }
+        $result = $this->connection->fetchAssociative($sql, [
+            'id'      => $user->getIdpersonnel(),
+            'idDroit' => (string) $idDroit,
+        ]);
 
-            $niveau = (int) $result['IdDroitNiveau'];
+        $this->logger->debug("Permission Details - User: {$user->getIdpersonnel()}, Right: $idDroit, Result: " . json_encode($result));
 
-            $gestionParNiveau = (bool) $result['GestionParNiveau'];
-
-            if (!$gestionParNiveau) {
-                return ['hasRight' => true];
-            }
-
+        if (!$result) {
             return [
-                'level' => $niveau,
-                'gestionParNiveau' => true,
-                'hasRight' => true,
+                'level'    => 0,
+                'hasRight' => false,
             ];
-        } catch (Exception $e) {
-            $this->logger->error(sprintf('Erreur SQL ps_PlanningDroitSelect pour IdDroit %d : %s', $idDroit, $e->getMessage()));
-            return ['level' => 21, 'gestionParNiveau' => true, 'hasRight' => false];
         }
+
+        $niveau   = (int) $result['IdDroitNiveau'];
+        $hasRight = $requiredLevel === null ? true : ($niveau >= $requiredLevel);
+
+        return [
+            'level'    => $niveau,
+            'hasRight' => $hasRight,
+        ];
+
     }
 
-
-
     /**
-     * Récupère le niveau de l'utilisateur.
+     * Récupère le niveau de l'utilisateur sur le droit standard (214).
      */
     public function getUserLevel(Session $user): int
     {
-        $sql = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id, @IdDroits = 214';
-        try {
-            $result = $this->connection->fetchAssociative($sql, [
-                'id' => $user->getIdpersonnel(),
-            ]);
+        $details = $this->getPermissionDetails($user, 214);
 
-            if (!$result) {
-                return 21; // Niveau par défaut si aucun droit trouvé
-            }
-
-            return (int) $result['IdDroitNiveau'];
-        } catch (Exception $e) {
-            $this->logger->error(sprintf('Erreur SQL ps_PlanningDroitSelect pour IdPersonnel %d : %s', $user->getIdpersonnel(), $e->getMessage()));
-            return 21; // Niveau par défaut en cas d'erreur
-        }
+        return $details['hasRight'] ? $details['level'] : 21;
     }
 
     /**

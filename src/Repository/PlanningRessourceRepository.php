@@ -50,20 +50,20 @@ class PlanningRessourceRepository extends ServiceEntityRepository
     /**
      * @throws Exception
      */
-    public function getRessources(mixed $query, mixed $limit, mixed $types, int $droitLevel): array
+    public function getRessources(mixed $query, mixed $limit, mixed $types, int $idPersonnel): array
     {
         $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningRessourceSearchSelect @Query = :query, @Limit = :limit, @Types = :types, @DroitLevel = :droitLevel';
+        $sql = 'EXEC ps_PlanningRessourceSearchSelect @Query = :query, @Limit = :limit, @Types = :types, @IdPersonnel = :idPersonnel';
         $params = [
             'query' => $query,
             'limit' => $limit,
             'types' => $types,
-            'droitLevel' => $droitLevel
+            'idPersonnel' => $idPersonnel
         ];
 
         $data = $conn->executeQuery($sql, $params)->fetchAllAssociative();
 
-//$baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+        //$baseImageUrl = $this->router->generate('api_serve_image_file', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
         $baseImageUrl = 'https://gandara-scheduler.vercel.app/demo/images/999999';        $baseImageUrl = str_replace('999999', '', $baseImageUrl);
 
 

@@ -36,7 +36,6 @@ class SecurityRepository extends ServiceEntityRepository
             $droits[] = [
                 'idDroit' => $droit['IdDroit'],
                 'idDroitNiveau' => $droit['IdDroitNiveau'],
-                'gestionParNiveau' => (bool)$droit['GestionParNiveau']
             ];
         }
 
@@ -71,22 +70,6 @@ class SecurityRepository extends ServiceEntityRepository
 
     }
 
-
-    /**
-     * @throws Exception
-     */
-    public function getPermission(Session $user, LoggerInterface $logger): int
-    {
-        $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id';
-
-        $planningDroit = $conn->fetchAssociative($sql, [
-            'id' => $user->getIdpersonnel()
-        ]);
-
-
-        return (int)$planningDroit['IdDroitNiveau'] ?? 21;
-    }
 
     /**
      * @throws Exception

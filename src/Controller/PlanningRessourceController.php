@@ -7,6 +7,7 @@ use App\Entity\Session;
 use App\Repository\PlanningRessourceRepository;
 use App\Repository\SecurityRepository;
 use App\Service\MercureNotificationService;
+use App\Service\PlanningPermissionHelper;
 use Doctrine\DBAL\Exception;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -29,7 +30,8 @@ class PlanningRessourceController extends abstractController
         private MercureNotificationService $notifier,
         private PlanningRessourceRepository $planningRessourceRepository,
         private SecurityRepository $securityRepository,
-        private LoggerInterface $logger
+        private LoggerInterface $logger,
+        private PlanningPermissionHelper $permissionHelper
     )
     {
     }
@@ -45,20 +47,18 @@ class PlanningRessourceController extends abstractController
     #[OA\Response(response: 200, description: 'Liste des ressources correspondantes')]
     public function getPlanningRessources(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
-        $droitLevel = $this->securityRepository->getPermission($user, $logger);
 
         $logger->debug('Récupération des ressources avec les paramètres', [
             '@Query' => $request->query->get('q', ''),
             '@Limit' => $request->query->get('limit', 20),
             '@Types' => $request->query->get('types', ''),
-            '@DroitLevel' => $droitLevel
         ]);
 
         $query = $request->query->get('q', '');
         $limit = $request->query->get('limit', 20);
         $type = $request->query->get('types', '');
 
-        $result = $this->planningRessourceRepository->getRessources($query, $limit, $type, $droitLevel);
+        $result = $this->planningRessourceRepository->getRessources($query, $limit, $type, $user->getIdpersonnel());
 
         return $this->json(['data' => $result]);
 
@@ -77,8 +77,8 @@ class PlanningRessourceController extends abstractController
     public function getProjet(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
 
-        $droit = $this->securityRepository->getPermission($user, $logger);
-        if (!in_array($droit, [22, 23])) {
+        $droit = $this->permissionHelper->getPermissionDetails($user, 214, 22);
+        if (!$droit['hasRight']) {
             throw new AccessDeniedHttpException('Vous n\'avez pas la permission de voir les projets.');
         }
 
@@ -136,8 +136,8 @@ class PlanningRessourceController extends abstractController
     public function getRubriquePaie(Request $request, LoggerInterface $logger,  #[CurrentUser] Session $user): JsonResponse
     {
 
-        $droit = $this->securityRepository->getPermission($user, $logger);
-        if ($droit != 23) {
+        $droit = $this->permissionHelper->getPermissionDetails($user, 214, 23);
+        if (!$droit['hasRight']) {
             throw new AccessDeniedHttpException('Vous n\'avez pas la permission de voir les rubrique de paie.');
         }
 
@@ -186,8 +186,8 @@ class PlanningRessourceController extends abstractController
     public function getRubriqueManuel(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
 
-        $droit = $this->securityRepository->getPermission($user, $logger);
-        if ($droit != 23) {
+        $droit = $this->permissionHelper->getPermissionDetails($user, 214, 23);
+        if (!$droit['hasRight']) {
             throw new AccessDeniedHttpException('Vous n\'avez pas la permission de voir les rubrique manuel.');
         }
 
@@ -278,8 +278,8 @@ class PlanningRessourceController extends abstractController
     #[IsGranted('MANAGE_PERMISSIONS', message: 'Vous n\'avez pas la permission de créer cette ressource.')]
     public function createPlaningRessource(Request $request, #[CurrentUser] Session $user, LoggerInterface $logger): JsonResponse
     {
-        $droit = $this->securityRepository->getPermission($user, $logger);
-        if ($droit != 23) {
+        $droit = $this->permissionHelper->getPermissionDetails($user, 214, 23);
+        if (!$droit['hasRight']) {
             throw new AccessDeniedHttpException('Vous n\'avez pas la permission de créer cette ressource.');
         }
 

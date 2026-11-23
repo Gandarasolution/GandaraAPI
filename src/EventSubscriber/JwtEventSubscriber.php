@@ -75,7 +75,6 @@ final class JwtEventSubscriber implements EventSubscriberInterface
             $droits[] = [
                 'idDroit' => (int)$droit['IdDroit'],
                 'idDroitNiveau' => (int)$droit['IdDroitNiveau'],
-                'gestionParNiveau' => (bool)$droit['GestionParNiveau']
             ];
         }
         $this->logger->debug("Requête pour récupérer les droits de l'utilisateur", ['IdPersonnel' => $user->getIdpersonnel(), 'PlanningDroit' => $planningDroit]);
