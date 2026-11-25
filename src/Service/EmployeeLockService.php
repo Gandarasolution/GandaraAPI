@@ -32,21 +32,18 @@ class EmployeeLockService
             if ($isLocked && $ownerId !== $userId) {
                 $existingLockData = is_array($cached) ? $cached : [
                     'status'       => true,
-                    'timestamp'    => (int) round((microtime(true) + $ttl) * 1000),
+                    'expiresAt'    => (int) round((microtime(true) + $ttl) * 1000),
                     'updatedById'  => $ownerId,
                     'updatedByNom' => null,
                 ];
 
-                return [
-                    'conflict' => true,
-                    'lockData' => $existingLockData,
-                ];
+                return $existingLockData;
             }
         }
 
         $lockData = [
             'status'       => true,
-            'timestamp'    => (int) round((microtime(true) + $ttl) * 1000),
+            'expiresAt'    => (int) round((microtime(true) + $ttl) * 1000),
             'updatedById'  => $userId,
             'updatedByNom' => $userNom,
         ];
@@ -55,10 +52,7 @@ class EmployeeLockService
         $cacheItem->expiresAfter($ttl);
         $this->cache->save($cacheItem);
 
-        return [
-            'conflict' => false,
-            'lockData' => $lockData,
-        ];
+        return $lockData;
     }
 
     /**
@@ -119,20 +113,20 @@ class EmployeeLockService
                 $ownerId      = is_array($cached) ? (int) ($cached['updatedById'] ?? 0) : (int) $cached;
                 $ownerNom     = is_array($cached) ? ($cached['updatedByNom'] ?? null) : null;
                 $rawStatus    = !is_array($cached) || (bool)($cached['status'] ?? true);
-                $timestamp    = is_array($cached) ? (int) ($cached['timestamp'] ?? $defaultTimestamp) : $defaultTimestamp;
+                $expiresAt    = is_array($cached) ? (int) ($cached['expiresAt'] ?? $defaultTimestamp) : $defaultTimestamp;
 
                 $isLockedByOther = $rawStatus && ($ownerId !== $currentUserId);
 
                 $employees[$index]['isLocked'] = [
                     'status'       => $isLockedByOther,
-                    'timestamp'    => $timestamp,
+                    'expiresAt'    => $expiresAt,
                     'updatedById'  => $ownerId ?: null,
                     'updatedByNom' => $ownerNom,
                 ];
             } else {
                 $employees[$index]['isLocked'] = [
                     'status'       => false,
-                    'timestamp'    => $defaultTimestamp,
+                    'expiresAt'    => $defaultTimestamp,
                     'updatedById'  => null,
                     'updatedByNom' => null,
                 ];

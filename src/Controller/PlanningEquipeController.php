@@ -9,6 +9,7 @@ use App\Service\MercureNotificationService;
 use App\Service\TeamLockService;
 use Doctrine\DBAL\Exception;
 use OpenApi\Attributes as OA;
+use Psr\Cache\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -36,6 +37,7 @@ class PlanningEquipeController extends AbstractController
 
     /**
      * @throws Exception
+     * @throws InvalidArgumentException
      */
     #[Route('', name: 'equipe_planning_list', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Liste de toutes les équipes')]
@@ -50,7 +52,9 @@ class PlanningEquipeController extends AbstractController
     }
 
 
-
+    /**
+     * @throws InvalidArgumentException
+     */
     #[Route('/{id}/personnel', name: 'equipe_planning_list_personnel', requirements: ['id' => '\d+'], methods: ['GET'])]
     #[IsGranted(EquipeVoter::VIEW, message: 'Vous n\'avez pas la permission de récupérer le personnel de cette équipe.')]
     #[OA\Response(response: 200, description: 'Liste de tout le personnel d\'une équipe')]
@@ -121,33 +125,48 @@ class PlanningEquipeController extends AbstractController
     }
 
 
+    /**
+     * @throws InvalidArgumentException
+     */
     #[Route('/{id}/lock', name: 'api_teams_lock', methods: ['POST'])]
     #[IsGranted(EquipeVoter::UPDATE, message: 'Vous n\'avez pas la permission de verrouiller cette équipe.')]
     public function lockTeam(
         int $id,
-        #[CurrentUser] Session $user
+        #[CurrentUser] Session $user,
+        Request $request
     ): JsonResponse {
-        $ttl = 300; // 5 minutes
-        $currentUserId = $user->getIdPersonnel();
-        $ownerId = $this->teamLockService->acquireLock($id, $currentUserId,$ttl);
 
-        if ($ownerId !== null) {
+        $nomPersonnel = $request->toArray()['nomPersonnel'] ?? null;
+        if (!$nomPersonnel) {
             return $this->json([
-                'isLocked'   => true,
-                'idLockedBy' => $ownerId,
-                'message'    => 'Cette équipe est actuellement verrouillée par un autre utilisateur.',
+                'message' => 'Le champ "nomPersonnel" est obligatoire pour verrouiller un employé.'
+            ], 400);
+        }
+
+        $currentUserId = $user->getIdPersonnel();
+        $lockData = $this->teamLockService->acquireLock($id, $currentUserId, $nomPersonnel);
+
+        if ($lockData['status'] && $lockData['updatedById'] !== $currentUserId) {
+            return $this->json([
+                'isLocked'   => $lockData,
+                'idLockedBy' => $lockData['updatedById'],
+                'message'    => 'Cet equipe est actuellement verrouillé par un autre utilisateur.',
             ], 409);
         }
 
-        // Timestamp d'expiration en millisecondes (Date.now() + 300_000)
-        $expiresAtTimestamp = (time() +$ttl) * 1000;
 
-        $this->notifier->notifyTeamLockStatus($id, true,$currentUserId);
+        $this->notifier->notifyTeamLockStatus(
+            $id,
+            true,
+            $currentUserId,
+            $lockData['updatedByNom'],
+            $lockData['expiresAt']
+        );
 
         return $this->json([
             'isLocked'   => true,
             'idLockedBy' => $currentUserId,
-            'expiresIn'  => $expiresAtTimestamp,
+            'expiresIn'  => $lockData['expiresAt'],
         ]);
     }
 
@@ -175,6 +194,9 @@ class PlanningEquipeController extends AbstractController
     }
 
 
+    /**
+     * @throws InvalidArgumentException
+     */
     #[Route('/{id}', name: 'equipe_planning_update', requirements: ['id' => '\d+'], methods: ['PUT'])]
     #[IsGranted(EquipeVoter::UPDATE)]
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de l\'équipe', schema: new OA\Schema(type: 'integer'))]
@@ -197,7 +219,7 @@ class PlanningEquipeController extends AbstractController
 
         // 1. Vérification Redis : bloquée si verrouillée par un autre utilisateur
         $lockStatus = $this->teamLockService->getLockStatus($id, $currentUserId);
-        if ($lockStatus['isLocked']['status']) {
+        if ($lockStatus['status']) {
             return $this->json([
                 'isLocked'   => true,
                 'idLockedBy' => $lockStatus['lockedBy'],
@@ -223,6 +245,9 @@ class PlanningEquipeController extends AbstractController
         return $this->json(['message' => 'Équipe mise à jour avec succès']);
     }
 
+    /**
+     * @throws InvalidArgumentException
+     */
     #[Route('/{id}', name: 'equipe_planning_delete', requirements: ['id' => '\d+'], methods: ['DELETE'])]
     #[IsGranted(EquipeVoter::DELETE)]
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de l\'équipe', schema: new OA\Schema(type: 'integer'))]
@@ -234,7 +259,7 @@ class PlanningEquipeController extends AbstractController
 
         // 1. Vérification Redis : bloquée si verrouillée par un autre utilisateur
         $lockStatus = $this->teamLockService->getLockStatus($id, $currentUserId);
-        if ($lockStatus['isLocked']['status']) {
+        if ($lockStatus['status']) {
             return $this->json([
                 'isLocked'   => true,
                 'idLockedBy' => $lockStatus['lockedBy'],

@@ -40,6 +40,9 @@ class EmployeeController extends AbstractController
     }
 
 
+    /**
+     * @throws InvalidArgumentException
+     */
     #[Route('/lock/{id}', name: 'api_employees_check_lock', methods: ['GET'])]
     public function checkEmployeeLock(int $id, #[CurrentUser] Session $user): JsonResponse
     {
@@ -78,6 +81,7 @@ class EmployeeController extends AbstractController
     /**
      * @throws \Exception
      * @throws Exception
+     * @throws InvalidArgumentException
      */
     #[Route('', name: 'api_employee', methods: ['GET'])]
     #[OA\Response(response: 200, description: 'Récupère les utilisateurs')]
@@ -93,6 +97,7 @@ class EmployeeController extends AbstractController
         }
 
         $result = $this->employeeRepository->getUsers();
+        $result = $this->lockService->attachLockStatus($result, $user->getIdPersonnel());
         return $this->json(['data' => $result]);
 
     }
@@ -187,10 +192,10 @@ class EmployeeController extends AbstractController
             ], 400);
         }
 
-        $result = $this->lockService->acquireLock($id, $user->getIdPersonnel(), $nomPersonnel);
-        $lockData = $result['lockData'];
+        $lockData = $this->lockService->acquireLock($id, $user->getIdPersonnel(), $nomPersonnel);
 
-        if ($result['conflict']) {
+
+        if ($lockData['status'] && $lockData['updatedById'] !== $user->getIdPersonnel()) {
             return $this->json([
                 'isLocked'   => $lockData,
                 'idLockedBy' => $lockData['updatedById'],
@@ -203,7 +208,7 @@ class EmployeeController extends AbstractController
             true,
             $user->getIdPersonnel(),
             $lockData['updatedByNom'],
-            $lockData['timestamp']
+            $lockData['expiresAt']
         );
 
         return $this->json([

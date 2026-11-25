@@ -60,15 +60,21 @@ class MercureNotificationService
         ]);
     }
 
-    public function notifyTeamLockStatus(int $teamId, bool $isLocked, int $userId): void
+    public function notifyTeamLockStatus(int $teamId, bool $isLocked, int $userId,  ?string $userNom = null, ?int $timestamp = null): void
     {
+        $resolvedTimestamp = $timestamp ?? (int) round(microtime(true) * 1000);
+
         $this->publish(self::BASE_TOPIC, [
             'action'    => $isLocked ? 'TEAM_LOCKED' : 'TEAM_UNLOCKED',
             'updatedBy' => $userId,
             'data'      => [
                 'teamId'   => $teamId,
-                'isLocked' => $isLocked,
-                'lockedBy' => $isLocked ? $userId : null,
+                'isLocked'   => [
+                    'status'       => $isLocked,
+                    'timestamp'    => $resolvedTimestamp,
+                    'updatedById'  => $isLocked ? $userId : null,
+                    'updatedByNom' => $isLocked ? $userNom : null,
+                ],
             ],
         ]);
     }

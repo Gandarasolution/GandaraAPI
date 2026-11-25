@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use Psr\Cache\CacheItemPoolInterface;
+use Psr\Cache\InvalidArgumentException;
 
 class TeamLockService
 {
@@ -16,31 +17,49 @@ class TeamLockService
     /**
      * Pose ou prolonge un verrou sur une équipe.
      * Retourne null si succès, ou l'ID de l'utilisateur qui détient déjà le verrou.
+     * @throws InvalidArgumentException
      */
-    public function acquireLock(int $teamId, int $userId, int $ttl = self::DEFAULT_TTL): ?int
+    public function acquireLock(int $teamId, int $userId, string $userNom, int $ttl = self::DEFAULT_TTL): array
     {
         $cacheKey = self::KEY_PREFIX . $teamId;
         $cacheItem = $this->cache->getItem($cacheKey);
 
         if ($cacheItem->isHit()) {
-            $data = $cacheItem->get();
-            $ownerId = is_array($data) ? (int) $data['ownerId'] : (int) $data;
+            $cached = $cacheItem->get();
+            $ownerId = is_array($cached) ? (int) ($cached['updatedById'] ?? 0) : (int) $cached;
+            $isLocked = !is_array($cached) || (bool)($cached['status'] ?? true);
 
-            if ($ownerId !== $userId) {
-                return $ownerId;
+            if ($isLocked && $ownerId !== $userId) {
+                $existingLockData = is_array($cached) ? $cached : [
+                    'status'       => true,
+                    'expiresAt'    => (int) round((microtime(true) + $ttl) * 1000),
+                    'updatedById'  => $ownerId,
+                    'updatedByNom' => null,
+                ];
+
+                return $existingLockData;
             }
         }
 
-        $cacheItem->set([
-            'ownerId'   => $userId,
-            'timestamp' => time() * 1000, // Timestamp en millisecondes pour TypeScript
-        ]);
+        $nowMs = time() * 1000;
+
+        $lockData = [
+            'status'       => true,
+            'expiresAt'    => $nowMs + ($ttl * 1000),
+            'updatedById'  => $userId,
+            'updatedByNom' => $userNom,
+        ];
+
+        $cacheItem->set($lockData);
         $cacheItem->expiresAfter($ttl);
         $this->cache->save($cacheItem);
 
-        return null;
+        return $lockData;
     }
 
+    /**
+     * @throws InvalidArgumentException
+     */
     public function getLockStatus(int $teamId, int $currentUserId): array
     {
         $cacheKey = self::KEY_PREFIX . $teamId;
@@ -48,22 +67,32 @@ class TeamLockService
 
         if ($cacheItem->isHit()) {
             $data = $cacheItem->get();
-            $ownerId = is_array($data) ? (int) $data['ownerId'] : (int) $data;
+            $ownerId = is_array($data) ? (int) $data['updatedById'] : (int) $data;
+
+            // Compatibilité si une ancienne entrée sans 'expiresAt' est encore en cache
+            $expiresAt = is_array($data)
+                ? $data['expiresAt']
+                : null;
 
             if ($ownerId !== $currentUserId) {
                 return [
-                    'isLocked' => true,
-                    'lockedBy' => $ownerId,
+                    'status'  => true,
+                    'lockedBy'  => $ownerId,
+                    'expiresAt' => $expiresAt,
                 ];
             }
         }
 
         return [
-            'isLocked' => false,
-            'lockedBy' => null,
+            'status'  => false,
+            'lockedBy'  => null,
+            'expiresAt' => null,
         ];
     }
 
+    /**
+     * @throws InvalidArgumentException
+     */
     public function releaseLock(int $teamId, int $userId, bool $force = false): bool
     {
         $cacheKey = self::KEY_PREFIX . $teamId;
@@ -74,7 +103,7 @@ class TeamLockService
         }
 
         $data = $cacheItem->get();
-        $ownerId = is_array($data) ? (int) $data['ownerId'] : (int) $data;
+        $ownerId = is_array($data) ? (int) $data['updatedById'] : (int) $data;
 
         if (!$force && $ownerId !== $userId) {
             return false;
@@ -84,8 +113,9 @@ class TeamLockService
     }
 
     /**
-     * Enrichit chaque équipe avec l'objet `isLocked: { status: bool, timestamp: int }`
+     * Enrichit chaque équipe avec l'objet `isLocked: { status: bool, expiresAt: int }`
      * en une seule requête Redis (MGET via getItems).
+     * @throws InvalidArgumentException
      */
     public function attachLockStatus(array $teams, int $currentUserId): array
     {
@@ -113,19 +143,24 @@ class TeamLockService
 
             if ($item->isHit()) {
                 $data = $item->get();
-                $ownerId = is_array($data) ? (int) $data['ownerId'] : (int) $data;
-                $lockedAt = is_array($data) && isset($data['timestamp']) ? (int) $data['timestamp'] : $nowMs;
+                $ownerId = is_array($data) ? (int) $data['updatedById'] : (int) $data;
+                $expiresAt = is_array($data) && isset($data['expiresAt']) ? (int) $data['expiresAt'] : $nowMs;
+
 
                 $isLockedByOther = ($ownerId !== $currentUserId);
 
                 $teams[$index]['isLocked'] = [
                     'status'    => $isLockedByOther,
-                    'timestamp' => $isLockedByOther ? $lockedAt : $nowMs,
+                    'expiresAt' => $isLockedByOther ? $expiresAt : $nowMs,
+                    'updatedBy' => $isLockedByOther ? $ownerId : null,
+                    'updatedByNom' => $isLockedByOther && is_array($data) ? ($data['updatedByNom'] ?? null) : null
                 ];
             } else {
                 $teams[$index]['isLocked'] = [
                     'status'    => false,
-                    'timestamp' => $nowMs,
+                    'expiresAt' => $nowMs,
+                    'updatedBy' => null,
+                    'updatedByNom' => null
                 ];
             }
         }
