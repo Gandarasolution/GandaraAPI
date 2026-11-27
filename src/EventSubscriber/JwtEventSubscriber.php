@@ -82,14 +82,20 @@ final class JwtEventSubscriber implements EventSubscriberInterface
 
 
 
-        $sql = 'SELECT P.IdPlanning, NomPlanning, IdPlanningImage
-                    FROM Planning P
-                    LEFT JOIN PlanningAffectation PA ON P.IdPlanning = PA.IdPlanning
-                    WHERE IdPersonnel = :id
-            ';
-        $planningAffectation = $this->connection->fetchAllAssociative($sql, [
-            'id' => $user->getIdpersonnel()
-        ]);
+        $userId = $user->getIdpersonnel();
+
+        if ($userId === -1) {
+            $sql = 'SELECT IdPlanning, NomPlanning, IdPlanningImage FROM Planning';
+            $planningAffectation = $this->connection->fetchAllAssociative($sql);
+        } else {
+            $sql = 'SELECT P.IdPlanning, P.NomPlanning, P.IdPlanningImage
+            FROM Planning P
+            INNER JOIN PlanningAffectation PA ON P.IdPlanning = PA.IdPlanning
+            WHERE PA.IdPersonnel = :id';
+            $planningAffectation = $this->connection->fetchAllAssociative($sql, [
+                'id' => $userId,
+            ]);
+        }
         $this->logger->debug("Requête pour récupérer les plannings affectés à l'utilisateur", ['IdPersonnel' => $user->getIdpersonnel(), 'PlanningAffectation' => $planningAffectation]);
 
         // 4. On prépare le tableau final à renvoyer au front

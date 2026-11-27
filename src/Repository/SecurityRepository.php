@@ -39,14 +39,20 @@ class SecurityRepository extends ServiceEntityRepository
             ];
         }
 
+        $userId = $user->getIdpersonnel();
 
-        $sqlPlannings = '
-            SELECT P.IdPlanning, NomPlanning, IdPlanningImage
+        if ($userId === -1) {
+            $sql = 'SELECT IdPlanning, NomPlanning, IdPlanningImage FROM Planning';
+            $planningAffectation = $conn->fetchAllAssociative($sql);
+        } else {
+            $sql = 'SELECT P.IdPlanning, P.NomPlanning, P.IdPlanningImage
             FROM Planning P
-            LEFT JOIN PlanningAffectation PA ON P.IdPlanning = PA.IdPlanning
-            WHERE IdPersonnel = :id
-        ';
-        $planningAffectation = $conn->fetchAllAssociative($sqlPlannings, ['id' => $user->getIdpersonnel()]);
+            INNER JOIN PlanningAffectation PA ON P.IdPlanning = PA.IdPlanning
+            WHERE PA.IdPersonnel = :id';
+            $planningAffectation = $conn->fetchAllAssociative($sql, [
+                'id' => $userId,
+            ]);
+        }
 
         $baseImageUrl = $this->router->generate('api_serve_image_file_user', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
         $baseImageUrl = str_replace('999999', '', $baseImageUrl);

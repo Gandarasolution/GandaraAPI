@@ -39,7 +39,8 @@ class EmployeeRepository extends ServiceEntityRepository
         //$sqlDurationMs = round((microtime(true) - $sqlStartTime) * 1000, 2);
 
         $structuredData = [];
-        $baseImageUrl = $this->router->generate('api_serve_image_file_user', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+        //$baseImageUrl = $this->router->generate('api_serve_image_file_user', ['id' => 999999], UrlGeneratorInterface::ABSOLUTE_URL);
+        $baseImageUrl = 'https://gandara-scheduler.vercel.app/demo/images/user/999999';
         $baseImageUrl = str_replace('999999', '', $baseImageUrl);
 
         // 2. Mesure du temps de transformation / boucle

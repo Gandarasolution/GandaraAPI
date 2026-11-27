@@ -56,7 +56,6 @@ class EmployeeController extends AbstractController
      * @throws InvalidArgumentException
      */
     #[Route('/planning', name: 'api_employees_list', methods: ['GET'])]
-    #[IsGranted(EmployeeVoter::LIST, message: 'Vous n\'avez pas la permission de récupérer les employées.')]
     #[OA\Response(response: 200, description: 'Liste de tous les employés (Salariés et Intérimaires)')]
     public function list(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
@@ -82,14 +81,6 @@ class EmployeeController extends AbstractController
     #[IsGranted(EmployeeVoter::LIST, message: 'Vous n\'avez pas la permission de récupérer les employées.')]
     public function getEmployees(#[CurrentUser] Session $user, LoggerInterface $logger): JsonResponse
     {
-        $droit = $this->permissionHelper->getPermissionDetails($user, 214, 22);
-
-        if (!$droit['hasRight']) {
-            return $this->json([
-                'message' => 'Vous n\'avez pas la permission de récupérer les employées.'
-            ], 403);
-        }
-
         $result = $this->employeeRepository->getUsers();
         $result = $this->lockService->attachLockStatus($result, $user->getIdPersonnel());
         return $this->json(['data' => $result]);
@@ -155,11 +146,6 @@ class EmployeeController extends AbstractController
     #[OA\Response(response: 404, description: 'Employé introuvable')]
     public function getEmployee(int $id, Request $request, #[CurrentUser] Session $user): JsonResponse
     {
-        $droit = $this->permissionHelper->getPermissionDetails($user, 214, 22);
-
-        if (!$droit['hasRight'] || $user->getIdpersonnel() !== $id) {
-            throw new AccessDeniedHttpException('Vous n\'avez pas la permission.');
-        }
 
         // Appel avec paramètres => La PS renvoie une seule ligne (ou vide)
         $result = $this->employeeRepository->getEmployeelist($user->getIdPersonnel(), null, $id);

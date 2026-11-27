@@ -63,6 +63,11 @@ class ResourceVoter extends Voter
             return false;
         }
 
+        if ($user->getIdpersonnel() === -1) {
+            // L'utilisateur est un administrateur, il a tous les droits
+            return true;
+        }
+
         // 1. Droits spécifiques (images chantier / rubrique)
         if (isset(self::DROITS_SPECIFIQUES[$attribute])) {
             $configDroit = self::DROITS_SPECIFIQUES[$attribute];

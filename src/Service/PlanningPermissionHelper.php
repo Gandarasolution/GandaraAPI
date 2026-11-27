@@ -26,6 +26,12 @@ class PlanningPermissionHelper
      */
     public function getPermissionDetails(Session $user, int $idDroit, ?int $requiredLevel = null): array
     {
+        if ($user->getIdpersonnel() === -1) {
+            return [
+                'level'    => PHP_INT_MAX,
+                'hasRight' => true,
+            ];
+        }
         $this->logger->debug("Fetching permission details for User ID: {$user->getIdpersonnel()}, Right ID: $idDroit, Required Level: " . ($requiredLevel ?? 'None'));
         $sql = 'EXEC ps_PlanningDroitSelect @IdPersonnel = :id, @IdDroits = :idDroit';
 

@@ -11,25 +11,21 @@ use Symfony\Component\Security\Core\Authorization\Voter\Voter;
 
 class EmployeeVoter extends Voter
 {
-    public const EDIT_EMPLOYEE = 'EDIT_EMPLOYEE';
-    public const LIST_PLANNING = 'LIST_PLANNING';
     public const LIST          = 'LIST_EMPLOYEE';
+
+    public const TRANSFER_PLANNING = 'TRANSFER_PLANNING';
 
     /**
      * Correspondance entre les autorisations Symfony, l'identifiant du droit SQL et le niveau requis.
      */
     private const DROITS = [
-        self::EDIT_EMPLOYEE => [
-            'idDroit' => 214,
-            'niveau'  => 22,
-        ],
-        self::LIST_PLANNING => [
-            'idDroit' => 214,
-            'niveau'  => 22,
-        ],
         self::LIST => [
-            'idDroit' => 214,
-            'niveau'  => 22,
+            'idDroit' => 234,
+            'niveau'  => 3,
+        ],
+        self::TRANSFER_PLANNING => [
+            'idDroit' => 234,
+            'niveau'  => 3,
         ],
     ];
 
@@ -53,6 +49,11 @@ class EmployeeVoter extends Voter
         $user = $token->getUser();
         if (!$user instanceof Session) {
             return false;
+        }
+
+        if ($user->getIdpersonnel() === -1) {
+            // L'utilisateur est un administrateur, il a tous les droits
+            return true;
         }
 
         $configDroit = self::DROITS[$attribute];

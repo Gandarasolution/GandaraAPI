@@ -77,7 +77,7 @@ class PlanningRessourceController extends abstractController
     public function getProjet(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
 
-        $droit = $this->permissionHelper->getPermissionDetails($user, 214, 22);
+        $droit = $this->permissionHelper->getPermissionDetails($user, 232, 3);
         if (!$droit['hasRight']) {
             throw new AccessDeniedHttpException('Vous n\'avez pas la permission de voir les projets.');
         }
@@ -136,7 +136,7 @@ class PlanningRessourceController extends abstractController
     public function getRubriquePaie(Request $request, LoggerInterface $logger,  #[CurrentUser] Session $user): JsonResponse
     {
 
-        $droit = $this->permissionHelper->getPermissionDetails($user, 214, 23);
+        $droit = $this->permissionHelper->getPermissionDetails($user, 231, 3);
         if (!$droit['hasRight']) {
             throw new AccessDeniedHttpException('Vous n\'avez pas la permission de voir les rubrique de paie.');
         }
@@ -186,7 +186,7 @@ class PlanningRessourceController extends abstractController
     public function getRubriqueManuel(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
 
-        $droit = $this->permissionHelper->getPermissionDetails($user, 214, 23);
+        $droit = $this->permissionHelper->getPermissionDetails($user, 233, 3);
         if (!$droit['hasRight']) {
             throw new AccessDeniedHttpException('Vous n\'avez pas la permission de voir les rubrique manuel.');
         }

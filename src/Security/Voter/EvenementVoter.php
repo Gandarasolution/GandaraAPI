@@ -51,6 +51,11 @@ class EvenementVoter extends Voter
             return false;
         }
 
+        if ($user->getIdpersonnel() === -1) {
+            // L'utilisateur est un administrateur, il a tous les droits
+            return true;
+        }
+
         // 1. Suppression en masse : vérification de chaque type de ressource concerné
         if ($attribute === self::MASS_DELETE) {
             return $this->voteOnMassDelete($user, $subject);

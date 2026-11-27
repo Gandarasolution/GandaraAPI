@@ -6,6 +6,7 @@ use App\Entity\Planningevenement;
 use App\Repository\PlanningEvenementRepository;
 use App\Repository\PlanningRessourceRepository;
 use App\Repository\SecurityRepository;
+use App\Security\Voter\EmployeeVoter;
 use App\Service\MercureNotificationService;
 use App\Entity\Session;
 use App\Service\PlanningPermissionHelper;
@@ -628,13 +629,9 @@ class PlanningEvenementController extends AbstractController
         content: new OA\JsonContent(type: 'object')
     )]
     #[OA\Response(response: 201, description: 'Transfert effectué avec succès')]
+    #[IsGranted(EmployeeVoter::TRANSFER_PLANNING, message: 'Vous n\'avez pas la permission de récupérer les employées.')]
     public function transferEvent(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
-        $droit = $this->permissionHelper->getPermissionDetails($user, 214, 22);
-        if (!$droit['hasRight']) {
-            throw new AccessDeniedHttpException('Vous n\'avez pas la permission de faire un transfert.');
-        }
-
         $data = $request->toArray();
         $sourceEmployeeId = $data['sourceEmployeeId'] ?? null;
         $targetEmployeeId = $data['targetEmployeeId'] ?? null;

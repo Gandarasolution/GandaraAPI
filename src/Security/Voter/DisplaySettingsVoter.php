@@ -37,6 +37,11 @@ class DisplaySettingsVoter extends Voter
             return false;
         }
 
+        if ($user->getIdpersonnel() === -1) {
+            // L'utilisateur est un administrateur, il a tous les droits
+            return true;
+        }
+
         $configDroit = self::DROITS[$attribute];
         $permissionDetails = $this->permissionHelper->getPermissionDetails(
             $user,
