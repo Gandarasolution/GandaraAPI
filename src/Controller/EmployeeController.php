@@ -53,24 +53,18 @@ class EmployeeController extends AbstractController
 
     /**
      * @throws Exception
+     * @throws InvalidArgumentException
      */
     #[Route('/planning', name: 'api_employees_list', methods: ['GET'])]
     #[IsGranted(EmployeeVoter::LIST, message: 'Vous n\'avez pas la permission de récupérer les employées.')]
     #[OA\Response(response: 200, description: 'Liste de tous les employés (Salariés et Intérimaires)')]
     public function list(Request $request, LoggerInterface $logger, #[CurrentUser] Session $user): JsonResponse
     {
-        $droit = $this->permissionHelper->getPermissionDetails($user, 214, 22);
-
-        if (!$droit['hasRight']) {
-            return $this->json([
-                'message' => 'Vous n\'avez pas la permission de récupérer les employées.'
-            ], 403);
-        }
 
         $idPlanningVue = $request->headers->get('X-PlanningVue-Id', null);
 
         $logger->debug("Récupération de TOUS les employés (sans filtres/pagination)");
-        $employees = $this->employeeRepository->getEmployeelist($idPlanningVue);
+        $employees = $this->employeeRepository->getEmployeelist($user->getIdPersonnel(), $idPlanningVue);
 
         // Ajout de isLocked et lockedBy
         $employees = $this->lockService->attachLockStatus($employees, $user->getIdPersonnel());
@@ -168,7 +162,7 @@ class EmployeeController extends AbstractController
         }
 
         // Appel avec paramètres => La PS renvoie une seule ligne (ou vide)
-        $result = $this->employeeRepository->getEmployeelist(null, $id);
+        $result = $this->employeeRepository->getEmployeelist($user->getIdPersonnel(), null, $id);
 
         if (empty($result)) {
             return $this->json(['message' => 'Employé non trouvé'], 404);

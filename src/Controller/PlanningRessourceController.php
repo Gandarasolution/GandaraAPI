@@ -275,13 +275,9 @@ class PlanningRessourceController extends abstractController
             type: 'object'
         )
     )]
-    #[IsGranted('MANAGE_PERMISSIONS', message: 'Vous n\'avez pas la permission de créer cette ressource.')]
+    #[IsGranted('RESSOURCE_PERSONNALISE_CREATE', message: 'Vous n\'avez pas la permission de créer cette ressource.')]
     public function createPlaningRessource(Request $request, #[CurrentUser] Session $user, LoggerInterface $logger): JsonResponse
     {
-        $droit = $this->permissionHelper->getPermissionDetails($user, 214, 23);
-        if (!$droit['hasRight']) {
-            throw new AccessDeniedHttpException('Vous n\'avez pas la permission de créer cette ressource.');
-        }
 
         $data = json_decode($request->getContent(), true);
         // Validation des données

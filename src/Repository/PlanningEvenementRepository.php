@@ -83,7 +83,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
             $appointments[]= [
                 'IdPlanningEvenement' => $idRdv,
                 'isLocked' => $isLocked,
-                'isReadOnly' => ($typeEvenement === 'Paie'),
+                'isReadOnly' => (bool)$row['isReadOnly'],
                 'Type' => $typeEvenement,
                 'DebutPlanningEvenement' => (int)$row['DebutPlanningEvenement'],
                 'FinPlanningEvenement' => (int)$row['FinPlanningEvenement'],
@@ -143,6 +143,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
     public function findEventsByDate(
         \DateTimeInterface $dateStart,
         \DateTimeInterface $dateEnd,
+        int $idUser,
         int $idPlanning,
         ?int $idPlanningVue,
         int|array|null $idEmploye
@@ -170,7 +171,9 @@ class PlanningEvenementRepository extends ServiceEntityRepository
                 @StartDate = :StartDate,
                 @EndDate = :EndDate,
                 @IdPlanningVue = :IdPlanningVue,
-                @IdEmploye = :IdEmploye
+                @IdEmploye = :IdEmploye,
+
+                @IdUser = :IdUser
         ';
 
         $params = [
@@ -178,6 +181,7 @@ class PlanningEvenementRepository extends ServiceEntityRepository
             'EndDate' => $endOfDay->format('Y-m-d\TH:i:s'),
             'IdPlanningVue' => $idPlanningVue,
             'IdEmploye' => $idEmployeParam,
+            'IdUser' => $idUser
         ];
 
 

@@ -50,15 +50,15 @@ class PlanningRessourceRepository extends ServiceEntityRepository
     /**
      * @throws Exception
      */
-    public function getRessources(mixed $query, mixed $limit, mixed $types, int $idPersonnel): array
+    public function getRessources(mixed $query, mixed $limit, mixed $types, int $idUser): array
     {
         $conn = $this->getEntityManager()->getConnection();
-        $sql = 'EXEC ps_PlanningRessourceSearchSelect @Query = :query, @Limit = :limit, @Types = :types, @IdPersonnel = :idPersonnel';
+        $sql = 'EXEC ps_PlanningRessourceSearchSelect @Query = :query, @Limit = :limit, @Types = :types, @IdUser = :idUser';
         $params = [
             'query' => $query,
             'limit' => $limit,
             'types' => $types,
-            'idPersonnel' => $idPersonnel
+            'idUser' => $idUser
         ];
 
         $data = $conn->executeQuery($sql, $params)->fetchAllAssociative();
@@ -213,7 +213,7 @@ class PlanningRessourceRepository extends ServiceEntityRepository
                 'CouleurBordurePlanningRessource' => $row['CouleurBordurePlanningRessource'] ?? null,
                 'CouleurTextePlanningRessource' => $row['CouleurTextePlanningRessource'] ?? null,
                 'Type' => 'Projet',
-                'Code' => $row['Code'] ?? null,
+                'CodePlanningRessource' => $row['Code'] ?? null,
                 'Pole' => $row['DesignationPoleActivite'] ?? null,
                 'ChargeAffaire' => $row['ChargeAffaire'] ?? null,
                 'ChefChantier' => $row['ChefChantier'] ?? null,

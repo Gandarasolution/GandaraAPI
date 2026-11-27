@@ -15,20 +15,24 @@ class ResourceVoter extends Voter
     public const VIEW = 'RESOURCE_VIEW';
     public const EDIT = 'RESOURCE_EDIT';
     public const SEARCH = 'RESOURCE_SEARCH';
-    public const CREATE = 'RESOURCE_CREATE';
+    public const CREATE = 'RESSOURCE_PERSONNALISE_CREATE';
     public const MANAGE_PERMISSIONS = 'MANAGE_PERMISSIONS';
 
     public const EDIT_IMAGE_CHANTIER = 'RESOURCE_EDIT_IMAGE_CHANTIER';
     public const EDIT_IMAGE_RUBRIQUE = 'RESOURCE_EDIT_IMAGE_RUBRIQUE';
 
     private const DROITS_SPECIFIQUES = [
+        self::CREATE => [
+            'idDroit' => PlanningPermissionHelper::DROIT_RUBRIQUE_PERSO,
+            'niveau'  => PlanningPermissionHelper::NIVEAU_ECRITURE,
+        ],
         self::EDIT_IMAGE_CHANTIER => [
-            'idDroit' => 225,
-            'niveau'  => 3,
+            'idDroit' => PlanningPermissionHelper::DROIT_PROJET,
+            'niveau'  => PlanningPermissionHelper::NIVEAU_ECRITURE,
         ],
         self::EDIT_IMAGE_RUBRIQUE => [
-            'idDroit' => 226,
-            'niveau'  => 3,
+            'idDroit' => PlanningPermissionHelper::DROIT_PROJET,
+            'niveau'  => PlanningPermissionHelper::NIVEAU_ECRITURE,
         ],
     ];
 
@@ -59,7 +63,7 @@ class ResourceVoter extends Voter
             return false;
         }
 
-        // 1. Attributs spécifiques (225 / 226) avec niveau requis délégué au helper
+        // 1. Droits spécifiques (images chantier / rubrique)
         if (isset(self::DROITS_SPECIFIQUES[$attribute])) {
             $configDroit = self::DROITS_SPECIFIQUES[$attribute];
             $permissionDetails = $this->permissionHelper->getPermissionDetails(
@@ -71,10 +75,9 @@ class ResourceVoter extends Voter
             return $permissionDetails['hasRight'];
         }
 
-        // 2. Cas général par niveau / type de ressource (Droit standard 214)
-        $level = $this->permissionHelper->getUserLevel($user);
-
+        // 2. Création et gestion des permissions (droit standard 214 niveau 23)
         if (in_array($attribute, [self::CREATE, self::MANAGE_PERMISSIONS], true)) {
+            $level = $this->permissionHelper->getUserLevel($user);
             return $level === 23;
         }
 
@@ -82,7 +85,19 @@ class ResourceVoter extends Voter
             return false;
         }
 
+        // 3. Vérification selon le type de ressource (232 = Projet, 231 = Paie, 233 = Rubrique Perso)
+        $requiredLevel = match ($attribute) {
+            self::VIEW, self::SEARCH => PlanningPermissionHelper::NIVEAU_LECTURE,
+            self::EDIT               => PlanningPermissionHelper::NIVEAU_ECRITURE,
+            default                  => null,
+        };
+
+        if ($requiredLevel === null) {
+            return false;
+        }
+
         $type = $this->permissionHelper->getResourceType($subject->getIdplanningressource());
-        return $this->permissionHelper->hasAccessByResourceType($type, $level);
+
+        return $this->permissionHelper->canAccessResource($user, $type, $requiredLevel);
     }
 }

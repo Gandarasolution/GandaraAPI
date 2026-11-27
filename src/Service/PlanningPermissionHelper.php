@@ -9,6 +9,13 @@ use Psr\Log\LoggerInterface;
 
 class PlanningPermissionHelper
 {
+    public const DROIT_PROJET = 232;
+    public const DROIT_PAIE = 231;
+    public const DROIT_RUBRIQUE_PERSO = 233;
+
+    public const NIVEAU_LECTURE = 2;
+    public const NIVEAU_ECRITURE = 3;
+
     public function __construct(
         private readonly Connection $connection,
         private readonly LoggerInterface $logger
@@ -43,7 +50,6 @@ class PlanningPermissionHelper
             'level'    => $niveau,
             'hasRight' => $hasRight,
         ];
-
     }
 
     /**
@@ -83,14 +89,21 @@ class PlanningPermissionHelper
     }
 
     /**
-     * Vérifie si le niveau utilisateur est suffisant par rapport au type de ressource.
+     * Vérifie si l'utilisateur dispose du niveau requis pour le type de ressource donné.
      */
-    public function hasAccessByResourceType(string $resourceType, int $userLevel): bool
+    public function canAccessResource(Session $user, string $resourceType, int $requiredLevel): bool
     {
-        return match ($resourceType) {
-            'Projet' => in_array($userLevel, [22, 23], true),
-            'Paie', 'Rubrique Perso' => $userLevel === 23,
-            default => false,
+        $idDroit = match ($resourceType) {
+            'Projet'         => self::DROIT_PROJET,
+            'Paie'           => self::DROIT_PAIE,
+            'Rubrique Perso' => self::DROIT_RUBRIQUE_PERSO,
+            default          => null,
         };
+
+        if ($idDroit === null) {
+            return false;
+        }
+
+        return $this->getPermissionDetails($user, $idDroit, $requiredLevel)['hasRight'];
     }
 }

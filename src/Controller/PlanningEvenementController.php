@@ -49,8 +49,7 @@ class PlanningEvenementController extends AbstractController
     #[OA\Parameter(name: 'dateEnd', in: 'path', description: 'Date de fin (ex: 2024-12-31)', schema: new OA\Schema(type: 'string', format: 'date'))]
     #[OA\Parameter(name: 'idEmployee', in: 'query', description: 'Id de l\'employée', schema: new OA\Schema(type: 'integer'))]
     #[OA\Response(response: 200, description: 'Liste des événements correspondants')]
-    #[IsGranted('VIEW_ALL', message: 'Vous n\'avez pas la permission de récupérer tous les événements.')]
-    public function index(\DateTimeInterface $dateStart, \DateTimeInterface $dateEnd, Request $request): JsonResponse
+    public function index(\DateTimeInterface $dateStart, \DateTimeInterface $dateEnd, Request $request, #[CurrentUser] Session $user): JsonResponse
     {
         $idPlanning = $request->headers->get('X-Planning-Id');
 
@@ -76,7 +75,7 @@ class PlanningEvenementController extends AbstractController
             );
         }
 
-        $result = $this->planningEvenementRepository->findEventsByDate($dateStart, $dateEnd, $idPlanning, $idPlanningVue, $idEmployee);
+        $result = $this->planningEvenementRepository->findEventsByDate($dateStart, $dateEnd, $user->getIdpersonnel(), $idPlanning, $idPlanningVue, $idEmployee);
 
 
         return $this->json([ 'data' => $result]);

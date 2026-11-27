@@ -18,19 +18,26 @@ class EvenementVoter extends Voter
     public const DELETE = 'DELETE_EVENEMENT';
     public const REPEAT = 'REPEAT_EVENEMENT';
     public const MASS_DELETE = 'MASS_DELETE_EVENEMENT';
-    public const VIEW_ALL = 'VIEW_ALL';
     public const LOCK = 'EVENEMENT_LOCK';
 
     public function __construct(
-        private PlanningPermissionHelper $permissionHelper,
-        private Connection $connection
+        private readonly PlanningPermissionHelper $permissionHelper,
+        private readonly Connection $connection
     ) {}
 
     protected function supports(string $attribute, mixed $subject): bool
     {
-        if (in_array($attribute, [self::VIEW_ALL, self::LOCK], true)) return true;
-        if (in_array($attribute, [self::CREATE, self::REPEAT], true)) return is_numeric($subject);
-        if ($attribute === self::MASS_DELETE) return is_array($subject);
+        if (in_array($attribute, [self::CREATE, self::REPEAT], true)) {
+            return is_numeric($subject);
+        }
+
+        if ($attribute === self::MASS_DELETE) {
+            return is_array($subject);
+        }
+
+        if ($attribute === self::LOCK) {
+            return $subject instanceof Planningevenement || is_numeric($subject);
+        }
 
         return in_array($attribute, [self::UPDATE, self::DELETE], true)
             && $subject instanceof Planningevenement;
@@ -38,24 +45,18 @@ class EvenementVoter extends Voter
 
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token, ?Vote $vote = null): bool
     {
+
         $user = $token->getUser();
         if (!$user instanceof Session) {
             return false;
         }
 
-        $level = $this->permissionHelper->getUserLevel($user);
-
-        // 1. Actions globales
-        if ($attribute === self::VIEW_ALL) {
-            return in_array($level, [22, 23], true);
-        }
-
-        // 2. Suppression en masse
+        // 1. Suppression en masse : vérification de chaque type de ressource concerné
         if ($attribute === self::MASS_DELETE) {
-            return $this->voteOnMassDelete($subject, $level);
+            return $this->voteOnMassDelete($user, $subject);
         }
 
-        // 3. Extraction de l'IdRessource
+        // 2. Extraction de l'IdRessource
         $idRessource = match (true) {
             is_numeric($subject) => (int) $subject,
             $subject instanceof Planningevenement => $subject->getIdplanningressource()?->getIdplanningressource(),
@@ -66,14 +67,21 @@ class EvenementVoter extends Voter
             return false;
         }
 
-        // 4. Verification dynamique selon le type de ressource
+        // 3. Vérification en écriture (niveau 3) selon le type de ressource (232 = Projet, 231 = Paie, 233 = Rubrique Perso)
         $type = $this->permissionHelper->getResourceType($idRessource);
-        return $this->permissionHelper->hasAccessByResourceType($type, $level);
+
+        return $this->permissionHelper->canAccessResource(
+            $user,
+            $type,
+            PlanningPermissionHelper::NIVEAU_ECRITURE
+        );
     }
 
-    private function voteOnMassDelete(array $eventIds, int $level): bool
+    private function voteOnMassDelete(Session $user, array $eventIds): bool
     {
-        if (empty($eventIds)) return true;
+        if (empty($eventIds)) {
+            return true;
+        }
 
         $sqlBulk = "SELECT DISTINCT
                         CASE
@@ -90,12 +98,21 @@ class EvenementVoter extends Voter
                     WHERE PE.IdPlanningEvenement IN (:eventIds)";
 
         try {
-            $types = $this->connection->fetchAllAssociative($sqlBulk, ['eventIds' => $eventIds]);
+            $types = $this->connection->fetchAllAssociative(
+                $sqlBulk,
+                ['eventIds' => array_map('intval', $eventIds)],
+            );
+
             foreach ($types as $row) {
-                if (!$this->permissionHelper->hasAccessByResourceType($row['TypeRessource'], $level)) {
+                if (!$this->permissionHelper->canAccessResource(
+                    $user,
+                    $row['TypeRessource'],
+                    PlanningPermissionHelper::NIVEAU_ECRITURE
+                )) {
                     return false;
                 }
             }
+
             return true;
         } catch (Exception) {
             return false;
